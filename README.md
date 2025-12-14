@@ -42,9 +42,18 @@ git push
 ```
 
 ## Directory Structure
+```
 .dotfiles/
-├── hypr/.config/hypr/       # Hyprland configs
-├── fish/.config/fish/       # Fish shell config
-├── shell/.config/           # Starship prompt
-├── xdg/.config/             # Default applications
-└── stow-all.sh              # Install script
+├── hypr/
+│   └── .config/hypr/       # Hyprland configs
+├── fish/
+│   └── .config/fish/       # Fish shell config
+├── shell/
+│   └── .config/
+│       └── starship.toml   # Starship prompt
+├── xdg/
+│   └── .config/
+│       └── mimeapps.list   # Default applications
+├── stow-all.sh             # Install script
+└── README.md
+```
