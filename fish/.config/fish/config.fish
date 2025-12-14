@@ -8,5 +8,11 @@ source /usr/share/cachyos-fish-config/cachyos-config.fish
 
 # Start SSH agent if not already running
 if status is-interactive
-    keychain --quiet --eval id_ed25519 | source
+    #keychain --quiet --eval id_ed25519 | source
 end
+
+# Initialize Starship prompt
+starship init fish | source
+
+# Initialize Starship prompt
+starship init fish | source
