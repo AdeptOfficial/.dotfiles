@@ -1,65 +1,74 @@
+
 #!/usr/bin/env bash
-# Integrated CachyOS Setup: Apps & Environment
+# Omarchy / CachyOS Setup Script
+# - Updates Omarchy
+# - Ensures Walker works
+# - Installs Flatpak + Discord
+# - Fixes XDG + PATH the CORRECT way (environment.d)
+# - Makes Discord appear in Walker
 
-# --- App List ---
-PACMAN_APPS=(
-    "tailscale"
-    "flatpak"
-    "stow"
-)
+set -e
 
-FLATPAK_APPS=(
-    "com.discordapp.Discord"
-)
+PACMAN_APPS=("tailscale" "flatpak" "stow")
+FLATPAK_APPS=("com.discordapp.Discord")
 
-# --- Execution ---
+echo "🔄 Updating Omarchy..."
+if command -v omarchy-update &>/dev/null; then
+    omarchy-update
+else
+    echo "⚠️ omarchy-update not found, skipping"
+fi
 
-echo "🔄 Updating system database..."
-sudo pacman -Syu --noconfirm
+echo "📦 System update + pacman apps..."
+sudo pacman -Syu --needed --noconfirm "${PACMAN_APPS[@]}"
 
-echo "📦 Installing Pacman apps..."
-for APP in "${PACMAN_APPS[@]}"; do
-    echo "Processing: $APP"
-    sudo pacman -S --needed --noconfirm "$APP"
-    
-    if [ "$APP" == "tailscale" ]; then
-        echo "Starting tailscaled service..."
-        sudo systemctl enable --now tailscaled
-    fi
+echo "🌐 Enabling Tailscale..."
+sudo systemctl enable --now tailscaled
+
+# -------------------------
+# Flatpak setup
+# -------------------------
+echo "📦 Setting up Flatpak..."
+flatpak remote-add --if-not-exists flathub \
+    https://dl.flathub.org/repo/flathub.flatpakrepo
+
+for FLP in "${FLATPAK_APPS[@]}"; do
+    flatpak install -y flathub "$FLP"
 done
 
-# --- Flatpak Logic ---
-if command -v flatpak &> /dev/null; then
-    echo "📦 Installing Flatpak apps..."
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    
-    for FLP in "${FLATPAK_APPS[@]}"; do
-        echo "Installing Flatpak: $FLP"
-        flatpak install -y flathub "$FLP"
-    done
+# -------------------------
+# CRITICAL FIX (Omarchy / Walker)
+# -------------------------
+echo "🛠️ Fixing XDG + PATH for Hyprland / Walker (environment.d)"
 
-    # --- Force Update Desktop Database ---
-    echo "Refresh app list in menu..."
-    sudo update-desktop-database /var/lib/flatpak/exports/share/applications &> /dev/null
-    update-desktop-database ~/.local/share/flatpak/exports/share/applications &> /dev/null
-    update-desktop-database ~/.local/share/applications &> /dev/null
+ENV_DIR="$HOME/.config/environment.d"
+ENV_FILE="$ENV_DIR/flatpak.conf"
 
-    # --- Fish Shell Path Integration ---
-    FISH_CONF="$HOME/.config/fish/config.fish"
-    if [ -f "$FISH_CONF" ]; then
-        echo "Adding Flatpak paths to Fish config..."
-        LINE_TO_ADD="set -gx PATH \$PATH /var/lib/flatpak/exports/bin"
-        if ! grep -qF "$LINE_TO_ADD" "$FISH_CONF"; then
-            echo -e "\n# Flatpak Binaries Path\n$LINE_TO_ADD" >> "$FISH_CONF"
-        fi
-    fi
-else
-    echo "⚠️ Flatpak was not found, skipping Flatpak apps."
+mkdir -p "$ENV_DIR"
+
+cat > "$ENV_FILE" <<'EOF'
+# Flatpak paths for Hyprland / Walker
+XDG_DATA_DIRS=/var/lib/flatpak/exports/share:/usr/share:$HOME/.local/share/flatpak/exports/share
+PATH=/var/lib/flatpak/exports/bin:$HOME/.local/share/flatpak/exports/bin:/usr/local/bin:/usr/bin
+EOF
+
+# -------------------------
+# Desktop database refresh
+# -------------------------
+echo "🔄 Refreshing desktop databases..."
+sudo update-desktop-database /var/lib/flatpak/exports/share/applications &>/dev/null || true
+update-desktop-database "$HOME/.local/share/flatpak/exports/share/applications" &>/dev/null || true
+
+# -------------------------
+# Walker refresh
+# -------------------------
+echo "♻️ Refreshing Walker..."
+if command -v omarchy-refresh-walker &>/dev/null; then
+    omarchy-refresh-walker
 fi
 
-echo "-----------------------------------------------"
-echo "✅ Installation complete!"
-if [[ " ${PACMAN_APPS[@]} " =~ " tailscale " ]]; then
-    echo "To authenticate Tailscale, run: sudo tailscale up"
-fi
-echo "-----------------------------------------------"
+echo
+echo "✅ DONE"
+echo "➡️ IMPORTANT: Reboot is REQUIRED (logout is unreliable on Omarchy)"
+echo "➡️ Run: systemctl reboot"
+
