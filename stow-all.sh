@@ -1,49 +1,20 @@
 #!/bin/bash
-# Stow all dotfiles with dependency check and conflict resolution
+# Combined Setup: Install Apps then Stow Dotfiles
 
-# --- Function to check and install Stow ---
-ensure_stow_installed() {
-    # Check if 'stow' command is available
-    if command -v stow &> /dev/null; then
-        echo "✅ GNU Stow is already installed."
-        return 0
-    fi
-
-    echo "⚠️ GNU Stow not found. Attempting to install..."
-
-    # Check for common package managers and install
-    if command -v apt &> /dev/null; then
-        sudo apt update && sudo apt install -y stow
-    elif command -v dnf &> /dev/null; then
-        sudo dnf install -y stow
-    elif command -v pacman &> /dev/null; then
-        sudo pacman -S --noconfirm stow
-    elif command -v brew &> /dev/null; then
-        brew install stow
-    else
-        echo "❌ ERROR: Cannot find a supported package manager (apt, dnf, pacman, brew)."
-        echo "Please install GNU Stow manually and re-run this script."
-        exit 1
-    fi
-
-    # Final check after attempted installation
-    if command -v stow &> /dev/null; then
-        echo "✅ GNU Stow installed successfully."
-    else
-        echo "❌ ERROR: Stow installation failed. Please check the logs and install manually."
-        exit 1
-    fi
-}
-# ------------------------------------------
-
-# 1. Run the dependency check
-ensure_stow_installed
+# 1. Run the App Installation Script first
+if [ -f "./install_apps.sh" ]; then
+    echo "🚀 Starting app installation..."
+    chmod +x install_apps.sh
+    ./install_apps.sh
+else
+    echo "⚠️ install_apps.sh not found in the current directory. Skipping."
+fi
 
 # 2. Proceed with stowing dotfiles using --adopt
 echo "🔄 Stowing all dotfiles with conflict resolution (--adopt)..."
 
-# Use --adopt to move any conflicting default files into the repo and create symlinks.
-# This resolves the "existing target is not a symlink" error on new systems.
+# Note: Since you've moved Discord to Flatpak, make sure your 'xdg' or 'shell' 
+# configs don't rely on the pacman binary path for Discord.
 stow --adopt hypr
 stow --adopt fish
 stow --adopt xdg
@@ -55,8 +26,7 @@ echo "✅ All dotfiles stowed! (Symlinks established.)"
 echo ""
 echo "⚠️ Cleaning up adopted default config files in the Git repository..."
 
-# List of packages that were stowed/adopted:
-PACKAGES="hypr fish xdg shell stow-all.sh" 
+PACKAGES="hypr fish xdg shell" 
 
 # This command checks out your saved content from the Git index, 
 # overwriting the temporary default files that Stow adopted.
