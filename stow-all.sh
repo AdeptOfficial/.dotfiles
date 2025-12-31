@@ -18,6 +18,7 @@ echo "🔄 Stowing all dotfiles with conflict resolution (--adopt)..."
 stow --adopt hypr
 stow --adopt fish
 stow --adopt xdg
+stow --adopt waybar
 stow --adopt shell
 
 echo "✅ All dotfiles stowed! (Symlinks established.)"
