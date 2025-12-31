@@ -29,8 +29,8 @@
       "8": "8",
       "9": "9",
       "10": "0",
-      //"active": "󱓻"
-      "focused": "󱓻"
+      "active": "󱓻"
+      //"focused": "󱓻"
     },
     "persistent-workspaces": {
       "1": [],
