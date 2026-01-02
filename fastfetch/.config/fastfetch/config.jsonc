@@ -43,7 +43,7 @@
       "key": "│ ├󰋊",
       "keyColor": "green",
       "folders": ["/", "/mnt/SharedData", "/mnt/SynaDrive"],
-      "format": "{name}: | {size-used}/{size-total} {size-percentage-bar} ({size-percentage}%)"      
+      "format": "{name} | {size-used}/{size-total} {size-percentage-bar} ({size-percentage}%)"      
     },
     {
       "type": "memory",
