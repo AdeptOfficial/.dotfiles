@@ -19,11 +19,42 @@ Install CachyOS with these repos enabled:
 - `cachyos` (general packages)
 - `cachyos-v3` (for Zen 3+ optimizations)
 
-### 2. Core System Packages
+### 2. Audio (PipeWire)
+
+```bash
+# PipeWire audio stack
+sudo pacman -S pipewire pipewire-pulse pipewire-alsa wireplumber
+
+# Audio control TUI (optional)
+yay -S wiremix
+```
+
+### 3. Bluetooth
+
+```bash
+sudo pacman -S bluez bluez-utils
+
+# Enable bluetooth service
+sudo systemctl enable --now bluetooth.service
+
+# Bluetooth TUI (optional)
+yay -S bluetui
+```
+
+### 4. Network
+
+```bash
+sudo pacman -S networkmanager networkmanager-openvpn
+
+# Enable NetworkManager
+sudo systemctl enable --now NetworkManager.service
+```
+
+### 5. Hyprland & Desktop
 
 ```bash
 # Hyprland and Wayland
-sudo pacman -S hyprland hyprlock hypridle xdg-desktop-portal-hyprland
+sudo pacman -S hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
 
 # Display and compositor
 sudo pacman -S swaybg swayosd waybar
@@ -34,23 +65,22 @@ yay -S walker
 
 # Utilities
 sudo pacman -S brightnessctl playerctl upower wl-clipboard grim slurp
+
+# Authentication
 sudo pacman -S polkit-gnome gnome-keyring
+
+# File management
+sudo pacman -S nautilus gvfs gvfs-mtp gvfs-smb
 
 # Terminal & shell
 sudo pacman -S alacritty fish starship
 yay -S ghostty
 
-# File management
-sudo pacman -S nautilus xdg-desktop-portal-gtk
-
-# Screenshot tool
-yay -S satty
-
-# Screen recording (GPU accelerated)
-yay -S gpu-screen-recorder
+# Screenshot & recording
+yay -S satty gpu-screen-recorder
 ```
 
-### 3. Fonts
+### 6. Fonts
 
 ```bash
 # Nerd Fonts (required for waybar/terminal icons)
@@ -60,47 +90,42 @@ sudo pacman -S ttf-jetbrains-mono-nerd ttf-firacode-nerd
 sudo pacman -S ttf-liberation noto-fonts noto-fonts-emoji
 ```
 
-### 4. Theme Dependencies
+### 7. Theme & Tools
 
 ```bash
-sudo pacman -S yq jq gum
+sudo pacman -S yq jq gum stow git
 ```
 
-### 5. Default Browser (Helium)
+### 8. Default Browser (Helium)
 
 ```bash
-# Install Helium browser
 yay -S helium-browser
-
-# Set as default
 xdg-settings set default-web-browser helium.desktop
 ```
 
-### 6. Session Manager
+### 9. Session Manager
 
 ```bash
-# UWSM (Universal Wayland Session Manager)
 sudo pacman -S uwsm
 ```
 
-### 7. ASUS G14 Specific Packages (asus-linux.org)
+### 10. ASUS G14 Specific (asus-linux.org)
 
-These are community tools from [asus-linux.org](https://asus-linux.org), not official ASUS software.
+Community tools from [asus-linux.org](https://asus-linux.org), not official ASUS software.
 
 ```bash
 # asus-linux tools (fan control, keyboard backlight, GPU switching)
-sudo pacman -S asusctl supergfxctl
+sudo pacman -S asusctl supergfxctl power-profiles-daemon
+
+# Optional: GUI control center
+yay -S rog-control-center
 
 # Enable services
 sudo systemctl enable --now supergfxd.service
-systemctl --user enable --now asusd-user.service
-
-# Power profiles daemon
-sudo pacman -S power-profiles-daemon
 sudo systemctl enable --now power-profiles-daemon.service
 ```
 
-### 8. AMD GPU Packages
+### 11. AMD GPU
 
 ```bash
 # Vulkan drivers (RADV - recommended)
@@ -117,18 +142,29 @@ sudo pacman -S libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-v
 ```bash
 # All pacman packages
 sudo pacman -S --needed \
-  hyprland hyprlock hypridle swaybg swayosd waybar mako \
+  pipewire pipewire-pulse pipewire-alsa wireplumber \
+  bluez bluez-utils \
+  networkmanager networkmanager-openvpn \
+  hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+  swaybg swayosd waybar mako \
   brightnessctl playerctl upower wl-clipboard grim slurp \
   polkit-gnome gnome-keyring \
+  nautilus gvfs gvfs-mtp gvfs-smb \
   alacritty fish starship \
-  nautilus xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
   ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
-  yq jq gum stow git \
-  vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver \
-  asusctl supergfxctl power-profiles-daemon uwsm
+  yq jq gum stow git uwsm \
+  asusctl supergfxctl power-profiles-daemon \
+  vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver
 
 # AUR packages
-yay -S --needed walker ghostty satty gpu-screen-recorder helium-browser
+yay -S --needed walker ghostty satty gpu-screen-recorder helium-browser \
+  wiremix bluetui rog-control-center
+
+# Enable services
+sudo systemctl enable --now bluetooth.service
+sudo systemctl enable --now NetworkManager.service
+sudo systemctl enable --now supergfxd.service
+sudo systemctl enable --now power-profiles-daemon.service
 ```
 
 ---
@@ -167,16 +203,7 @@ xdg-settings set default-web-browser helium.desktop
 adept-theme-set futurism
 ```
 
-### Step 6: Enable Services
-
-```bash
-# ASUS services
-sudo systemctl enable --now supergfxd.service
-systemctl --user enable --now asusd-user.service
-sudo systemctl enable --now power-profiles-daemon.service
-```
-
-### Step 7: Start Hyprland
+### Step 6: Start Hyprland
 
 ```bash
 uwsm start hyprland
@@ -213,6 +240,21 @@ asusctl profile -P Balanced     # Default
 asusctl profile -P Performance  # Gaming
 ```
 
+### Keyboard Backlight
+
+```bash
+asusctl -k off
+asusctl -k low
+asusctl -k med
+asusctl -k high
+```
+
+### ROG Control Center (GUI)
+
+```bash
+rog-control-center
+```
+
 ---
 
 ## Switching Between Desktop/Laptop
@@ -240,6 +282,22 @@ adept-profile-switch status   # Check current
 
 ## Troubleshooting
 
+### No audio
+```bash
+# Check PipeWire is running
+systemctl --user status pipewire pipewire-pulse wireplumber
+
+# Restart audio
+systemctl --user restart pipewire pipewire-pulse wireplumber
+```
+
+### No bluetooth
+```bash
+systemctl status bluetooth
+sudo systemctl restart bluetooth
+bluetoothctl power on
+```
+
 ### Brightness keys not working
 ```bash
 brightnessctl info
@@ -255,4 +313,11 @@ libinput list-devices | grep -A5 Touchpad
 ```bash
 systemctl status supergfxd
 supergfxctl -m Hybrid --force
+```
+
+### No network
+```bash
+systemctl status NetworkManager
+nmcli device status
+nmcli device wifi list
 ```
