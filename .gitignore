@@ -3,3 +3,13 @@
 *~
 .DS_Store
 *.backup*
+
+# Themes - only futurism is tracked, install others with adept-theme-install
+themes/.config/themes/ado/
+themes/.config/themes/catppuccin/
+themes/.config/themes/dreamwave/
+themes/.config/themes/gruvbox/
+themes/.config/themes/nord/
+themes/.config/themes/sapphire/
+themes/.config/themes/tokyo-night/
+themes/.config/themes/backgrounds/
