@@ -1,33 +1,83 @@
 #!/bin/bash
 
-# adept-theme-install: Install a new theme from a git repo
-# Usage: adept-theme-install <git-repo-url>
+# adept-theme-install: Install a new theme from a git repo or known theme name
+# Usage: adept-theme-install <theme-name|git-repo-url>
+# Examples:
+#   adept-theme-install catppuccin
+#   adept-theme-install https://github.com/user/custom-theme
+
+# Known Omarchy themes (shorthand -> repo URL)
+declare -A KNOWN_THEMES=(
+  ["catppuccin"]="https://github.com/basecamp/omarchy-theme-catppuccin"
+  ["gruvbox"]="https://github.com/basecamp/omarchy-theme-gruvbox"
+  ["nord"]="https://github.com/basecamp/omarchy-theme-nord"
+  ["tokyo-night"]="https://github.com/basecamp/omarchy-theme-tokyo-night"
+  ["dracula"]="https://github.com/basecamp/omarchy-theme-dracula"
+  ["rose-pine"]="https://github.com/basecamp/omarchy-theme-rose-pine"
+  ["everforest"]="https://github.com/basecamp/omarchy-theme-everforest"
+  ["kanagawa"]="https://github.com/basecamp/omarchy-theme-kanagawa"
+  ["solarized"]="https://github.com/basecamp/omarchy-theme-solarized"
+  ["one-dark"]="https://github.com/basecamp/omarchy-theme-one-dark"
+)
+
+list_themes() {
+  echo -e "\e[32mAvailable themes:\e[0m"
+  for theme in "${!KNOWN_THEMES[@]}"; do
+    echo "  $theme"
+  done | sort
+  echo ""
+  echo "Or provide a custom git URL"
+}
 
 if [ -z "$1" ]; then
-  echo -e "\e[32mEnter a git repo URL containing a theme (colors.toml + assets)\n\e[0m"
-  REPO_URL=$(gum input --placeholder="Git repo URL for theme" --header="")
+  list_themes
+  echo ""
+  INPUT=$(gum input --placeholder="Theme name or git URL" --header="")
 else
-  REPO_URL="$1"
+  if [ "$1" == "--list" ] || [ "$1" == "-l" ]; then
+    list_themes
+    exit 0
+  fi
+  INPUT="$1"
 fi
 
-if [ -z "$REPO_URL" ]; then
+if [ -z "$INPUT" ]; then
+  exit 1
+fi
+
+# Check if input is a known theme name or a URL
+if [[ "$INPUT" =~ ^https?:// ]]; then
+  REPO_URL="$INPUT"
+  THEME_NAME=$(basename "$REPO_URL" .git | sed -E 's/^omarchy-theme-//; s/^adept-//; s/-theme$//')
+elif [[ -n "${KNOWN_THEMES[$INPUT]}" ]]; then
+  REPO_URL="${KNOWN_THEMES[$INPUT]}"
+  THEME_NAME="$INPUT"
+else
+  echo "Unknown theme: $INPUT"
+  echo ""
+  list_themes
   exit 1
 fi
 
 THEMES_DIR="$HOME/.config/themes"
-THEME_NAME=$(basename "$REPO_URL" .git | sed -E 's/^adept-//; s/-theme$//')
 THEME_PATH="$THEMES_DIR/$THEME_NAME"
 
 # Remove existing theme if present
 if [ -d "$THEME_PATH" ]; then
+  echo "Removing existing $THEME_NAME..."
   rm -rf "$THEME_PATH"
 fi
 
+echo "Installing $THEME_NAME from $REPO_URL..."
+
 # Clone the repo directly to ~/.config/themes
-if ! git clone "$REPO_URL" "$THEME_PATH"; then
+if ! git clone "$REPO_URL" "$THEME_PATH" 2>/dev/null; then
   echo "Error: Failed to clone theme repo."
   exit 1
 fi
 
-# Apply the new theme with adept-theme-set
-adept-theme-set $THEME_NAME
+# Remove .git from cloned theme (keep it clean)
+rm -rf "$THEME_PATH/.git"
+
+echo -e "\e[32mTheme '$THEME_NAME' installed!\e[0m"
+echo "Run 'adept-theme-set $THEME_NAME' to activate it."
