@@ -83,10 +83,12 @@ xdg-settings set default-web-browser helium.desktop
 sudo pacman -S uwsm
 ```
 
-### 7. ASUS G14 Specific Packages
+### 7. ASUS G14 Specific Packages (asus-linux.org)
+
+These are community tools from [asus-linux.org](https://asus-linux.org), not official ASUS software.
 
 ```bash
-# ASUS Linux tools (fan control, RGB, power profiles)
+# asus-linux tools (fan control, keyboard backlight, GPU switching)
 sudo pacman -S asusctl supergfxctl
 
 # Enable services
