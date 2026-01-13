@@ -11,42 +11,79 @@
 
 ## Prerequisites
 
-### 1. Base System (CachyOS recommended)
+### 1. Base System
+
+**Recommended OS:** CachyOS (Arch-based, optimized for AMD)
 
 Install CachyOS with these repos enabled:
 - `cachyos` (general packages)
 - `cachyos-v3` (for Zen 3+ optimizations)
 
-### 2. Required Packages
+### 2. Core System Packages
 
 ```bash
-# Core desktop
-sudo pacman -S hyprland waybar walker mako swayosd swaybg hypridle hyprlock
+# Hyprland and Wayland
+sudo pacman -S hyprland hyprlock hypridle xdg-desktop-portal-hyprland
 
-# Terminal & shell
-sudo pacman -S alacritty ghostty fish starship
+# Display and compositor
+sudo pacman -S swaybg swayosd waybar
+
+# App launcher and notifications
+sudo pacman -S mako
+yay -S walker
 
 # Utilities
-sudo pacman -S brightnessctl playerctl upower wl-clipboard grim slurp satty
+sudo pacman -S brightnessctl playerctl upower wl-clipboard grim slurp
+sudo pacman -S polkit-gnome gnome-keyring
+
+# Terminal & shell
+sudo pacman -S alacritty fish starship
+yay -S ghostty
 
 # File management
-sudo pacman -S nautilus xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
+sudo pacman -S nautilus xdg-desktop-portal-gtk
 
-# Fonts (Nerd Fonts for icons)
-sudo pacman -S ttf-jetbrains-mono-nerd ttf-firacode-nerd
-
-# Theme dependencies
-sudo pacman -S yq jq
+# Screenshot tool
+yay -S satty
 
 # Screen recording (GPU accelerated)
 yay -S gpu-screen-recorder
-
-# App launcher background service
-# Walker MUST run as a background service
-# Added to autostart: walker --gapplication-service
 ```
 
-### 3. ASUS G14 Specific Packages
+### 3. Fonts
+
+```bash
+# Nerd Fonts (required for waybar/terminal icons)
+sudo pacman -S ttf-jetbrains-mono-nerd ttf-firacode-nerd
+
+# Additional fonts
+sudo pacman -S ttf-liberation noto-fonts noto-fonts-emoji
+```
+
+### 4. Theme Dependencies
+
+```bash
+sudo pacman -S yq jq gum
+```
+
+### 5. Default Browser (Helium)
+
+```bash
+# Install Helium browser
+yay -S helium-browser
+
+# Set as default
+xdg-settings set default-web-browser helium.desktop
+```
+
+### 6. Session Manager
+
+```bash
+# UWSM (Universal Wayland Session Manager)
+sudo pacman -S uwsm
+```
+
+### 7. ASUS G14 Specific Packages
 
 ```bash
 # ASUS Linux tools (fan control, RGB, power profiles)
@@ -56,22 +93,40 @@ sudo pacman -S asusctl supergfxctl
 sudo systemctl enable --now supergfxd.service
 systemctl --user enable --now asusd-user.service
 
-# Power profiles daemon (integrates with asusctl)
+# Power profiles daemon
 sudo pacman -S power-profiles-daemon
 sudo systemctl enable --now power-profiles-daemon.service
 ```
 
-### 4. AMD GPU Packages
+### 8. AMD GPU Packages
 
 ```bash
-# Vulkan drivers (RADV is default, recommended)
+# Vulkan drivers (RADV - recommended)
 sudo pacman -S vulkan-radeon lib32-vulkan-radeon
 
 # Video acceleration
 sudo pacman -S libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau
+```
 
-# Optional: ROCm for compute (large download)
-# sudo pacman -S rocm-hip-sdk
+---
+
+## Quick Install (Copy-Paste)
+
+```bash
+# All pacman packages
+sudo pacman -S --needed \
+  hyprland hyprlock hypridle swaybg swayosd waybar mako \
+  brightnessctl playerctl upower wl-clipboard grim slurp \
+  polkit-gnome gnome-keyring \
+  alacritty fish starship \
+  nautilus xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+  ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
+  yq jq gum stow git \
+  vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver \
+  asusctl supergfxctl power-profiles-daemon uwsm
+
+# AUR packages
+yay -S --needed walker ghostty satty gpu-screen-recorder helium-browser
 ```
 
 ---
@@ -81,181 +136,94 @@ sudo pacman -S libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-v
 ### Step 1: Clone Dotfiles
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/dotfiles.git ~/.dotfiles
+git clone https://github.com/AdeptOfficial/.dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ```
 
-### Step 2: Install GNU Stow
-
-```bash
-sudo pacman -S stow
-```
-
-### Step 3: Stow All Packages
+### Step 2: Stow All Packages
 
 ```bash
 cd ~/.dotfiles
 ./stow-all.sh
-
-# Or manually:
-stow hypr waybar themes rice scripts alacritty ghostty kitty swayosd walker mako btop fish shell fastfetch xdg
 ```
 
-### Step 4: Apply Laptop-Specific Configs
+### Step 3: Apply Laptop Profile
 
 ```bash
-# Backup desktop configs
-cp ~/.config/hypr/monitors.conf ~/.config/hypr/monitors.desktop.conf
-cp ~/.config/hypr/input.conf ~/.config/hypr/input.desktop.conf
-
-# Apply laptop configs
-cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
-cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
+adept-profile-switch laptop
 ```
 
-### Step 5: Start Hyprland
+### Step 4: Set Default Browser
 
 ```bash
-# If using UWSM (recommended)
+xdg-settings set default-web-browser helium.desktop
+```
+
+### Step 5: Activate Theme
+
+```bash
+adept-theme-set futurism
+```
+
+### Step 6: Enable Services
+
+```bash
+# ASUS services
+sudo systemctl enable --now supergfxd.service
+systemctl --user enable --now asusd-user.service
+sudo systemctl enable --now power-profiles-daemon.service
+```
+
+### Step 7: Start Hyprland
+
+```bash
 uwsm start hyprland
-
-# Or directly
-Hyprland
 ```
 
 ---
 
 ## Post-Install Configuration
 
-### GPU Mode (asusctl)
+### GPU Mode
 
 ```bash
-# Check current GPU mode
-supergfxctl -g
-
-# Available modes:
-supergfxctl -m Integrated   # Battery saver (iGPU only)
-supergfxctl -m Hybrid       # Auto-switch (default)
-supergfxctl -m Dedicated    # Performance (dGPU only)
+supergfxctl -g              # Check current
+supergfxctl -m Integrated   # Battery (iGPU only)
+supergfxctl -m Hybrid       # Auto-switch
+supergfxctl -m Dedicated    # Performance (dGPU)
 ```
 
 ### Power Profiles
 
 ```bash
-# Check current profile
-powerprofilesctl get
-
-# Available profiles:
-powerprofilesctl set power-saver      # Battery
-powerprofilesctl set balanced         # Default
-powerprofilesctl set performance      # Plugged in
+powerprofilesctl get              # Check current
+powerprofilesctl set power-saver  # Battery
+powerprofilesctl set balanced     # Default
+powerprofilesctl set performance  # Plugged in
 ```
 
-### Fan Control (asusctl)
+### Fan Control
 
 ```bash
-# Check fan curve
-asusctl profile -l
-
-# Set profile
+asusctl profile -l              # List
 asusctl profile -P Quiet        # Silent
 asusctl profile -P Balanced     # Default
 asusctl profile -P Performance  # Gaming
-```
-
-### Keyboard Backlight
-
-```bash
-# Brightness (0-3)
-asusctl -k low
-asusctl -k med
-asusctl -k high
-asusctl -k off
 ```
 
 ---
 
 ## Switching Between Desktop/Laptop
 
-### Quick Switch Script
-
-Create `~/.local/bin/rice/adept-profile-switch`:
-
 ```bash
-#!/bin/bash
-case "$1" in
-  desktop)
-    cp ~/.config/hypr/monitors.desktop.conf ~/.config/hypr/monitors.conf
-    cp ~/.config/hypr/input.desktop.conf ~/.config/hypr/input.conf
-    hyprctl reload
-    ;;
-  laptop)
-    cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
-    cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
-    hyprctl reload
-    ;;
-  *)
-    echo "Usage: adept-profile-switch [desktop|laptop]"
-    ;;
-esac
+adept-profile-switch laptop   # On laptop
+adept-profile-switch desktop  # On desktop
+adept-profile-switch status   # Check current
 ```
 
 ---
 
-## Troubleshooting
-
-### Display not detected
-
-```bash
-# Check connected displays
-hyprctl monitors
-
-# If eDP-1 not showing, check kernel driver
-lspci -k | grep -A3 VGA
-```
-
-### Brightness keys not working
-
-```bash
-# Test brightnessctl
-brightnessctl info
-brightnessctl set 50%
-
-# Check permissions
-ls -la /sys/class/backlight/
-# Should show amdgpu_bl0 or similar
-```
-
-### Trackpad not working
-
-```bash
-# Check libinput devices
-libinput list-devices | grep -A5 Touchpad
-
-# Test input
-libinput debug-events
-```
-
-### Screen tearing
-
-```bash
-# Enable VRR (Variable Refresh Rate) in monitors.conf
-monitor = eDP-1, 2560x1600@120, 0x0, 1.25, vrr, 1
-```
-
-### GPU not switching
-
-```bash
-# Check supergfxd status
-systemctl status supergfxd
-
-# Force mode
-supergfxctl -m Hybrid --force
-```
-
----
-
-## Differences from Desktop Config
+## Config Differences
 
 | Setting | Desktop | Laptop |
 |---------|---------|--------|
@@ -263,15 +231,26 @@ supergfxctl -m Hybrid --force
 | Scale | 1x | 1.25x |
 | Mouse accel | flat (raw) | adaptive |
 | Sensitivity | -0.3 | 0 |
-| Numlock | on | off |
 | Gestures | disabled | enabled |
 | Natural scroll | off | on |
 
 ---
 
-## Files Modified for Laptop
+## Troubleshooting
 
-- `~/.config/hypr/monitors.conf` - Display configuration
-- `~/.config/hypr/input.conf` - Input device settings
+### Brightness keys not working
+```bash
+brightnessctl info
+ls -la /sys/class/backlight/
+```
 
-All other configs (themes, waybar, keybindings, etc.) work unchanged.
+### Trackpad not working
+```bash
+libinput list-devices | grep -A5 Touchpad
+```
+
+### GPU not switching
+```bash
+systemctl status supergfxd
+supergfxctl -m Hybrid --force
+```
