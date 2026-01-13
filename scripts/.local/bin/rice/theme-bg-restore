@@ -1,0 +1,41 @@
+#!/bin/bash
+
+STATE_DIR="$HOME/.local/state/rice"
+STATE_FILE="$STATE_DIR/background"
+CURRENT_BACKGROUND_LINK="$HOME/.config/themes/current/background"
+THEME_NAME=$(cat "$HOME/.config/themes/current.name" 2>/dev/null)
+THEME_PATH="$HOME/.config/themes/$THEME_NAME"
+
+# Prefer an existing symlink target to avoid overwriting user changes.
+CURRENT_BACKGROUND=""
+if [[ -L "$CURRENT_BACKGROUND_LINK" ]]; then
+  CURRENT_BACKGROUND=$(readlink "$CURRENT_BACKGROUND_LINK")
+  if [[ -n "$CURRENT_BACKGROUND" && "$CURRENT_BACKGROUND" != /* ]]; then
+    CURRENT_BACKGROUND="$THEME_PATH/$CURRENT_BACKGROUND"
+  fi
+fi
+
+if [[ -n "$CURRENT_BACKGROUND" && -f "$CURRENT_BACKGROUND" ]]; then
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$CURRENT_BACKGROUND" > "$STATE_FILE"
+else
+  if [[ -f "$STATE_FILE" ]]; then
+    SAVED_BACKGROUND=$(cat "$STATE_FILE")
+    if [[ -n "$SAVED_BACKGROUND" && -f "$SAVED_BACKGROUND" ]]; then
+      ln -nsf "$SAVED_BACKGROUND" "$CURRENT_BACKGROUND_LINK"
+    fi
+  fi
+fi
+
+if [[ ! -e "$CURRENT_BACKGROUND_LINK" ]]; then
+  THEME_BACKGROUNDS_PATH="$THEME_PATH/backgrounds/"
+  USER_BACKGROUNDS_PATH="$HOME/.config/themes/backgrounds/$THEME_NAME/"
+
+  mapfile -d '' -t BACKGROUNDS < <(find -L "$USER_BACKGROUNDS_PATH" "$THEME_BACKGROUNDS_PATH" -maxdepth 1 -type f -print0 2>/dev/null | sort -z)
+  if [[ ${#BACKGROUNDS[@]} -gt 0 ]]; then
+    ln -nsf "${BACKGROUNDS[0]}" "$CURRENT_BACKGROUND_LINK"
+  fi
+fi
+
+pkill -x swaybg
+setsid uwsm-app -- swaybg -i "$CURRENT_BACKGROUND_LINK" -m fill >/dev/null 2>&1 &

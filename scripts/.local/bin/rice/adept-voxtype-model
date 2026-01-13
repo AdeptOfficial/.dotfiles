@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+
+adept-launch-floating-terminal-with-presentation "voxtype setup model"
+adept-restart-waybar

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Update Omarchy from git
+# Note: Only works for fresh omarchy installs, not migrated setups.
+
+set -e
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
+  echo "This command only works for git-based omarchy installs."
+  echo "Your setup is migrated to dotfiles - use 'cd ~/.dotfiles && git pull' instead."
+  exit 1
+fi
+
+echo -e "\e[32mUpdate Omarchy\e[0m"
+
+git -C "$OMARCHY_PATH" pull --autostash
+git -C "$OMARCHY_PATH" --no-pager diff --check || git -C "$OMARCHY_PATH" reset --merge

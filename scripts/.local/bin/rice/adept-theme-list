@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Directories to exclude (system/internal folders)
+EXCLUDE_DIRS="current|next-theme|templates|backgrounds"
+
+{
+  find "$HOME/.config/themes/" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n' 2>/dev/null
+} | grep -Ev "^($EXCLUDE_DIRS)$" | sort -u | while read -r name; do
+  # Capitalize first letter of each word
+  echo "$name" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
+done

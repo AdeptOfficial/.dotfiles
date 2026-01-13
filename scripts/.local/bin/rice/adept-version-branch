@@ -1,0 +1,10 @@
+#!/bin/bash
+# Show git branch for omarchy installation (if exists)
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ -d "$OMARCHY_PATH/.git" ]]; then
+  git -C "$OMARCHY_PATH" rev-parse --abbrev-ref HEAD
+else
+  echo "migrated (no git)"
+fi

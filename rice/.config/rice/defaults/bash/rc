@@ -1,0 +1,6 @@
+source ~/.config/rice/defaults/default/bash/shell
+source ~/.config/rice/defaults/default/bash/aliases
+source ~/.config/rice/defaults/default/bash/functions
+source ~/.config/rice/defaults/default/bash/init
+source ~/.config/rice/defaults/default/bash/envs
+[[ $- == *i* ]] && bind -f ~/.config/rice/defaults/default/bash/inputrc

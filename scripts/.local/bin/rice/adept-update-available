@@ -1,0 +1,33 @@
+#!/bin/bash
+# Check if an update is available for the Omarchy git repository.
+# Note: Only works for fresh omarchy installs, not migrated setups.
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
+  echo "This command only works for git-based omarchy installs."
+  echo "Your setup is migrated to dotfiles - updates are managed via 'cd ~/.dotfiles && git pull' instead."
+  exit 1
+fi
+
+# Get remote tag
+latest_tag=$(git -C "$OMARCHY_PATH" ls-remote --tags origin | grep -v "{}" | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -n 1)
+if [[ -z "$latest_tag" ]]; then
+  echo "Error: Could not retrieve latest tag."
+  exit 1
+fi
+
+# Get local tag
+current_tag=$(git -C "$OMARCHY_PATH" describe --tags $(git -C "$OMARCHY_PATH" rev-list --tags --max-count=1))
+if [[ -z "$current_tag" ]]; then
+  echo "Error: Could not retrieve current tag."
+  exit 1
+fi
+
+if [[ "$current_tag" != "$latest_tag" ]]; then
+  echo "Omarchy update available ($latest_tag)"
+  exit 0
+else
+  echo "Omarchy is up to date ($current_tag)"
+  exit 1
+fi

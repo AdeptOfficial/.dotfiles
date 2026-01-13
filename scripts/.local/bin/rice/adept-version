@@ -1,0 +1,12 @@
+#!/bin/bash
+# Show version info for the rice setup
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ -f "$OMARCHY_PATH/version" ]]; then
+  cat "$OMARCHY_PATH/version"
+elif [[ -f "$HOME/.config/rice/version" ]]; then
+  cat "$HOME/.config/rice/version"
+else
+  echo "migrated (dotfiles-managed)"
+fi

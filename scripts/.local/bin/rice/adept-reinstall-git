@@ -1,0 +1,17 @@
+#!/bin/bash
+# Reinstall the Omarchy configuration directory from the git source.
+# Note: Only works for fresh omarchy installs, not migrated setups.
+
+set -e
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
+  echo "This command only works for git-based omarchy installs."
+  echo "Your setup is migrated to dotfiles - use 'cd ~/.dotfiles && git pull' instead."
+  exit 1
+fi
+
+git clone "https://github.com/basecamp/omarchy.git" ~/.local/share/adept-new >/dev/null
+mv "$OMARCHY_PATH" ~/.local/share/adept-old
+mv ~/.local/share/adept-new "$OMARCHY_PATH"

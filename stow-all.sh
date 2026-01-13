@@ -13,13 +13,25 @@ fi
 # 2. Proceed with stowing dotfiles using --adopt
 echo "🔄 Stowing all dotfiles with conflict resolution (--adopt)..."
 
-# Note: Since you've moved Discord to Flatpak, make sure your 'xdg' or 'shell' 
-# configs don't rely on the pacman binary path for Discord.
+# Core configs
 stow --adopt hypr
 stow --adopt fish
 stow --adopt xdg
 stow --adopt waybar
 stow --adopt shell
+stow --adopt fastfetch
+
+# Rice configs (migrated from omarchy)
+stow --adopt themes
+stow --adopt rice
+stow --adopt scripts
+stow --adopt alacritty
+stow --adopt ghostty
+stow --adopt kitty
+stow --adopt swayosd
+stow --adopt walker
+stow --adopt mako
+stow --adopt btop
 
 echo "✅ All dotfiles stowed! (Symlinks established.)"
 
@@ -27,7 +39,7 @@ echo "✅ All dotfiles stowed! (Symlinks established.)"
 echo ""
 echo "⚠️ Cleaning up adopted default config files in the Git repository..."
 
-PACKAGES="hypr fish xdg shell" 
+PACKAGES="hypr fish xdg shell waybar fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop" 
 
 # This command checks out your saved content from the Git index, 
 # overwriting the temporary default files that Stow adopted.

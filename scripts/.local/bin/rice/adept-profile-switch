@@ -1,0 +1,77 @@
+#!/bin/bash
+# Switch between desktop and laptop hardware profiles
+# Usage: adept-profile-switch [desktop|laptop]
+
+HYPR_CONFIG="$HOME/.config/hypr"
+DOTFILES_HYPR="$HOME/.dotfiles/hypr/.config/hypr"
+
+case "$1" in
+  desktop)
+    echo "Switching to desktop profile..."
+
+    # Restore desktop configs if backups exist
+    if [[ -f "$HYPR_CONFIG/monitors.desktop.conf" ]]; then
+      cp "$HYPR_CONFIG/monitors.desktop.conf" "$HYPR_CONFIG/monitors.conf"
+    else
+      echo "Warning: No desktop monitor config backup found"
+    fi
+
+    if [[ -f "$HYPR_CONFIG/input.desktop.conf" ]]; then
+      cp "$HYPR_CONFIG/input.desktop.conf" "$HYPR_CONFIG/input.conf"
+    else
+      echo "Warning: No desktop input config backup found"
+    fi
+
+    hyprctl reload
+    echo "Desktop profile active"
+    ;;
+
+  laptop)
+    echo "Switching to laptop profile..."
+
+    # Apply laptop configs
+    if [[ -f "$DOTFILES_HYPR/monitors.laptop.conf" ]]; then
+      cp "$DOTFILES_HYPR/monitors.laptop.conf" "$HYPR_CONFIG/monitors.conf"
+    else
+      echo "Error: monitors.laptop.conf not found"
+      exit 1
+    fi
+
+    if [[ -f "$DOTFILES_HYPR/input.laptop.conf" ]]; then
+      cp "$DOTFILES_HYPR/input.laptop.conf" "$HYPR_CONFIG/input.conf"
+    else
+      echo "Error: input.laptop.conf not found"
+      exit 1
+    fi
+
+    hyprctl reload
+    echo "Laptop profile active"
+    ;;
+
+  backup-desktop)
+    echo "Backing up current config as desktop profile..."
+    cp "$HYPR_CONFIG/monitors.conf" "$HYPR_CONFIG/monitors.desktop.conf"
+    cp "$HYPR_CONFIG/input.conf" "$HYPR_CONFIG/input.desktop.conf"
+    echo "Desktop configs backed up"
+    ;;
+
+  status)
+    echo "Current monitor config:"
+    head -5 "$HYPR_CONFIG/monitors.conf" | grep -E "^monitor|^#.*G14|^#.*Desktop"
+    echo ""
+    echo "Backup files:"
+    ls -la "$HYPR_CONFIG/"*.desktop.conf 2>/dev/null || echo "  No desktop backups"
+    ls -la "$DOTFILES_HYPR/"*.laptop.conf 2>/dev/null || echo "  No laptop configs"
+    ;;
+
+  *)
+    echo "Usage: adept-profile-switch [desktop|laptop|backup-desktop|status]"
+    echo ""
+    echo "Commands:"
+    echo "  desktop        Switch to desktop monitor/input config"
+    echo "  laptop         Switch to laptop (G14) monitor/input config"
+    echo "  backup-desktop Save current config as desktop backup"
+    echo "  status         Show current profile and available configs"
+    exit 1
+    ;;
+esac

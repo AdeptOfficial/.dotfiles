@@ -1,0 +1,1 @@
+/home/adept/.config/themes/futurism/neovim.lua

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Overwrite the user configs for the Walker application launcher (which also powers the Omarchy Menu) and restart the services.
+
+# Ensure walker is set to autostart
+mkdir -p ~/.config/autostart/
+cp ~/.config/rice/defaults/walker/walker.desktop ~/.config/autostart/
+systemctl --user daemon-reload
+
+adept-refresh-config walker/config.toml
+adept-refresh-config elephant/calc.toml
+adept-refresh-config elephant/desktopapplications.toml
+adept-restart-walker

@@ -53,8 +53,8 @@ update-desktop-database "$HOME/.local/share/applications" &>/dev/null || true
 # Walker refresh
 # -------------------------
 echo "♻️ Refreshing Walker..."
-if command -v omarchy-refresh-walker &>/dev/null; then
-    omarchy-refresh-walker
+if command -v adept-refresh-walker &>/dev/null; then
+    adept-refresh-walker
 fi
 
 echo

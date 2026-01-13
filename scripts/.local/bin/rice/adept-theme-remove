@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# adept-theme-remove: Remove a theme by name
+# Usage: adept-theme-remove <theme-name>
+
+# Directories to exclude (system/internal folders)
+EXCLUDE_DIRS="current|next-theme|templates|backgrounds"
+
+if [ -z "$1" ]; then
+  # Use -L to follow symlinks (themes dir may be symlinked from dotfiles)
+  mapfile -t extra_themes < <(find -L ~/.config/themes -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | grep -Ev "^($EXCLUDE_DIRS)$" | sort)
+
+  if [[ ${#extra_themes[@]} -gt 0 ]]; then
+    THEME_NAME=$(printf '%s\n' "${extra_themes[@]}" | gum choose --header="Remove theme")
+  else
+    echo "No themes available to remove."
+    exit 1
+  fi
+else
+  THEME_NAME="$1"
+fi
+
+THEMES_DIR="$HOME/.config/themes"
+THEME_PATH="$THEMES_DIR/$THEME_NAME"
+
+# Ensure a theme was selected
+if [ -z "$THEME_NAME" ]; then
+  exit 1
+fi
+
+# Check if theme exists before attempting removal
+if [ ! -d "$THEME_PATH" ]; then
+  echo "Error: Theme '$THEME_NAME' not found."
+  exit 1
+fi
+
+# Check if it's the current theme
+CURRENT_THEME=$(cat "$THEMES_DIR/current.name" 2>/dev/null)
+if [ "$THEME_NAME" = "$CURRENT_THEME" ]; then
+  echo "Error: Cannot remove the currently active theme."
+  echo "Switch to a different theme first."
+  exit 1
+fi
+
+# Remove the theme directory
+rm -rf "$THEME_PATH"
+echo "Removed theme: $THEME_NAME"

@@ -1,0 +1,39 @@
+#!/bin/bash
+# Reset rice configs to defaults.
+# Note: For migrated setups, this resets from ~/.config/rice/defaults
+
+set -e
+
+if [ "$EUID" -eq 0 ]; then
+  echo "Error: This script should not be run as root"
+  exit 1
+fi
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+RICE_DEFAULTS="$HOME/.config/rice/defaults"
+
+echo "Resetting rice configs to defaults"
+
+# Copy rice config defaults
+if [[ -d "$RICE_DEFAULTS/config" ]]; then
+  cp -R "$RICE_DEFAULTS/config/"* ~/.config/
+fi
+
+# Reset bashrc
+if [[ -f "$RICE_DEFAULTS/bashrc" ]]; then
+  cp "$RICE_DEFAULTS/bashrc" ~/.bashrc
+  echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+elif [[ -f "$HOME/.config/rice/defaults/bash/rc" ]]; then
+  cp "$HOME/.config/rice/defaults/bash/rc" ~/.bashrc
+  echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+fi
+
+# Run theme setup if available (omarchy install only)
+if [[ -f "$OMARCHY_PATH/install/config/theme.sh" ]]; then
+  bash "$OMARCHY_PATH/install/config/theme.sh"
+fi
+
+# Run refresh scripts if available
+adept-refresh-limine 2>/dev/null || true
+adept-refresh-plymouth 2>/dev/null || true
+adept-nvim-setup 2>/dev/null || true

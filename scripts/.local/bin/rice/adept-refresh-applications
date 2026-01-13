@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Ensure all default .desktop, web apps, and TUIs are installed.
+# Note: This script is for fresh Omarchy installs. For migrated setups, most functionality is skipped.
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+# Only run omarchy-specific setup if omarchy install exists
+if [[ -d "$OMARCHY_PATH/applications" ]]; then
+  # Copy and sync icon files
+  mkdir -p ~/.local/share/icons/hicolor/48x48/apps/
+  cp "$OMARCHY_PATH/applications/icons/"*.png ~/.local/share/icons/hicolor/48x48/apps/ 2>/dev/null || true
+  gtk-update-icon-cache ~/.local/share/icons/hicolor &>/dev/null
+
+  # Copy .desktop declarations
+  mkdir -p ~/.local/share/applications
+  cp "$OMARCHY_PATH/applications/"*.desktop ~/.local/share/applications/ 2>/dev/null || true
+  cp "$OMARCHY_PATH/applications/hidden/"*.desktop ~/.local/share/applications/ 2>/dev/null || true
+fi
+
+if [[ -d "$OMARCHY_PATH/install/packaging" ]]; then
+  bash "$OMARCHY_PATH/install/packaging/icons.sh"
+  bash "$OMARCHY_PATH/install/packaging/webapps.sh"
+  bash "$OMARCHY_PATH/install/packaging/tuis.sh"
+fi
+
+update-desktop-database ~/.local/share/applications 2>/dev/null || true

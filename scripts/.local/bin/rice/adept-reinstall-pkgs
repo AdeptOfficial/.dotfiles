@@ -1,0 +1,25 @@
+#!/bin/bash
+# Reinstall all default Omarchy packages from the stable channel.
+# Note: Only works for fresh omarchy installs, not migrated setups.
+
+set -e
+
+OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
+
+if [[ ! -f "$OMARCHY_PATH/install/adept-base.packages" ]]; then
+  echo "This command only works for git-based omarchy installs."
+  echo "Your setup is migrated to dotfiles - package management is up to you."
+  echo ""
+  echo "To update system packages, use: yay -Syu"
+  exit 1
+fi
+
+# Set the package repository to the stable mirrors
+adept-refresh-pacman
+
+# Downgrade any packages to the stable setup
+sudo pacman -Suu --noconfirm
+
+# Ensure all packages are installed
+mapfile -t packages < <(grep -v '^#' "$OMARCHY_PATH/install/adept-base.packages" | grep -v '^$')
+sudo pacman -Syu --noconfirm --needed "${packages[@]}"

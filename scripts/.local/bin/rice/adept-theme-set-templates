@@ -1,0 +1,46 @@
+#!/bin/bash
+
+TEMPLATES_DIR="$HOME/.config/themes/templates"
+NEXT_THEME_DIR="$HOME/.config/themes/next-theme"
+COLORS_FILE="$NEXT_THEME_DIR/colors.toml"
+
+# Convert hex color to decimal RGB (e.g., "#1e1e2e" -> "30,30,46")
+hex_to_rgb() {
+  local hex="${1#\#}"
+  printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+# Only generate dynamic templates for themes with a colors.toml definition
+if [[ -f $COLORS_FILE ]]; then
+  sed_script=$(mktemp)
+
+  # Parse TOML using yq (treating it as YAML since the flat key=value structure is compatible)
+  sed 's/=/:/' "$COLORS_FILE" | yq -r 'to_entries[] | "s|{{ \(.key) }}|\(.value)|g", "s|{{ \(.key)_strip }}|\(.value | sub("^#";""))|g"' > "$sed_script"
+
+  # Generate _rgb substitutions for hex colors
+  while IFS='=' read -r key value; do
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs | tr -d '"')
+    if [[ $value =~ ^# ]]; then
+      rgb=$(hex_to_rgb "$value")
+      echo "s|{{ ${key}_rgb }}|${rgb}|g" >> "$sed_script"
+    fi
+  done < "$COLORS_FILE"
+
+  shopt -s nullglob
+
+  # Process templates
+  for tpl in "$TEMPLATES_DIR"/*.tpl; do
+    filename=$(basename "$tpl" .tpl)
+    output_path="$NEXT_THEME_DIR/$filename"
+
+    # Don't overwrite configs that already exist as regular files (theme-specific files take precedence)
+    # But DO overwrite symlinks (from generic theme linking)
+    if [[ ! -f $output_path ]] || [[ -L $output_path ]]; then
+      [[ -L $output_path ]] && rm "$output_path"
+      sed -f "$sed_script" "$tpl" > "$output_path"
+    fi
+  done
+
+  rm "$sed_script"
+fi
