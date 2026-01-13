@@ -41,22 +41,39 @@ echo -e "${GREEN}Installing with profile: $PROFILE${NC}"
 echo ""
 
 # ============================================
+# 0. Handle PulseAudio -> PipeWire migration
+# ============================================
+# Some Arch-based distros still ship PulseAudio. Remove it first to avoid conflicts.
+echo -e "${GREEN}[0/9] Checking audio backend...${NC}"
+if pacman -Qs pulseaudio > /dev/null 2>&1; then
+  echo -e "${YELLOW}PulseAudio detected. Replacing with PipeWire...${NC}"
+  sudo pacman -Rdd --noconfirm pulseaudio pulseaudio-alsa 2>/dev/null || true
+fi
+
+# ============================================
 # 1. Install yay (AUR helper)
 # ============================================
-echo -e "${GREEN}[1/8] Installing yay...${NC}"
+echo -e "${GREEN}[1/9] Installing yay...${NC}"
 if ! command -v yay &>/dev/null; then
   sudo pacman -S --needed --noconfirm git base-devel
   git clone https://aur.archlinux.org/yay.git /tmp/yay
   cd /tmp/yay && makepkg -si --noconfirm
-  cd -
+  cd ~/.dotfiles
 fi
 
 # ============================================
-# 2. Install pacman packages
+# 2. Install PipeWire audio (do this first!)
 # ============================================
-echo -e "${GREEN}[2/8] Installing pacman packages...${NC}"
+# Installing PipeWire first prevents "stuck" installations on some distros
+echo -e "${GREEN}[2/9] Installing PipeWire audio...${NC}"
 sudo pacman -S --needed --noconfirm \
-  pipewire pipewire-pulse pipewire-alsa wireplumber \
+  pipewire pipewire-pulse pipewire-alsa pipewire-audio wireplumber
+
+# ============================================
+# 3. Install core pacman packages
+# ============================================
+echo -e "${GREEN}[3/9] Installing core packages...${NC}"
+sudo pacman -S --needed --noconfirm \
   bluez bluez-utils \
   networkmanager \
   hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
@@ -70,26 +87,31 @@ sudo pacman -S --needed --noconfirm \
   vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver
 
 # ============================================
-# 3. Install AUR packages
+# 4. Install AUR packages
 # ============================================
-echo -e "${GREEN}[3/8] Installing AUR packages...${NC}"
+echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
   walker ghostty satty gpu-screen-recorder helium-browser \
   wiremix bluetui
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
-  echo -e "${GREEN}[3b/8] Installing ASUS G14 packages...${NC}"
+  echo -e "${GREEN}[4b/9] Installing ASUS G14 packages...${NC}"
   sudo pacman -S --needed --noconfirm asusctl supergfxctl power-profiles-daemon
   yay -S --needed --noconfirm rog-control-center
 fi
 
 # ============================================
-# 4. Enable services
+# 5. Enable services
 # ============================================
-echo -e "${GREEN}[4/8] Enabling services...${NC}"
+echo -e "${GREEN}[5/9] Enabling services...${NC}"
 sudo systemctl enable --now bluetooth.service
 sudo systemctl enable --now NetworkManager.service
+
+# Enable user PipeWire services
+systemctl --user enable --now pipewire.service 2>/dev/null || true
+systemctl --user enable --now pipewire-pulse.service 2>/dev/null || true
+systemctl --user enable --now wireplumber.service 2>/dev/null || true
 
 if [[ "$PROFILE" == "laptop" ]]; then
   sudo systemctl enable --now supergfxd.service
@@ -97,41 +119,43 @@ if [[ "$PROFILE" == "laptop" ]]; then
 fi
 
 # ============================================
-# 5. Stow dotfiles
+# 6. Stow dotfiles
 # ============================================
-echo -e "${GREEN}[5/8] Stowing dotfiles...${NC}"
+echo -e "${GREEN}[6/9] Stowing dotfiles...${NC}"
 cd ~/.dotfiles
 
 # Remove conflicting files if they exist
 rm -f ~/.bashrc ~/.bash_profile 2>/dev/null || true
+rm -rf ~/.config/hypr 2>/dev/null || true
 
 ./stow-all.sh
 
 # ============================================
-# 6. Apply profile
+# 7. Apply profile
 # ============================================
-echo -e "${GREEN}[6/8] Applying $PROFILE profile...${NC}"
+echo -e "${GREEN}[7/9] Applying $PROFILE profile...${NC}"
 if [[ "$PROFILE" == "laptop" ]]; then
   cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
   cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
 else
-  # Desktop is default in dotfiles
+  # Desktop is default in dotfiles, backup for switching later
   cp ~/.config/hypr/monitors.conf ~/.config/hypr/monitors.desktop.conf 2>/dev/null || true
   cp ~/.config/hypr/input.conf ~/.config/hypr/input.desktop.conf 2>/dev/null || true
 fi
 
 # ============================================
-# 7. Set default browser
+# 8. Set default browser
 # ============================================
-echo -e "${GREEN}[7/8] Setting default browser...${NC}"
+echo -e "${GREEN}[8/9] Setting default browser...${NC}"
 xdg-settings set default-web-browser helium.desktop 2>/dev/null || true
 
 # ============================================
-# 8. Set default theme
+# 9. Set default theme
 # ============================================
-echo -e "${GREEN}[8/8] Setting theme...${NC}"
+echo -e "${GREEN}[9/9] Setting theme...${NC}"
+export PATH="$HOME/.local/bin/rice:$PATH"
 if [[ -x ~/.local/bin/rice/adept-theme-set ]]; then
-  ~/.local/bin/rice/adept-theme-set futurism
+  ~/.local/bin/rice/adept-theme-set futurism 2>/dev/null || true
 fi
 
 # ============================================
@@ -158,4 +182,7 @@ echo "Useful commands:"
 echo "  - Switch theme: adept-theme-set <name>"
 echo "  - Install theme: adept-theme-install <name>"
 echo "  - Menu: adept-menu (or SUPER+ALT+SPACE)"
+echo ""
+echo -e "${YELLOW}Note: If audio doesn't work after reboot, run:${NC}"
+echo "  systemctl --user restart pipewire pipewire-pulse wireplumber"
 echo ""
