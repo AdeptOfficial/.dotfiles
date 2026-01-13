@@ -124,9 +124,16 @@ fi
 echo -e "${GREEN}[6/9] Stowing dotfiles...${NC}"
 cd ~/.dotfiles
 
-# Remove conflicting files if they exist
-rm -f ~/.bashrc ~/.bash_profile 2>/dev/null || true
-rm -rf ~/.config/hypr 2>/dev/null || true
+# Remove conflicting files (only if not already symlinks from stow)
+if [[ ! -L ~/.bashrc ]]; then
+  rm -f ~/.bashrc ~/.bash_profile 2>/dev/null || true
+fi
+
+# Backup existing hypr config if it exists and isn't a symlink
+if [[ -d ~/.config/hypr && ! -L ~/.config/hypr ]]; then
+  echo -e "${YELLOW}Backing up existing ~/.config/hypr to ~/.config/hypr.backup${NC}"
+  mv ~/.config/hypr ~/.config/hypr.backup
+fi
 
 ./stow-all.sh
 
