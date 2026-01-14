@@ -34,6 +34,18 @@
   :initial "00:00:00"
   `date '+%H:%M:%S'`)
 
+(defpoll current_hour :interval "1s"
+  :initial "00"
+  `date '+%H'`)
+
+(defpoll current_minute :interval "1s"
+  :initial "00"
+  `date '+%M'`)
+
+(defpoll current_date :interval "60s"
+  :initial "01/01"
+  `date '+%m/%d'`)
+
 ; ============ Time Display ============
 (defwidget time-display []
   (box :class "time-display" :halign "center"
@@ -102,10 +114,11 @@
 ; ============ Calendar Widget ============
 (defwidget calendar-widget []
   (box :class "widget calendar-box" :orientation "h" :space-evenly false :spacing 16 :hexpand true
-    (box :class "date-display" :orientation "v" :space-evenly false :valign "center"
-      (label :class "date-day" :text calendar_day)
-      (label :class "date-month" :text calendar_month_num)
-      (label :class "date-weekday" :text calendar_weekday)
+    (box :class "time-display-vertical" :orientation "v" :space-evenly false :valign "center" :halign "center"
+      (label :class "time-hour" :text current_hour :halign "center")
+      (label :class "time-separator" :text "【=◈︿◈=】" :halign "center")
+      (label :class "time-minute" :text current_minute :halign "center")
+      (label :class "time-date" :text current_date :halign "center")
       (button :class "today-btn" :onclick "eww update cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y)" :tooltip "Go to today" "󰃭 Today"))
     (box :hexpand true
       (calendar :class "calendar" :show-heading true :show-day-names true :hexpand true

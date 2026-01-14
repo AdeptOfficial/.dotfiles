@@ -199,27 +199,35 @@ calendar.header {
   color: #00ff88;
 }
 
-// Date display
-.date-display {
-  min-width: 50px;
+// Time display (vertical HH:MM format)
+.time-display-vertical {
+  min-width: 70px;
   padding-right: 12px;
   border-right: 1px solid rgba(240, 248, 255, 0.1);
 }
 
-.date-day {
-  font-size: 36px;
+.time-hour {
+  font-size: 32px;
   font-weight: bold;
   color: #00ff88;
 }
 
-.date-month {
-  font-size: 18px;
-  color: rgba(240, 248, 255, 0.8);
+.time-separator {
+  font-size: 12px;
+  color: rgba(240, 248, 255, 0.4);
+  margin: -4px 0;
 }
 
-.date-weekday {
-  font-size: 12px;
-  color: rgba(240, 248, 255, 0.5);
+.time-minute {
+  font-size: 32px;
+  font-weight: bold;
+  color: #00ff88;
+}
+
+.time-date {
+  font-size: 14px;
+  color: rgba(240, 248, 255, 0.7);
+  margin-top: 4px;
 }
 
 .today-btn {
