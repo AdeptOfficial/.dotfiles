@@ -1,23 +1,51 @@
-# My Omarchy Dotfiles
+# Adept Rice Dotfiles
 
-Custom dotfiles for CachyOS + Omarchy using GNU Stow.
+Custom dotfiles for CachyOS (Arch-based) with Hyprland using GNU Stow.
 
 ## Features
 
-- **Hyprland**: Window manager configuration with custom keybindings
-- **Starship**: Custom prompt (`user@hostname: path`)
-- **Fish Shell**: Shell configuration with custom aliases
-- **Firefox**: Set as default browser
-- **Organized**: Each component in its own stow package
+- **Hyprland**: Window manager with custom keybindings, hyprlock, hypridle
+- **Waybar**: Status bar configuration
+- **Theming**: Multiple themes with easy switching (futurism, ado, catppuccin, dreamwave, gruvbox, nord, sapphire, tokyo-night)
+- **Terminals**: Ghostty, Alacritty, Kitty configurations
+- **Fish Shell**: Shell config with Starship prompt
+- **Walker**: Application launcher
+- **Mako**: Notification daemon
+- **Helium**: Default browser
+- **Rice Scripts**: 100+ utility scripts for system management
+- **Profile Support**: Desktop and laptop (ASUS G14) profiles
+- **Auto GPU Detection**: AMD, NVIDIA, and Intel driver installation
 
-## Fresh Install
-````bash
+## Fresh Install (CachyOS Minimal)
+
+```bash
 # Clone dotfiles
-cd ~
-git clone https://github.com/adeptofficial/.dotfiles.git
+git clone https://github.com/adeptofficial/.dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 
-# Install all dotfiles
-cd .dotfiles
+# Run bootstrap (will prompt for profile)
+./install.sh
+
+# Or specify profile directly
+./install.sh desktop
+./install.sh laptop
+```
+
+The install script will:
+1. Install yay (AUR helper)
+2. Install PipeWire audio
+3. Install core packages (Hyprland, Waybar, terminals, fonts, etc.)
+4. Auto-detect and install GPU drivers
+5. Install AUR packages (Walker, Ghostty, etc.)
+6. Enable system services
+7. Stow all dotfiles
+8. Apply selected profile
+9. Set default theme (futurism)
+
+## Existing System (Stow Only)
+
+```bash
+cd ~/.dotfiles
 ./stow-all.sh
 
 # Restart terminal
@@ -25,11 +53,56 @@ exec fish
 
 # Reload Hyprland
 hyprctl reload
-````
+```
+
+## Directory Structure
+
+```
+.dotfiles/
+├── hypr/           # Hyprland config (hyprland, hyprlock, hypridle)
+├── waybar/         # Waybar status bar
+├── fish/           # Fish shell config
+├── shell/          # Starship prompt
+├── themes/         # Theme definitions and templates
+├── rice/           # Rice configuration
+├── scripts/        # adept-* utility scripts
+├── alacritty/      # Alacritty terminal
+├── ghostty/        # Ghostty terminal
+├── kitty/          # Kitty terminal
+├── walker/         # Application launcher
+├── mako/           # Notification daemon
+├── swayosd/        # SwayOSD (volume/brightness overlay)
+├── btop/           # System monitor
+├── fastfetch/      # System info display
+├── xdg/            # Default applications
+├── docs/           # Documentation
+├── install.sh      # Full bootstrap script
+├── install_apps.sh # App installation
+└── stow-all.sh     # Stow-only script
+```
+
+## Theming
+
+Switch themes using the rice scripts:
+
+```bash
+# List available themes
+adept-theme-list
+
+# Set a theme
+adept-theme-set futurism
+adept-theme-set catppuccin
+adept-theme-set tokyo-night
+
+# Install new themes
+adept-theme-install <name>
+```
+
+Available themes: ado, catppuccin, dreamwave, futurism, gruvbox, nord, sapphire, tokyo-night
 
 ## Custom Aliases
 
-All aliases are in `fish/.config/fish/conf.d/aliases.fish`:
+Located in `fish/.config/fish/conf.d/aliases.fish`:
 
 ### Docker
 - `dps` - docker ps
@@ -64,76 +137,76 @@ All aliases are in `fish/.config/fish/conf.d/aliases.fish`:
 - `gp` - git push
 - `gl` - git pull
 
-## Making Changes
-````bash
-# Edit any config in ~/.dotfiles/
-nvim ~/.dotfiles/shell/.config/starship.toml
-nvim ~/.dotfiles/fish/.config/fish/conf.d/aliases.fish
-nvim ~/.dotfiles/hypr/.config/hypr/bindings.conf
+## Rice Scripts
 
-# Changes apply immediately (files are symlinked!)
-# For Fish changes, restart terminal:
+The `scripts/` package includes 100+ utilities prefixed with `adept-`:
+
+```bash
+# System
+adept-menu              # Main menu (SUPER+ALT+SPACE)
+adept-update            # System update
+adept-lock-screen       # Lock screen
+
+# Theming
+adept-theme-set         # Change theme
+adept-theme-list        # List themes
+adept-theme-install     # Install theme
+
+# Launchers
+adept-launch-browser    # Open browser
+adept-launch-terminal   # Open terminal
+adept-launch-walker     # Application launcher
+
+# Screenshots
+adept-cmd-screenshot    # Take screenshot
+adept-cmd-screenrecord  # Screen recording
+
+# Toggles
+adept-toggle-waybar     # Toggle status bar
+adept-toggle-nightlight # Toggle night light
+```
+
+## ASUS G14 Laptop
+
+The laptop profile includes support for ASUS G14:
+
+```bash
+# GPU switching
+supergfxctl -m Integrated
+supergfxctl -m Hybrid
+supergfxctl -m Dedicated
+
+# Fan profiles
+asusctl profile -P Quiet
+asusctl profile -P Balanced
+asusctl profile -P Performance
+
+# Power profiles
+powerprofilesctl set power-saver
+powerprofilesctl set balanced
+powerprofilesctl set performance
+
+# GUI
+rog-control-center
+```
+
+## Making Changes
+
+```bash
+# Edit configs directly (changes apply via symlinks)
+nvim ~/.dotfiles/hypr/.config/hypr/bindings.conf
+nvim ~/.dotfiles/fish/.config/fish/conf.d/aliases.fish
+nvim ~/.dotfiles/shell/.config/starship.toml
+
+# For Fish changes, restart terminal
 exec fish
+
+# For Hyprland changes
+hyprctl reload
 
 # Commit changes
 cd ~/.dotfiles
 git add .
 git commit -m "Update config"
 git push
-````
-
-## Directory Structure
-````
-.dotfiles/
-├── hypr/.config/hypr/          # Hyprland configs
-│   ├── hyprland.conf
-│   ├── bindings.conf
-│   ├── monitors.conf
-│   └── ...
-├── fish/.config/fish/          # Fish shell
-│   ├── config.fish
-│   └── conf.d/
-│       └── aliases.fish        # Custom aliases
-├── shell/.config/
-│   └── starship.toml           # Starship prompt config
-├── xdg/.config/
-│   └── mimeapps.list           # Default applications (Firefox)
-├── stow-all.sh                 # Install script
-├── .gitignore
-└── README.md
-````
-
-## Customization Examples
-
-### Change Prompt Style
-Edit `shell/.config/starship.toml`:
-````toml
-[directory]
-format = ": [$path]($style) "  # Change separator
-style = "bold cyan"             # Change color
-````
-
-### Add New Alias
-Edit `fish/.config/fish/conf.d/aliases.fish`:
-````fish
-alias myalias="my command"
-````
-
-Then restart terminal: `exec fish`
-
-### Add Hyprland Keybinding
-Edit `hypr/.config/hypr/bindings.conf`:
-````
-bind = SUPER, B, exec, firefox
-````
-
-Then reload: `hyprctl reload`
-
-## Backup
-
-All configs are version controlled with git. To restore:
-````bash
-cd ~/.dotfiles
-git checkout <commit-hash>
-./stow-all.sh
 ```
