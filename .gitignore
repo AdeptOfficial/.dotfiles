@@ -13,3 +13,7 @@ themes/.config/themes/nord/
 themes/.config/themes/sapphire/
 themes/.config/themes/tokyo-night/
 themes/.config/themes/backgrounds/
+
+# Legacy Omarchy configs - not needed on CachyOS
+rice/.config/rice/defaults/pacman/
+rice/.config/rice/defaults/elephant/
