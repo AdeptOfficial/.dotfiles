@@ -1,18 +1,19 @@
-# Omarchy Futurism Theme
+# Futurism Theme
 
-This is the Futurism theme for [Omarchy.org](https://omarchy.org), providing a visually appealing configuration set for your Linux desktop environment.
+A cyberpunk-inspired theme with neon accents.
 
 <p align="center">
   <img src="theme.png" alt="Futurism Theme Preview">
 </p>
 
-## Installation
+## Usage
 
-To install this theme, simply use the `adept-theme-install` command:
+This theme is included in the dotfiles. To activate:
 
 ```bash
-adept-theme-install https://github.com/bjarneo/adept-futurism-theme
+adept-theme-set futurism
 ```
 
-## X.com
-[iamdothash](https://x.com/iamdothash)
+## Credits
+
+Original theme by [iamdothash](https://x.com/iamdothash)
