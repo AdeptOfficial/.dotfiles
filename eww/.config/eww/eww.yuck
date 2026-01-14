@@ -64,36 +64,38 @@
 
 ; ============ Profile Widget ============
 (defwidget profile-widget []
-  (box :class "widget profile-box" :orientation "h" :space-evenly false :spacing 16 :hexpand true :vexpand true :halign "center" :valign "fill"
-    (box :class "profile-pic"
-      (image :class "profile-img" :path "/home/adept/.config/eww/assets/profile.png" :image-width 56 :image-height 56))
-    (box :orientation "v" :space-evenly false :spacing 6 :valign "center"
-      (box :orientation "h" :space-evenly false :spacing 8
-        (label :class "sysinfo-icon" :text "󰣇")
-        (label :class "sysinfo-text" :text {sysinfo?.distro ?: "..."}))
-      (box :orientation "h" :space-evenly false :spacing 8
-        (label :class "sysinfo-icon" :text "󰍹")
-        (label :class "sysinfo-text" :text {sysinfo?.wm ?: "..."}))
-      (box :orientation "h" :space-evenly false :spacing 8
-        (label :class "sysinfo-icon" :text "󰅐")
-        (label :class "sysinfo-text" :text "up ${sysinfo?.uptime ?: '...'}")))))
+  (box :class "widget profile-box" :orientation "h" :hexpand false :vexpand true :valign "fill"
+    (box :orientation "h" :space-evenly false :spacing 16 :halign "center" :valign "center" :hexpand true
+      (box :class "profile-pic"
+        (image :class "profile-img" :path "/home/adept/.config/eww/assets/profile.png" :image-width 56 :image-height 56))
+      (box :orientation "v" :space-evenly false :spacing 6 :valign "center"
+        (box :orientation "h" :space-evenly false :spacing 8
+          (label :class "sysinfo-icon" :text "󰣇")
+          (label :class "sysinfo-text" :text {sysinfo?.distro ?: "..."}))
+        (box :orientation "h" :space-evenly false :spacing 8
+          (label :class "sysinfo-icon" :text "󰍹")
+          (label :class "sysinfo-text" :text {sysinfo?.wm ?: "..."}))
+        (box :orientation "h" :space-evenly false :spacing 8
+          (label :class "sysinfo-icon" :text "󰅐")
+          (label :class "sysinfo-text" :text "up ${sysinfo?.uptime ?: '...'}"))))))
 
 ; ============ Media Widget ============
 (defwidget media-widget []
-  (box :class "widget media-box" :orientation "v" :space-evenly false :spacing 6 :hexpand true :vexpand true :valign "center"
-    (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != ""}
-      (box :orientation "v" :space-evenly false :spacing 4 :halign "center"
-        (label :class "media-title" :text {media?.title ?: "Unknown"} :limit-width 18 :halign "center")
-        (label :class "media-artist" :text {media?.artist ?: ""} :limit-width 16 :halign "center")
-        (box :class "media-controls" :orientation "h" :halign "center" :spacing 12
-          (button :class "media-btn" :onclick "playerctl previous" "󰒮")
-          (button :class "media-btn play-btn" :onclick "playerctl play-pause"
-                  {media?.status == "Playing" ? "󰏤" : "󰐊"})
-          (button :class "media-btn" :onclick "playerctl next" "󰒭"))))
-    (revealer :transition "slidedown" :reveal {media?.status == "stopped" || media?.status == ""}
-      (box :class "media-empty" :orientation "v" :valign "center" :vexpand true
-        (label :class "media-empty-icon" :text "󰎈" :halign "center")
-        (label :class "media-empty-text" :text "No media" :halign "center")))))
+  (box :class "widget media-box" :orientation "v" :hexpand true :vexpand true
+    (box :orientation "v" :space-evenly false :spacing 4 :halign "center" :valign "end" :vexpand true :hexpand true
+      (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != ""}
+        (box :orientation "v" :space-evenly false :spacing 4 :halign "center"
+          (label :class "media-title" :text {media?.title ?: "Unknown"} :limit-width 18 :halign "center")
+          (label :class "media-artist" :text {media?.artist ?: ""} :limit-width 16 :halign "center")
+          (box :class "media-controls" :orientation "h" :halign "center" :spacing 12
+            (button :class "media-btn" :onclick "playerctl previous" "󰒮")
+            (button :class "media-btn play-btn" :onclick "playerctl play-pause"
+                    {media?.status == "Playing" ? "󰏤" : "󰐊"})
+            (button :class "media-btn" :onclick "playerctl next" "󰒭"))))
+      (revealer :transition "slidedown" :reveal {media?.status == "stopped" || media?.status == ""}
+        (box :class "media-empty" :orientation "v" :halign "center"
+          (label :class "media-empty-icon" :text "󰎈" :halign "center")
+          (label :class "media-empty-text" :text "No media" :halign "center"))))))
 
 ; ============ Calendar Widget ============
 (defwidget calendar-widget []
@@ -122,8 +124,8 @@
 ; ============ Dashboard Tab Content ============
 (defwidget dashboard-content []
   (box :orientation "v" :space-evenly false :spacing 10 :hexpand true
-    ; Top row: Weather | Profile+Sysinfo | Media (equal widths)
-    (box :orientation "h" :space-evenly true :spacing 10 :hexpand true
+    ; Top row: Weather | Profile+Sysinfo (expand) | Media
+    (box :orientation "h" :space-evenly false :spacing 10 :hexpand true
       (weather-widget)
       (profile-widget)
       (media-widget))

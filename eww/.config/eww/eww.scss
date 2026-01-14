@@ -31,13 +31,30 @@ window {
   }
 }
 
+// Widget layout wrappers
+.widget-side {
+  min-width: 180px;
+}
+
+.widget-center {
+  min-width: 200px;
+}
+
 .weather-box,
-.profile-box,
 .media-box {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
+  padding: 12px;
+  min-height: 120px;
+  min-width: 220px;
+}
+
+.profile-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
   padding: 16px;
-  min-height: 100px;
+  min-height: 120px;
+  min-width: 400px;
 }
 
 .calendar-box,
@@ -73,7 +90,7 @@ window {
 }
 
 .weather-icon {
-  font-size: 42px;
+  font-size: 32px;
 }
 
 .weather-temp {
