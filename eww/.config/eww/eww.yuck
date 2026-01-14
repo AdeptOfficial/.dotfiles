@@ -83,7 +83,8 @@
 (defwidget media-widget []
   (box :class "widget media-box" :orientation "v" :hexpand true :vexpand true
     (box :orientation "v" :space-evenly false :spacing 4 :halign "center" :valign "end" :vexpand true :hexpand true
-      (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != ""}
+      ; Playing state - content at bottom (only show if we have a title)
+      (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != "" && media?.title != ""}
         (box :orientation "v" :space-evenly false :spacing 4 :halign "center"
           (label :class "media-title" :text {media?.title ?: "Unknown"} :limit-width 18 :halign "center")
           (label :class "media-artist" :text {media?.artist ?: ""} :limit-width 16 :halign "center")
@@ -92,7 +93,8 @@
             (button :class "media-btn play-btn" :onclick "playerctl play-pause"
                     {media?.status == "Playing" ? "󰏤" : "󰐊"})
             (button :class "media-btn" :onclick "playerctl next" "󰒭"))))
-      (revealer :transition "slidedown" :reveal {media?.status == "stopped" || media?.status == ""}
+      ; Empty state - centered via CSS (show if stopped, empty status, or no title)
+      (revealer :transition "slidedown" :reveal {media?.status == "stopped" || media?.status == "" || media?.title == ""}
         (box :class "media-empty" :orientation "v" :halign "center"
           (label :class "media-empty-icon" :text "󰎈" :halign "center")
           (label :class "media-empty-text" :text "No media" :halign "center"))))))
@@ -158,7 +160,6 @@
 
 ; ============ Window Definition ============
 (defwindow dashboard
-  :monitor 0
   :geometry (geometry :x "0%"
                       :y "0px"
                       :width "40%"
@@ -183,7 +184,7 @@
   :stacking "overlay"
   :exclusive false
   :focusable false
-  (hover-trigger :monitor 0))
+  (hover-trigger :monitor 1))
 
 (defwindow hover-zone-1
   :monitor 1
@@ -195,4 +196,4 @@
   :stacking "overlay"
   :exclusive false
   :focusable false
-  (hover-trigger :monitor 1))
+  (hover-trigger :monitor 0))
