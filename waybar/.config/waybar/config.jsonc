@@ -55,9 +55,7 @@
   "clock": {
     "format": "{:%H:%M:%S}",
     "interval": 1,
-    "tooltip": false,
-    "on-click": "adept-dashboard-toggle",
-    "on-click-right": "adept-launch-floating-terminal-with-presentation adept-tz-select"
+    "tooltip": false
   },
   "network": {
     "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],

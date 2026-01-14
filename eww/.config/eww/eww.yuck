@@ -80,9 +80,9 @@
 
 ; ============ Media Widget ============
 (defwidget media-widget []
-  (box :class "widget media-box" :orientation "v" :space-evenly false :spacing 6 :hexpand true :vexpand true :valign "fill"
+  (box :class "widget media-box" :orientation "v" :space-evenly false :spacing 6 :hexpand true :vexpand true :valign "center"
     (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != ""}
-      (box :orientation "v" :space-evenly false :spacing 4
+      (box :orientation "v" :space-evenly false :spacing 4 :halign "center"
         (label :class "media-title" :text {media?.title ?: "Unknown"} :limit-width 18 :halign "center")
         (label :class "media-artist" :text {media?.artist ?: ""} :limit-width 16 :halign "center")
         (box :class "media-controls" :orientation "h" :halign "center" :spacing 12
@@ -145,13 +145,14 @@
 
 ; ============ Main Dashboard ============
 (defwidget dashboard []
-  (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
-    (tabs)
-    (box :class "content" :orientation "v" :hexpand true
-      (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
-                         active-tab == "media" ? "(media-content)" :
-                         active-tab == "performance" ? "(performance-content)" :
-                         "(workspaces-content)"}))))
+  (eventbox :onhoverlost "eww close dashboard"
+    (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
+      (tabs)
+      (box :class "content" :orientation "v" :hexpand true
+        (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
+                           active-tab == "media" ? "(media-content)" :
+                           active-tab == "performance" ? "(performance-content)" :
+                           "(workspaces-content)"})))))
 
 ; ============ Window Definition ============
 (defwindow dashboard
@@ -164,3 +165,32 @@
   :exclusive false
   :focusable false
   (dashboard))
+
+; ============ Hover Trigger Zone ============
+(defwidget hover-trigger [monitor]
+  (eventbox :onhover "eww update active-tab='dashboard' cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y) && eww open dashboard --screen ${monitor}"
+    (box :class "hover-zone")))
+
+(defwindow hover-zone-0
+  :monitor 0
+  :geometry (geometry :x "0%"
+                      :y "26px"
+                      :width "40%"
+                      :height "20px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable false
+  (hover-trigger :monitor 0))
+
+(defwindow hover-zone-1
+  :monitor 1
+  :geometry (geometry :x "0%"
+                      :y "26px"
+                      :width "40%"
+                      :height "20px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable false
+  (hover-trigger :monitor 1))

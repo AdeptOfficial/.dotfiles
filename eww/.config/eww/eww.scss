@@ -17,6 +17,18 @@ window {
   padding: 8px;
   border: 1px solid rgba(240, 248, 255, 0.1);
   border-top-width: 0px;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    margin-top: -100px;
+    opacity: 0;
+  }
+  to {
+    margin-top: 0;
+    opacity: 1;
+  }
 }
 
 .weather-box,
@@ -218,6 +230,11 @@ calendar.header {
   font-size: 14px;
   font-style: italic;
   color: rgba(240, 248, 255, 0.4);
+}
+
+// Hover trigger zone (invisible)
+.hover-zone {
+  background-color: transparent;
 }
 
 // Time display
