@@ -1,0 +1,234 @@
+// Dashboard styling - explicit values for debugging
+
+* {
+  all: unset;
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 13px;
+  color: #F0F8FF;
+}
+
+window {
+  background-color: transparent;
+}
+
+.dashboard {
+  background-color: rgba(10, 20, 40, 0.95);
+  border-radius: 0px 0px 12px 12px;
+  padding: 8px;
+  border: 1px solid rgba(240, 248, 255, 0.1);
+  border-top-width: 0px;
+}
+
+.weather-box,
+.profile-box,
+.media-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 100px;
+}
+
+.calendar-box,
+.controls-box {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 100px;
+}
+
+// Profile widget
+.profile-pic {
+  border-radius: 50%;
+  min-width: 56px;
+  min-height: 56px;
+}
+
+.profile-img {
+  border-radius: 50%;
+}
+
+// Controls widget
+.control-btn {
+  font-size: 20px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.control-btn:hover {
+  background-color: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
+.weather-icon {
+  font-size: 42px;
+}
+
+.weather-temp {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.weather-condition {
+  font-size: 13px;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+.sysinfo-icon {
+  font-size: 16px;
+  color: #00ff88;
+}
+
+.sysinfo-text {
+  font-size: 14px;
+}
+
+.calendar-month {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+calendar {
+  font-size: 14px;
+}
+
+
+calendar:selected {
+  background-color: rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+calendar.header {
+  color: rgba(240, 248, 255, 0.6);
+}
+
+.media-title {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.media-artist {
+  font-size: 13px;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+.media-controls {
+  margin-top: 10px;
+}
+
+.media-btn {
+  font-size: 20px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background-color: transparent;
+}
+
+.media-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.media-empty {
+  min-height: 70px;
+}
+
+.media-empty-text {
+  color: rgba(240, 248, 255, 0.6);
+  font-size: 12px;
+  font-style: italic;
+}
+
+// Tabs
+.tabs {
+  margin-bottom: 6px;
+  padding: 4px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.tab {
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.tab:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.tab.active {
+  background-color: rgba(0, 255, 136, 0.15);
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab.active .tab-icon {
+  color: #00ff88;
+}
+
+// Date display
+.date-display {
+  min-width: 50px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(240, 248, 255, 0.1);
+}
+
+.date-day {
+  font-size: 36px;
+  font-weight: bold;
+  color: #00ff88;
+}
+
+.date-month {
+  font-size: 18px;
+  color: rgba(240, 248, 255, 0.8);
+}
+
+.date-weekday {
+  font-size: 12px;
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.today-btn {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+  background-color: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+}
+
+.today-btn:hover {
+  background-color: rgba(0, 255, 136, 0.3);
+}
+
+.tab-content {
+  min-height: 0px;
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.placeholder {
+  min-height: 200px;
+}
+
+.placeholder-text {
+  font-size: 14px;
+  font-style: italic;
+  color: rgba(240, 248, 255, 0.4);
+}
+
+// Time display
+.time-display {
+  padding: 10px 0;
+  margin-bottom: 8px;
+}
+
+.time-text {
+  font-size: 28px;
+  font-weight: bold;
+  color: #00ff88;
+  letter-spacing: 2px;
+}

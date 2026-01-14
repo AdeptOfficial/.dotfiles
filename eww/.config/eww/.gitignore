@@ -1,0 +1,4 @@
+# Never track secrets/API keys
+secrets
+*.key
+*.secret

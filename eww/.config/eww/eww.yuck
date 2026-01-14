@@ -1,0 +1,166 @@
+; Dashboard widget definitions - Caelestia-style layout
+
+; ============ Variables ============
+(defvar active-tab "dashboard")
+(defvar cal-day 0)
+(defvar cal-month 0)
+(defvar cal-year 0)
+
+(defpoll weather :interval "10m"
+  :initial '{"temp": "--", "condition": "Loading", "icon": "☁️", "city": ""}'
+  `~/.config/eww/scripts/weather/weather.sh`)
+
+(defpoll sysinfo :interval "30s"
+  :initial '{"distro": "Loading", "wm": "...", "uptime": "..."}'
+  `~/.config/eww/scripts/sysinfo/sysinfo.sh`)
+
+(defpoll media :interval "500ms"
+  :initial '{"status": "stopped", "title": "", "artist": "", "album": ""}'
+  `~/.config/eww/scripts/media/media.sh`)
+
+(defpoll calendar_day :interval "60s"
+  :initial "13"
+  `date '+%d'`)
+
+(defpoll calendar_weekday :interval "60s"
+  :initial "Mon"
+  `date '+%a'`)
+
+(defpoll calendar_month_num :interval "60s"
+  :initial "01"
+  `date '+%m'`)
+
+(defpoll current_time :interval "1s"
+  :initial "00:00:00"
+  `date '+%H:%M:%S'`)
+
+; ============ Time Display ============
+(defwidget time-display []
+  (box :class "time-display" :halign "center"
+    (label :class "time-text" :text current_time)))
+
+; ============ Tab Navigation ============
+(defwidget tabs []
+  (box :class "tabs" :orientation "h" :space-evenly true :spacing 0
+    (button :class {active-tab == "dashboard" ? "tab active" : "tab"}
+            :onclick `eww update active-tab="dashboard"`
+            (label :class "tab-icon" :text "󰕮"))
+    (button :class {active-tab == "media" ? "tab active" : "tab"}
+            :onclick `eww update active-tab="media"`
+            (label :class "tab-icon" :text "󰎈"))
+    (button :class {active-tab == "performance" ? "tab active" : "tab"}
+            :onclick `eww update active-tab="performance"`
+            (label :class "tab-icon" :text "󰓅"))
+    (button :class {active-tab == "workspaces" ? "tab active" : "tab"}
+            :onclick `eww update active-tab="workspaces"`
+            (label :class "tab-icon" :text "󰕰"))))
+
+; ============ Weather Widget ============
+(defwidget weather-widget []
+  (box :class "widget weather-box" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true :valign "fill"
+    (label :class "weather-icon" :text {weather?.icon ?: "☁️"} :halign "center" :vexpand true :valign "end")
+    (label :class "weather-temp" :text "${weather?.temp ?: '--'}°C" :halign "center")
+    (label :class "weather-condition" :text {weather?.condition ?: "..."} :halign "center" :vexpand true :valign "start")))
+
+; ============ Profile Widget ============
+(defwidget profile-widget []
+  (box :class "widget profile-box" :orientation "h" :space-evenly false :spacing 16 :hexpand true :vexpand true :halign "center" :valign "fill"
+    (box :class "profile-pic"
+      (image :class "profile-img" :path "/home/adept/.config/eww/assets/profile.png" :image-width 56 :image-height 56))
+    (box :orientation "v" :space-evenly false :spacing 6 :valign "center"
+      (box :orientation "h" :space-evenly false :spacing 8
+        (label :class "sysinfo-icon" :text "󰣇")
+        (label :class "sysinfo-text" :text {sysinfo?.distro ?: "..."}))
+      (box :orientation "h" :space-evenly false :spacing 8
+        (label :class "sysinfo-icon" :text "󰍹")
+        (label :class "sysinfo-text" :text {sysinfo?.wm ?: "..."}))
+      (box :orientation "h" :space-evenly false :spacing 8
+        (label :class "sysinfo-icon" :text "󰅐")
+        (label :class "sysinfo-text" :text "up ${sysinfo?.uptime ?: '...'}")))))
+
+; ============ Media Widget ============
+(defwidget media-widget []
+  (box :class "widget media-box" :orientation "v" :space-evenly false :spacing 6 :hexpand true :vexpand true :valign "fill"
+    (revealer :transition "slidedown" :reveal {media?.status != "stopped" && media?.status != ""}
+      (box :orientation "v" :space-evenly false :spacing 4
+        (label :class "media-title" :text {media?.title ?: "Unknown"} :limit-width 18 :halign "center")
+        (label :class "media-artist" :text {media?.artist ?: ""} :limit-width 16 :halign "center")
+        (box :class "media-controls" :orientation "h" :halign "center" :spacing 12
+          (button :class "media-btn" :onclick "playerctl previous" "󰒮")
+          (button :class "media-btn play-btn" :onclick "playerctl play-pause"
+                  {media?.status == "Playing" ? "󰏤" : "󰐊"})
+          (button :class "media-btn" :onclick "playerctl next" "󰒭"))))
+    (revealer :transition "slidedown" :reveal {media?.status == "stopped" || media?.status == ""}
+      (box :class "media-empty" :orientation "v" :valign "center" :vexpand true
+        (label :class "media-empty-icon" :text "󰎈" :halign "center")
+        (label :class "media-empty-text" :text "No media" :halign "center")))))
+
+; ============ Calendar Widget ============
+(defwidget calendar-widget []
+  (box :class "widget calendar-box" :orientation "h" :space-evenly false :spacing 16 :hexpand true
+    (box :class "date-display" :orientation "v" :space-evenly false :valign "center"
+      (label :class "date-day" :text calendar_day)
+      (label :class "date-month" :text calendar_month_num)
+      (label :class "date-weekday" :text calendar_weekday)
+      (button :class "today-btn" :onclick "eww update cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y)" :tooltip "Go to today" "󰃭 Today"))
+    (box :hexpand true
+      (calendar :class "calendar" :show-heading true :show-day-names true :hexpand true
+                :day cal-day :month cal-month :year cal-year))))
+
+; ============ Quick Controls Widget (placeholder) ============
+(defwidget controls-widget []
+  (box :class "widget controls-box" :orientation "v" :space-evenly false :spacing 8 :valign "center" :hexpand true
+    (box :orientation "h" :space-evenly true :spacing 6
+      (button :class "control-btn" :tooltip "Bluetooth" "󰂯")
+      (button :class "control-btn" :tooltip "WiFi" "󰤨")
+      (button :class "control-btn" :tooltip "Volume" "󰕾"))
+    (box :orientation "h" :space-evenly true :spacing 6
+      (button :class "control-btn" :tooltip "Brightness" "󰃟")
+      (button :class "control-btn" :tooltip "DND" "󰂛")
+      (button :class "control-btn" :tooltip "Settings" "󰒓"))))
+
+; ============ Dashboard Tab Content ============
+(defwidget dashboard-content []
+  (box :orientation "v" :space-evenly false :spacing 10 :hexpand true
+    ; Top row: Weather | Profile+Sysinfo | Media (equal widths)
+    (box :orientation "h" :space-evenly true :spacing 10 :hexpand true
+      (weather-widget)
+      (profile-widget)
+      (media-widget))
+    ; Bottom row: Calendar (full width)
+    (calendar-widget)))
+
+; ============ Other Tab Content ============
+(defwidget media-content []
+  (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
+    (label :class "placeholder-text" :text "Media - To be implemented")))
+
+(defwidget performance-content []
+  (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
+    (label :class "placeholder-text" :text "Performance - To be implemented")))
+
+(defwidget workspaces-content []
+  (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
+    (label :class "placeholder-text" :text "Workspaces - To be implemented")))
+
+; ============ Main Dashboard ============
+(defwidget dashboard []
+  (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
+    (tabs)
+    (box :class "content" :orientation "v" :hexpand true
+      (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
+                         active-tab == "media" ? "(media-content)" :
+                         active-tab == "performance" ? "(performance-content)" :
+                         "(workspaces-content)"}))))
+
+; ============ Window Definition ============
+(defwindow dashboard
+  :monitor 0
+  :geometry (geometry :x "0%"
+                      :y "0px"
+                      :width "40%"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable false
+  (dashboard))
