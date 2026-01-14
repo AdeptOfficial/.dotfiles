@@ -1,24 +1,4 @@
 #!/bin/bash
-# Set the branch for Omarchy's git repository.
-# Note: Only works for fresh omarchy installs, not migrated setups.
+# Alias for adept-update-branch (set dotfiles git branch)
 
-OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
-
-if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
-  echo "This command only works for git-based omarchy installs."
-  echo "Your setup is migrated to dotfiles - use git in ~/.dotfiles/ instead."
-  exit 1
-fi
-
-if (($# == 0)); then
-  echo "Usage: adept-branch-set [master|dev]"
-  exit 1
-else
-  branch="$1"
-fi
-
-case "$branch" in
-  "master") git -C "$OMARCHY_PATH" switch master ;;
-  "dev") git -C "$OMARCHY_PATH" switch dev ;;
-  *) echo "Unknown branch: $branch"; exit 1 ;;
-esac
+exec adept-update-branch "$@"

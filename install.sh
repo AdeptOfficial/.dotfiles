@@ -37,7 +37,40 @@ if [[ -z "$PROFILE" ]]; then
   esac
 fi
 
-echo -e "${GREEN}Installing with profile: $PROFILE${NC}"
+# ============================================
+# Detect hardware and show summary
+# ============================================
+GPU_LINE=$(lspci | grep -i vga | head -1)
+if echo "$GPU_LINE" | grep -qi "amd\|radeon"; then
+  GPU_TYPE="AMD"
+  GPU_PACKAGES="vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver"
+elif echo "$GPU_LINE" | grep -qi "nvidia"; then
+  GPU_TYPE="NVIDIA"
+  GPU_PACKAGES="nvidia-dkms nvidia-utils lib32-nvidia-utils"
+elif echo "$GPU_LINE" | grep -qi "intel"; then
+  GPU_TYPE="Intel"
+  GPU_PACKAGES="vulkan-intel lib32-vulkan-intel intel-media-driver"
+else
+  GPU_TYPE="Unknown"
+  GPU_PACKAGES="(none - manual install required)"
+fi
+
+echo ""
+echo -e "${GREEN}Installation Summary:${NC}"
+echo "─────────────────────────────────────────────"
+echo -e "  Profile:     ${YELLOW}$PROFILE${NC}"
+echo -e "  GPU:         ${YELLOW}$GPU_TYPE${NC}"
+echo -e "  GPU Driver:  $GPU_PACKAGES"
+if [[ "$PROFILE" == "laptop" ]]; then
+  echo -e "  Extras:      asusctl supergfxctl rog-control-center"
+fi
+echo "─────────────────────────────────────────────"
+echo ""
+read -p "Proceed with installation? [y/N]: " confirm
+if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+  echo "Installation cancelled."
+  exit 0
+fi
 echo ""
 
 # ============================================
@@ -83,8 +116,17 @@ sudo pacman -S --needed --noconfirm \
   nautilus gvfs gvfs-mtp gvfs-smb \
   alacritty fish starship \
   ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
-  yq jq gum stow git uwsm \
-  vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver
+  yq jq gum stow git uwsm
+
+# ============================================
+# 3b. Install GPU drivers (auto-detected)
+# ============================================
+echo -e "${GREEN}[3b/9] Installing $GPU_TYPE GPU drivers...${NC}"
+if [[ "$GPU_TYPE" != "Unknown" ]]; then
+  sudo pacman -S --needed --noconfirm $GPU_PACKAGES
+else
+  echo -e "${YELLOW}Unknown GPU, skipping driver install${NC}"
+fi
 
 # ============================================
 # 4. Install AUR packages
@@ -129,13 +171,21 @@ if [[ ! -L ~/.bashrc ]]; then
   rm -f ~/.bashrc ~/.bash_profile 2>/dev/null || true
 fi
 
-# Backup existing hypr config if it exists and isn't a symlink
-if [[ -d ~/.config/hypr && ! -L ~/.config/hypr ]]; then
-  echo -e "${YELLOW}Backing up existing ~/.config/hypr to ~/.config/hypr.backup${NC}"
-  mv ~/.config/hypr ~/.config/hypr.backup
-fi
+# Backup existing configs that conflict with stow
+for dir in hypr waybar walker mako alacritty ghostty kitty; do
+  if [[ -d ~/.config/$dir && ! -L ~/.config/$dir ]]; then
+    echo -e "${YELLOW}Backing up existing ~/.config/$dir${NC}"
+    mv ~/.config/$dir ~/.config/$dir.backup
+  fi
+done
 
-./stow-all.sh
+# Stow all packages
+STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop"
+for pkg in $STOW_PACKAGES; do
+  if [[ -d "$pkg" ]]; then
+    stow "$pkg" 2>/dev/null || stow -R "$pkg"
+  fi
+done
 
 # ============================================
 # 7. Apply profile

@@ -1,33 +1,29 @@
 #!/bin/bash
-# Check if an update is available for the Omarchy git repository.
-# Note: Only works for fresh omarchy installs, not migrated setups.
+# Check if dotfiles have updates available
 
-OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
-
-if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
-  echo "This command only works for git-based omarchy installs."
-  echo "Your setup is migrated to dotfiles - updates are managed via 'cd ~/.dotfiles && git pull' instead."
+if [[ ! -d "$HOME/.dotfiles/.git" ]]; then
+  echo "No git repo at ~/.dotfiles"
   exit 1
 fi
 
-# Get remote tag
-latest_tag=$(git -C "$OMARCHY_PATH" ls-remote --tags origin | grep -v "{}" | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -n 1)
-if [[ -z "$latest_tag" ]]; then
-  echo "Error: Could not retrieve latest tag."
+cd ~/.dotfiles
+
+# Fetch latest
+git fetch origin --quiet
+
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git rev-parse @{u} 2>/dev/null)
+
+if [[ -z "$REMOTE" ]]; then
+  echo "No upstream branch configured"
   exit 1
 fi
 
-# Get local tag
-current_tag=$(git -C "$OMARCHY_PATH" describe --tags $(git -C "$OMARCHY_PATH" rev-list --tags --max-count=1))
-if [[ -z "$current_tag" ]]; then
-  echo "Error: Could not retrieve current tag."
-  exit 1
-fi
-
-if [[ "$current_tag" != "$latest_tag" ]]; then
-  echo "Omarchy update available ($latest_tag)"
+if [[ "$LOCAL" != "$REMOTE" ]]; then
+  BEHIND=$(git rev-list --count HEAD..@{u})
+  echo "Dotfiles update available ($BEHIND commits behind)"
   exit 0
 else
-  echo "Omarchy is up to date ($current_tag)"
+  echo "Dotfiles up to date"
   exit 1
 fi

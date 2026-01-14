@@ -1,10 +1,8 @@
 #!/bin/bash
-# Show git branch for omarchy installation (if exists)
+# Show git branch for dotfiles (if in a git repo)
 
-OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
-
-if [[ -d "$OMARCHY_PATH/.git" ]]; then
-  git -C "$OMARCHY_PATH" rev-parse --abbrev-ref HEAD
+if [[ -d "$HOME/.dotfiles/.git" ]]; then
+  git -C "$HOME/.dotfiles" rev-parse --abbrev-ref HEAD
 else
-  echo "migrated (no git)"
+  echo "not a git repo"
 fi

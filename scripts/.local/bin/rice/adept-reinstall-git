@@ -1,17 +1,24 @@
 #!/bin/bash
-# Reinstall the Omarchy configuration directory from the git source.
-# Note: Only works for fresh omarchy installs, not migrated setups.
+# Reset dotfiles from git (discard local changes)
 
 set -e
 
-OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
-
-if [[ ! -d "$OMARCHY_PATH/.git" ]]; then
-  echo "This command only works for git-based omarchy installs."
-  echo "Your setup is migrated to dotfiles - use 'cd ~/.dotfiles && git pull' instead."
+if [[ ! -d "$HOME/.dotfiles/.git" ]]; then
+  echo "No git repo at ~/.dotfiles"
   exit 1
 fi
 
-git clone "https://github.com/basecamp/omarchy.git" ~/.local/share/adept-new >/dev/null
-mv "$OMARCHY_PATH" ~/.local/share/adept-old
-mv ~/.local/share/adept-new "$OMARCHY_PATH"
+echo "This will discard all local changes to ~/.dotfiles"
+read -p "Continue? [y/N]: " confirm
+
+if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+  echo "Aborted"
+  exit 1
+fi
+
+cd ~/.dotfiles
+git fetch origin
+git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+
+echo "Dotfiles reset to remote state"
+echo "You may need to re-stow packages"

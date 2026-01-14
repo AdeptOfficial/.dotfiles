@@ -1,6 +1,5 @@
 #!/bin/bash
-# Reset rice configs to defaults.
-# Note: For migrated setups, this resets from ~/.config/rice/defaults
+# Reset rice configs to defaults from ~/.config/rice/defaults
 
 set -e
 
@@ -9,8 +8,13 @@ if [ "$EUID" -eq 0 ]; then
   exit 1
 fi
 
-OMARCHY_PATH="${OMARCHY_PATH:-$HOME/.local/share/omarchy}"
 RICE_DEFAULTS="$HOME/.config/rice/defaults"
+
+if [[ ! -d "$RICE_DEFAULTS" ]]; then
+  echo "Error: Rice defaults not found at $RICE_DEFAULTS"
+  echo "Make sure the rice package is stowed: cd ~/.dotfiles && stow rice"
+  exit 1
+fi
 
 echo "Resetting rice configs to defaults"
 
@@ -19,21 +23,10 @@ if [[ -d "$RICE_DEFAULTS/config" ]]; then
   cp -R "$RICE_DEFAULTS/config/"* ~/.config/
 fi
 
-# Reset bashrc
-if [[ -f "$RICE_DEFAULTS/bashrc" ]]; then
-  cp "$RICE_DEFAULTS/bashrc" ~/.bashrc
-  echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
-elif [[ -f "$HOME/.config/rice/defaults/bash/rc" ]]; then
-  cp "$HOME/.config/rice/defaults/bash/rc" ~/.bashrc
-  echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+# Generate theme config file from current theme
+current_theme=$(readlink ~/.config/themes/current 2>/dev/null | xargs basename)
+if [[ -n "$current_theme" ]]; then
+  adept-theme-set "$current_theme"
 fi
 
-# Run theme setup if available (omarchy install only)
-if [[ -f "$OMARCHY_PATH/install/config/theme.sh" ]]; then
-  bash "$OMARCHY_PATH/install/config/theme.sh"
-fi
-
-# Run refresh scripts if available
-adept-refresh-limine 2>/dev/null || true
-adept-refresh-plymouth 2>/dev/null || true
-adept-nvim-setup 2>/dev/null || true
+echo "Done."
