@@ -19,41 +19,41 @@
     {
       "type": "host",
       "key": " PC",
-      "keyColor": "green"
+      "keyColor": "#00ff88"
     },
     {
       "type": "cpu",
       "key": "│ ├",
       "showPeCoreCount": true,
-      "keyColor": "green"
+      "keyColor": "#00ff88"
     },
     {
       "type": "gpu",
       "key": "│ ├",
       "detectionMethod": "pci",
-      "keyColor": "green"
+      "keyColor": "#00ff88"
     },
     {
       "type": "display",
       "key": "│ ├󱄄",
-      "keyColor": "green"
+      "keyColor": "#00ff88"
     },
     {
       "type": "disk",
       "key": "│ ├󰋊",
-      "keyColor": "green",
+      "keyColor": "#00ff88",
       "folders": ["/", "/mnt/SharedData", "/mnt/SynaDrive"],
       "format": "{name} | {size-used}/{size-total} {size-percentage-bar} ({size-percentage}%)"      
     },
     {
       "type": "memory",
       "key": "└ └",
-      "keyColor": "green"
+      "keyColor": "#00ff88"
     },
     //{
       //"type": "swap",
       //"key": "└ └󰓡 ",
-      //"keyColor": "green"
+      //"keyColor": "#00ff88"
     //},
     {
       "type": "custom",
@@ -123,18 +123,18 @@
     {
       "type": "command",
       "key": "󱦟 OS Age",
-      "keyColor": "magenta",
+      "keyColor": "#ff79c6",
       "text": "birth_install=$(stat -c %W /); current=$(date +%s); time_progression=$((current - birth_install)); days_difference=$((time_progression / 86400)); echo $days_difference days"
     },
     {
       "type": "uptime",
       "key": "󱫐 Uptime",
-      "keyColor": "magenta"
+      "keyColor": "#ff79c6"
     },
     {
       "type": "command",
       "key": " Update",
-      "keyColor": "magenta",
+      "keyColor": "#ff79c6",
       "text": "updated=$(adept-version-pkgs); echo \"$updated\""
     },
     {
