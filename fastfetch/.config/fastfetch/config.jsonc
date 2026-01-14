@@ -19,36 +19,36 @@
     {
       "type": "host",
       "key": " PC",
-      "keyColor": "#00ff88"
+      "keyColor": "#8be9fd"
     },
     {
       "type": "cpu",
       "key": "│ ├",
       "showPeCoreCount": true,
-      "keyColor": "#00ff88"
+      "keyColor": "#8be9fd"
     },
     {
       "type": "gpu",
       "key": "│ ├",
       "detectionMethod": "pci",
-      "keyColor": "#00ff88"
+      "keyColor": "#8be9fd"
     },
     {
       "type": "display",
       "key": "│ ├󱄄",
-      "keyColor": "#00ff88"
+      "keyColor": "#8be9fd"
     },
     {
       "type": "disk",
       "key": "│ ├󰋊",
-      "keyColor": "#00ff88",
+      "keyColor": "#8be9fd",
       "folders": ["/", "/mnt/SharedData", "/mnt/SynaDrive"],
       "format": "{name} | {size-used}/{size-total} {size-percentage-bar} ({size-percentage}%)"      
     },
     {
       "type": "memory",
       "key": "└ └",
-      "keyColor": "#00ff88"
+      "keyColor": "#8be9fd"
     },
     //{
       //"type": "swap",
