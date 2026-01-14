@@ -1,0 +1,42 @@
+#!/bin/bash
+# Watch for window focus changes and close EWW dashboard
+# Only closes when user explicitly clicks/focuses a different window AFTER dashboard has been open
+
+LAST_WINDOW=""
+DASHBOARD_WAS_OPEN=false
+COOLDOWN_UNTIL=0
+
+while true; do
+    CURRENT_TIME=$(date +%s)
+
+    # Check if dashboard is currently open
+    if eww active-windows 2>/dev/null | grep -q "dashboard"; then
+        # Dashboard is open
+        if [[ "$DASHBOARD_WAS_OPEN" == false ]]; then
+            # Dashboard just opened - start cooldown (1.5 seconds)
+            COOLDOWN_UNTIL=$((CURRENT_TIME + 2))
+            DASHBOARD_WAS_OPEN=true
+            # Capture current window as baseline
+            LAST_WINDOW=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+        fi
+
+        # Only check for focus changes after cooldown
+        if [[ "$CURRENT_TIME" -ge "$COOLDOWN_UNTIL" ]]; then
+            WINDOW_INFO=$(hyprctl activewindow -j 2>/dev/null)
+            CURRENT_WINDOW=$(echo "$WINDOW_INFO" | jq -r '.address // empty')
+            WINDOW_CLASS=$(echo "$WINDOW_INFO" | jq -r '.class // empty')
+
+            # Only close if a real window (with class) gets focus AND it's different from baseline
+            if [[ -n "$WINDOW_CLASS" && -n "$CURRENT_WINDOW" && "$CURRENT_WINDOW" != "$LAST_WINDOW" ]]; then
+                eww close dashboard
+                DASHBOARD_WAS_OPEN=false
+            fi
+        fi
+    else
+        # Dashboard is closed
+        DASHBOARD_WAS_OPEN=false
+        LAST_WINDOW=""
+    fi
+
+    sleep 0.2
+done

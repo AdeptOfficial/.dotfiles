@@ -190,23 +190,23 @@
 (defwindow hover-zone-0
   :monitor 0
   :geometry (geometry :x "0%"
-                      :y "26px"
-                      :width "40%"
-                      :height "20px"
-                      :anchor "top center")
-  :stacking "overlay"
-  :exclusive false
-  :focusable false
-  (hover-trigger :monitor 1))
-
-(defwindow hover-zone-1
-  :monitor 1
-  :geometry (geometry :x "0%"
-                      :y "26px"
-                      :width "40%"
-                      :height "20px"
+                      :y "0px"
+                      :width "30%"
+                      :height "4px"
                       :anchor "top center")
   :stacking "overlay"
   :exclusive false
   :focusable false
   (hover-trigger :monitor 0))
+
+(defwindow hover-zone-1
+  :monitor 1
+  :geometry (geometry :x "0%"
+                      :y "0px"
+                      :width "30%"
+                      :height "4px"
+                      :anchor "top center")
+  :stacking "overlay"
+  :exclusive false
+  :focusable false
+  (hover-trigger :monitor 1))
