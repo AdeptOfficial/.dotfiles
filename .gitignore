@@ -6,4 +6,3 @@
 
 # Legacy Omarchy configs - not needed on CachyOS
 rice/.config/rice/defaults/pacman/
-rice/.config/rice/defaults/elephant/

@@ -126,7 +126,7 @@
   },
   "custom/screenrecording-indicator": {
     "on-click": "adept-cmd-screenrecord",
-    "exec": "$HOME/.local/bin/rice/screen-recording.sh",
+    "exec": "$HOME/.local/bin/rice/adept-indicator-screenrecord",
     "signal": 8,
     "return-type": "json"
   },

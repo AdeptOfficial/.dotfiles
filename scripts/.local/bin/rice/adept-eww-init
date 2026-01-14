@@ -1,0 +1,13 @@
+#!/bin/bash
+# Initialize EWW dashboard hover zones for connected monitors
+# Opens hover-zone-N for each monitor N detected by Hyprland
+
+# Get number of connected monitors
+monitor_count=$(hyprctl monitors -j | jq 'length')
+
+# Open hover zone for each monitor
+for ((i=0; i<monitor_count; i++)); do
+  eww open "hover-zone-$i" 2>/dev/null &
+done
+
+wait

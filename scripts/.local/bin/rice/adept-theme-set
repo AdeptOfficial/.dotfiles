@@ -26,7 +26,7 @@ mkdir -p "$NEXT_THEME_PATH"
 # This makes theme edits live without re-running theme-set
 for item in "$THEME_PATH"/*; do
   name=$(basename "$item")
-  # Skip backgrounds - handled separately by theme-bg-next
+  # Skip backgrounds - handled separately by adept-theme-bg-next
   [[ "$name" == "backgrounds" ]] && continue
   ln -sf "$item" "$NEXT_THEME_PATH/$name"
 done
@@ -47,7 +47,7 @@ mv "$NEXT_THEME_PATH" "$CURRENT_THEME_PATH"
 echo "$THEME_NAME" > "$HOME/.config/themes/current.name"
 
 # Change background with theme
-~/.local/bin/rice/theme-bg-next
+~/.local/bin/rice/adept-theme-bg-next
 
 # Restart components to apply new theme
 if pgrep -x waybar >/dev/null; then

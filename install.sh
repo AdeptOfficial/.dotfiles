@@ -134,7 +134,7 @@ fi
 echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
   walker ghostty satty gpu-screen-recorder helium-browser \
-  wiremix bluetui
+  wiremix bluetui eww
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
@@ -180,7 +180,7 @@ for dir in hypr waybar walker mako alacritty ghostty kitty; do
 done
 
 # Stow all packages
-STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop"
+STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww"
 for pkg in $STOW_PACKAGES; do
   if [[ -d "$pkg" ]]; then
     stow "$pkg" 2>/dev/null || stow -R "$pkg"
