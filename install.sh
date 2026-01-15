@@ -234,6 +234,22 @@ if [[ "$PROFILE" == "laptop" ]]; then
 fi
 
 # ============================================
+# 5b. Setup SDDM with autologin
+# ============================================
+echo -e "${GREEN}[5b/9] Setting up SDDM autologin...${NC}"
+sudo pacman -S --needed --noconfirm sddm
+sudo mkdir -p /etc/sddm.conf.d
+cat <<EOF | sudo tee /etc/sddm.conf.d/autologin.conf
+[Autologin]
+User=$USER
+Session=hyprland-uwsm
+
+[Theme]
+Current=breeze
+EOF
+sudo systemctl enable sddm.service
+
+# ============================================
 # 6. Stow dotfiles
 # ============================================
 echo -e "${GREEN}[6/9] Stowing dotfiles...${NC}"
@@ -310,7 +326,7 @@ echo "╚═══════════════════════�
 echo ""
 echo "Next steps:"
 echo "  1. Reboot: sudo reboot"
-echo "  2. Login and start Hyprland: uwsm start hyprland"
+echo "  2. SDDM will auto-login and start Hyprland"
 echo ""
 if [[ "$PROFILE" == "laptop" ]]; then
   echo "G14 Controls:"
