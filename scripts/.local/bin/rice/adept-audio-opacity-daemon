@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""
+Audio-Based Browser Opacity Daemon for Hyprland
+
+Makes browser windows opaque when playing audio on media sites.
+
+BEHAVIOR:
+  - Transparent (0.97/0.9) when no audio or on non-media tab
+  - Opaque (1.0) when audio playing AND on media site tab (YouTube, Twitch, etc.)
+
+USAGE:
+  adept-audio-opacity-daemon &        # Start silently
+  DEBUG=1 adept-audio-opacity-daemon  # Start with logging
+  pkill -f adept-audio-opacity-daemon # Stop
+
+FILES:
+  Log:  /tmp/audio-daemon.log (when DEBUG=1)
+  PID:  /tmp/adept-audio-opacity.pid
+
+DOCS: ~/.adept/issues/resolved/helium-browser-audio-opacity.md
+"""
+
+import atexit
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+DEBUG = os.environ.get("DEBUG", "0") == "1"
+LOG_FILE = "/tmp/audio-daemon.log"
+PID_FILE = "/tmp/adept-audio-opacity.pid"
+MEDIA_SITES = re.compile(
+    r"YouTube|Twitch|Netflix|Prime Video|Disney\+|Vimeo|Plex|HBO|Hulu|Crunchyroll|Spotify",
+    re.IGNORECASE,
+)
+
+# State
+opaque_windows = set()
+pid_cache = {}
+
+
+def log(msg):
+    if DEBUG:
+        try:
+            with open(LOG_FILE, "a") as f:
+                f.write(f"{time.strftime('%H:%M:%S')} {msg}\n")
+        except Exception:
+            pass
+
+
+def check_single_instance():
+    """Ensure only one instance runs. Kill existing if found."""
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+            # Check if process exists
+            os.kill(old_pid, 0)
+            # Process exists, kill it
+            log(f"Killing existing instance {old_pid}")
+            os.kill(old_pid, signal.SIGTERM)
+            time.sleep(0.5)
+        except (ProcessLookupError, ValueError, FileNotFoundError):
+            pass
+
+    # Write our PID
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    atexit.register(lambda: os.path.exists(PID_FILE) and os.remove(PID_FILE))
+
+
+def run_cmd(cmd):
+    """Run command and return stdout, or empty string on error."""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        return result.stdout
+    except Exception:
+        return ""
+
+
+def get_audio_pids():
+    """Get PIDs of processes currently playing audio."""
+    output = run_cmd(["pactl", "list", "sink-inputs"])
+    pids = set()
+    for line in output.splitlines():
+        if "application.process.id" in line:
+            match = re.search(r'"(\d+)"', line)
+            if match:
+                pids.add(int(match.group(1)))
+    return pids
+
+
+def get_hyprland_clients():
+    """Get all Hyprland windows as JSON."""
+    output = run_cmd(["hyprctl", "clients", "-j"])
+    try:
+        return json.loads(output) if output else []
+    except json.JSONDecodeError:
+        return []
+
+
+def find_window_for_pid(audio_pid, clients):
+    """Walk parent tree to find Hyprland window owning this PID."""
+    if audio_pid in pid_cache:
+        return pid_cache[audio_pid]
+
+    pid_to_addr = {c["pid"]: c["address"] for c in clients if c.get("pid")}
+
+    current = audio_pid
+    while current and current != 1:
+        if current in pid_to_addr:
+            pid_cache[audio_pid] = pid_to_addr[current]
+            return pid_to_addr[current]
+        try:
+            with open(f"/proc/{current}/stat") as f:
+                parts = f.read().split()
+                current = int(parts[3]) if len(parts) > 3 else None
+        except (FileNotFoundError, ValueError, IndexError):
+            break
+
+    return None
+
+
+def get_window_title(address, clients):
+    """Get window title by address."""
+    for c in clients:
+        if c.get("address") == address:
+            return c.get("title", "")
+    return ""
+
+
+def set_opacity(address, opaque):
+    """Set window opacity via hyprctl."""
+    if opaque:
+        run_cmd(["hyprctl", "dispatch", "setprop", f"address:{address}", "opaque", "1"])
+    else:
+        run_cmd(["hyprctl", "dispatch", "setprop", f"address:{address}", "opaque", "unset"])
+
+
+def update_windows():
+    """Main logic: check audio and update window opacity."""
+    global opaque_windows
+
+    try:
+        audio_pids = get_audio_pids()
+        clients = get_hyprland_clients()
+        log(f"audio_pids: {audio_pids}")
+
+        # No audio - reset all browser windows
+        if not audio_pids:
+            browser_classes = {"helium", "chromium", "firefox", "brave"}
+            for c in clients:
+                cls = c.get("class", "").lower()
+                addr = c.get("address")
+                if addr and any(b in cls for b in browser_classes):
+                    if addr in opaque_windows:
+                        set_opacity(addr, False)
+                        opaque_windows.discard(addr)
+                        log(f"  RESET (no audio): {addr}")
+            return
+
+        # Check each audio source
+        should_be_opaque = set()
+        for pid in audio_pids:
+            address = find_window_for_pid(pid, clients)
+            if address:
+                title = get_window_title(address, clients)
+                log(f"  pid={pid} addr={address} title={title[:50] if title else ''}")
+                if MEDIA_SITES.search(title or ""):
+                    should_be_opaque.add(address)
+                    log(f"  MATCH - should be opaque")
+                else:
+                    log(f"  NO MATCH")
+
+        # Apply changes
+        for addr in should_be_opaque:
+            if addr not in opaque_windows:
+                set_opacity(addr, True)
+                opaque_windows.add(addr)
+                log(f"  SET OPAQUE: {addr}")
+
+        for addr in list(opaque_windows):
+            if addr not in should_be_opaque:
+                set_opacity(addr, False)
+                opaque_windows.discard(addr)
+                log(f"  RESET: {addr}")
+    except Exception as e:
+        log(f"Error in update_windows: {e}")
+
+
+def cleanup(signum=None, frame=None):
+    """Reset all windows on exit."""
+    log("Cleanup - resetting all windows")
+    for addr in list(opaque_windows):
+        set_opacity(addr, False)
+    if os.path.exists(PID_FILE):
+        os.remove(PID_FILE)
+    sys.exit(0)
+
+
+def poll_loop():
+    """Poll every second for faster detection."""
+    while True:
+        time.sleep(1)
+        log("--- poll ---")
+        update_windows()
+
+
+def main():
+    check_single_instance()
+
+    signal.signal(signal.SIGINT, cleanup)
+    signal.signal(signal.SIGTERM, cleanup)
+
+    log("=== Daemon started ===")
+
+    # Start safety poll thread
+    poll_thread = threading.Thread(target=poll_loop, daemon=True)
+    poll_thread.start()
+
+    # Event-driven via pactl subscribe
+    while True:
+        try:
+            proc = subprocess.Popen(
+                ["pactl", "subscribe"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            for line in proc.stdout:
+                if "sink-input" in line.lower():
+                    log(f"Event: {line.strip()}")
+                    update_windows()
+        except Exception as e:
+            log(f"pactl subscribe error: {e}, retrying in 5s")
+            time.sleep(5)
+
+
+if __name__ == "__main__":
+    main()

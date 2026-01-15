@@ -14,9 +14,19 @@
   :initial '{"distro": "Loading", "wm": "...", "uptime": "..."}'
   `~/.config/eww/scripts/sysinfo/sysinfo.sh`)
 
-(defpoll media :interval "500ms"
-  :initial '{"status": "stopped", "title": "", "artist": "", "album": ""}'
-  `~/.config/eww/scripts/media/media.sh`)
+; Media info via deflisten (instant updates on play/pause/track change)
+(deflisten media :initial '{"status":"stopped","title":"","artist":"","album":"","art":"","position":0,"duration":0,"position_fmt":"0:00","duration_fmt":"0:00","player":"","players":[],"volume":50,"muted":false}'
+  `~/.config/eww/scripts/media/media-listen.sh`)
+
+; ============ Media Tab Variables ============
+(defvar selected-player "")
+(defvar show-visualizer false)
+
+; Audio visualizer - cava output as Unicode bars
+(deflisten cava :initial "▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁"
+  `~/.config/eww/scripts/media/cava-eww.sh`)
+
+
 
 (defpoll calendar_day :interval "60s"
   :initial "13"
@@ -147,10 +157,70 @@
     ; Bottom row: Calendar (full width)
     (calendar-widget)))
 
-; ============ Other Tab Content ============
+; ============ Media Tab Content ============
 (defwidget media-content []
-  (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
-    (label :class "placeholder-text" :text "Media - To be implemented")))
+  (box :class "media-tab" :orientation "v" :space-evenly false :spacing 16 :hexpand true :vexpand true
+    ; Main content: Album art left, controls right
+    (box :class "media-main" :orientation "h" :space-evenly false :spacing 24
+         :halign "fill" :valign "center" :vexpand true :hexpand true
+      ; Album art (left, prominent)
+      (box :class "album-art-frame"
+        (image :class "album-art-image"
+               :path {media?.art != "" ? media?.art : "/home/adept/.config/eww/assets/no-album.png"}
+               :image-width 200 :image-height 200))
+      ; Controls stack (right of art)
+      (box :class "media-controls" :orientation "v" :space-evenly false :spacing 10 :valign "center" :hexpand true
+        ; Player selector (if multiple)
+        (box :class "player-selector" :orientation "h" :hexpand true
+          (box :orientation "h" :halign "center" :hexpand true :spacing 6
+            (for player in {media?.players ?: []}
+              (button :class {(media?.player ?: "") == player ? "player-btn active" : "player-btn"}
+                      :onclick `~/.config/eww/scripts/media/switch-player.sh '${player}'`
+                      :tooltip player
+                      (label :text {player == "spotify" ? "󰓇" :
+                                    matches(player, "chromium.*") ? "󰖟" :
+                                    matches(player, "firefox.*") ? "󰈹" :
+                                    matches(player, "vlc.*") ? "󰕼" : "󰐌"})))))
+        ; Track info
+        (box :class "track-title-box" :hexpand true
+          (label :class {strlength(media?.title ?: "") > 35 ? "track-title marquee" : "track-title"}
+                 :text {media?.title ?: "No media playing"} :halign "center"))
+        (label :class "track-artist" :text {media?.artist ?: ""} :limit-width 40 :halign "center")
+        ; Progress bar (hide for live streams)
+        (revealer :transition "slidedown" :reveal {(media?.duration ?: 0) > 0 && (media?.duration ?: 0) != (media?.position ?: 0)}
+          (box :orientation "v" :space-evenly false :spacing 2
+            (scale :class "progress-bar" :orientation "h"
+                   :min 0 :max {media?.duration ?: 1} :value {media?.position ?: 0}
+                   :onchange "~/.config/eww/scripts/media/seek.sh {}")
+            (box :orientation "h"
+              (label :class "time-label" :text {media?.position_fmt ?: "0:00"} :halign "start" :hexpand true)
+              (label :class "time-label" :text {media?.duration_fmt ?: "0:00"} :halign "end"))))
+        (revealer :transition "slidedown" :reveal {((media?.duration ?: 0) == 0 || (media?.duration ?: 0) == (media?.position ?: 0)) && media?.status != "stopped"}
+          (label :class "live-indicator" :text "∞ LIVE" :halign "center"))
+        ; Playback controls
+        (box :class "playback-controls" :orientation "h" :hexpand true
+          (box :orientation "h" :halign "center" :hexpand true :spacing 12
+            (button :class "control-btn" :onclick "~/.config/eww/scripts/media/control.sh previous" "󰒮")
+            (button :class "control-btn play-btn" :onclick "~/.config/eww/scripts/media/control.sh play-pause"
+                    {media?.status == "Playing" ? "󰏤" : "󰐊"})
+            (button :class "control-btn" :onclick "~/.config/eww/scripts/media/control.sh next" "󰒭")))
+        ; Volume control
+        (box :class "volume-section" :orientation "h" :space-evenly false :hexpand true
+          (box :orientation "h" :space-evenly false :spacing 6 :halign "center" :hexpand true
+            (button :class "volume-btn" :onclick "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+                    {media?.muted ? "󰖁" : (media?.volume ?: 0) > 66 ? "󰕾" : (media?.volume ?: 0) > 33 ? "󰖀" : "󰕿"})
+            (scale :class "volume-slider" :orientation "h"
+                   :min 0 :max 100 :value {media?.volume ?: 50}
+                   :onchange "wpctl set-volume @DEFAULT_AUDIO_SINK@ {}%")
+            (label :class "volume-label" :text "${media?.volume ?: 0}%")
+            (box :style "min-width: 10px;")))
+        ; Visualizer toggle
+        (button :class "visualizer-toggle" :onclick "eww update show-visualizer=${show-visualizer ? 'false' : 'true'}"
+                {show-visualizer ? "󰤽 Hide Viz" : "󰋋 Show Viz"})))
+    ; Visualizer bar (bottom, full width)
+    (revealer :transition "slideup" :reveal show-visualizer
+      (box :class "media-visualizer-bar" :orientation "h" :hexpand true
+        (label :class "visualizer-bars" :text cava :halign "center" :hexpand true)))))
 
 (defwidget performance-content []
   (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
@@ -162,32 +232,40 @@
 
 ; ============ Main Dashboard ============
 (defwidget dashboard []
-  (eventbox :onhoverlost "eww close dashboard"
-    (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
-      (tabs)
-      (box :class "content" :orientation "v" :hexpand true
-        (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
-                           active-tab == "media" ? "(media-content)" :
-                           active-tab == "performance" ? "(performance-content)" :
-                           "(workspaces-content)"})))))
+  ; NOTE: Hover auto-close disabled for now - using keybind instead
+  ; (eventbox :onhoverlost "eww close dashboard" ...)
+  (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
+    ; Hidden labels to keep deflisten variables alive (must be in mounted widget)
+    (box :class "sr-only"
+      (label :text cava)
+      (label :text {media?.status ?: ""}))
+    (tabs)
+    (box :class "content" :orientation "v" :hexpand true
+      (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
+                         active-tab == "media" ? "(media-content)" :
+                         active-tab == "performance" ? "(performance-content)" :
+                         "(workspaces-content)"}))))
 
 ; ============ Window Definition ============
 (defwindow dashboard
   :geometry (geometry :x "0%"
                       :y "0px"
-                      :width "40%"
+                      :width "50%"
                       :anchor "top center")
   :stacking "overlay"
   :exclusive false
   :focusable false
   (dashboard))
 
-; ============ Hover Trigger Zone ============
+; ============ Hover Trigger Zone (DISABLED) ============
+; NOTE: Hover zones disabled - using keybind to toggle dashboard instead
+; To re-enable: rename windows back to hover-zone-0/1 and uncomment eventbox above
+
 (defwidget hover-trigger [monitor]
-  (eventbox :onhover "eww update active-tab='dashboard' cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y) && eww open dashboard --screen ${monitor}"
+  (eventbox :onhover "eww update cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y) && eww open dashboard --screen ${monitor}"
     (box :class "hover-zone")))
 
-(defwindow hover-zone-0
+(defwindow _disabled_hover-zone-0
   :monitor 0
   :geometry (geometry :x "0%"
                       :y "0px"
@@ -199,7 +277,7 @@
   :focusable false
   (hover-trigger :monitor 0))
 
-(defwindow hover-zone-1
+(defwindow _disabled_hover-zone-1
   :monitor 1
   :geometry (geometry :x "0%"
                       :y "0px"

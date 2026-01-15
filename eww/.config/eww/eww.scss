@@ -1,5 +1,14 @@
 // Dashboard styling - explicit values for debugging
 
+// Screen-reader only (hidden but mounted - keeps deflisten alive)
+.sr-only {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
 * {
   all: unset;
   font-family: "JetBrainsMono Nerd Font", monospace;
@@ -17,7 +26,13 @@ window {
   padding: 8px;
   border: 1px solid rgba(240, 248, 255, 0.1);
   border-top-width: 0px;
-  animation: slideDown 0.2s ease-out;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  60% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @keyframes slideDown {
@@ -29,6 +44,18 @@ window {
     margin-top: 0;
     opacity: 1;
   }
+}
+
+/* DISABLED - causes dashboard width expansion
+@keyframes marquee {
+  0% { margin-left: -300px; }
+  100% { margin-left: 300px; }
+}
+*/
+
+// Content area (fixed size prevents resize)
+.content {
+  min-height: 280px;
 }
 
 // Widget layout wrappers
@@ -275,3 +302,228 @@ calendar.header {
   color: #00ff88;
   letter-spacing: 2px;
 }
+
+// ============ Media Tab Styling ============
+
+.media-tab {
+  padding: 16px;
+  min-height: 300px;
+  min-width: 600px;
+}
+
+// Main content area (art + controls)
+.media-main {
+  padding: 8px;
+  min-height: 220px;
+}
+
+// Album art styling
+.album-art-frame {
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.album-art-image {
+  border-radius: 12px;
+}
+
+// Controls section (right of art)
+.media-controls {
+  min-width: 450px;
+}
+
+// Visualizer bar (bottom)
+.media-visualizer-bar {
+  padding: 12px 16px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.visualizer-bars {
+  font-family: monospace;
+  font-size: 28px;
+  color: #00ff88;
+  letter-spacing: 6px;
+}
+
+// Player selector buttons (icons only)
+.player-selector {
+  margin-bottom: 4px;
+}
+
+.player-btn {
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.player-btn:hover {
+  background-color: rgba(0, 255, 136, 0.2);
+}
+
+.player-btn.active {
+  background-color: rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+}
+
+// Title container for marquee
+.track-title-box {
+  min-width: 100px;
+}
+
+.track-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.track-title.marquee {
+  font-size: 18px;
+  font-weight: bold;
+  /* animation: marquee 10s linear infinite; DISABLED - causes width expansion */
+  color: #F0F8FF;
+}
+
+.track-artist {
+  font-size: 14px;
+  color: rgba(240, 248, 255, 0.6);
+}
+
+// Progress bar
+.progress-section {
+  margin: 12px 0;
+  padding: 0 8px;
+}
+
+.progress-bar {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar trough {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar highlight {
+  background-color: #00ff88;
+  border-radius: 3px;
+}
+
+.progress-bar slider {
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 50%;
+  background-color: #00ff88;
+  margin: -3px 0;
+}
+
+.time-label {
+  font-size: 11px;
+  color: rgba(240, 248, 255, 0.5);
+}
+
+.live-indicator {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ff5555;
+  padding: 8px 16px;
+  background-color: rgba(255, 85, 85, 0.15);
+  border-radius: 6px;
+}
+
+// Playback controls
+.playback-controls {
+  margin: 16px 0;
+}
+
+.playback-controls .control-btn {
+  font-size: 24px;
+  padding: 12px 16px;
+  border-radius: 50%;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.playback-controls .control-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.playback-controls .play-btn {
+  font-size: 32px;
+  background-color: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+}
+
+.playback-controls .play-btn:hover {
+  background-color: rgba(0, 255, 136, 0.3);
+}
+
+// Volume control
+.volume-section {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.volume-btn {
+  font-size: 18px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  min-width: 36px;
+}
+
+.volume-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.volume-slider {
+  min-width: 350px;
+  min-height: 4px;
+}
+
+.volume-slider trough {
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.volume-slider highlight {
+  background-color: #00ff88;
+  border-radius: 2px;
+}
+
+.volume-slider slider {
+  min-width: 10px;
+  min-height: 10px;
+  border-radius: 50%;
+  background-color: #00ff88;
+  margin: -3px 0;
+}
+
+.volume-label {
+  font-size: 12px;
+  min-width: 40px;
+  color: rgba(240, 248, 255, 0.7);
+}
+
+// Visualizer toggle button
+.visualizer-toggle {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 248, 255, 0.6);
+}
+
+.visualizer-toggle:hover {
+  background-color: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+}
+
+// (album-art styling moved to media-tab section above)
