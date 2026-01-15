@@ -197,7 +197,8 @@ fi
 # ============================================
 echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
-  walker ghostty grimblast-git satty gpu-screen-recorder helium-browser \
+  walker elephant elephant-desktopapplications \
+  ghostty grimblast-git satty gpu-screen-recorder helium-browser \
   wiremix bluetui eww
 
 # ASUS G14 specific packages (laptop only)
