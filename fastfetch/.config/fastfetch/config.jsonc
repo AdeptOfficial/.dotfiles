@@ -42,8 +42,8 @@
       "type": "disk",
       "key": "│ ├󰋊",
       "keyColor": "#8be9fd",
-      "folders": ["/"],
-      "format": "{mountpoint} {size-used}/{size-total} ({size-percentage})"
+      "folders": ["/", "/mnt/SharedData", "/mnt/SynaDrive"],
+      "format": "{name} | {size-used}/{size-total} ({size-percentage})"
     },
     {
       "type": "memory",
