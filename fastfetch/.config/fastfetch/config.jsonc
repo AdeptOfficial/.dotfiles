@@ -43,7 +43,7 @@
       "key": "│ ├󰋊",
       "keyColor": "#8be9fd",
       "folders": ["/"],
-      "format": "{mountpoint} {size-used}/{size-total} ({size-percentage}%)"
+      "format": "{mountpoint} {size-used}/{size-total} ({size-percentage})"
     },
     {
       "type": "memory",
