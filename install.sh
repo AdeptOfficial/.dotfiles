@@ -292,14 +292,32 @@ mkdir -p ~/Pictures/Screenshots
 # ============================================
 # 7. Apply profile
 # ============================================
+# ============================================
+# Machine-Specific Config Pattern:
+# ============================================
+# Stowed files = your primary desktop config
+# *.default.conf = generic templates (auto-detect, works anywhere)
+# *.laptop.conf = G14-specific settings
+#
+# For NEW machines:
+# - Laptop: ./install.sh laptop (uses *.laptop.conf)
+# - VM: auto-detected, uses *.default.conf
+# - New desktop: customize ~/.config/hypr/*.conf after install
+# ============================================
+
 echo -e "${GREEN}[7/9] Applying $PROFILE profile...${NC}"
 if [[ "$PROFILE" == "laptop" ]]; then
-  # Remove symlinks first (stow creates them), then copy as regular files
-  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/input.conf
+  # Laptop: use laptop-specific configs
+  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/input.conf ~/.config/hypr/autostart.conf
   cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
   cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
+elif [[ "$(systemd-detect-virt)" != "none" ]]; then
+  # VM: use generic defaults (auto-detect monitors)
+  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/autostart.conf
+  cp ~/.dotfiles/hypr/.config/hypr/monitors.default.conf ~/.config/hypr/monitors.conf
+  cp ~/.dotfiles/hypr/.config/hypr/autostart.default.conf ~/.config/hypr/autostart.conf
 fi
-# Desktop uses the stowed default monitors.conf (customize per-machine if needed)
+# Physical desktop: uses stowed config (your setup)
 
 # ============================================
 # 8. Set default browser
