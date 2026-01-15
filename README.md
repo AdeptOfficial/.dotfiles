@@ -37,10 +37,12 @@ The install script will:
 3. Install core packages (Hyprland, Waybar, terminals, fonts, etc.)
 4. Auto-detect and install GPU drivers
 5. Install AUR packages (Walker, Ghostty, etc.)
-6. Enable system services
+6. Enable system services (including SDDM autologin)
 7. Stow all dotfiles
-8. Apply selected profile
+8. Apply selected profile (auto-detects VMs)
 9. Set default theme (futurism)
+
+After reboot, SDDM will auto-login and start Hyprland via UWSM.
 
 ## Existing System (Stow Only)
 
@@ -166,6 +168,27 @@ adept-toggle-waybar     # Toggle status bar
 adept-toggle-nightlight # Toggle night light
 ```
 
+## Machine-Specific Configs
+
+Some configs vary by machine (monitors, workspaces, preferences). The pattern:
+
+| File | Description |
+|------|-------------|
+| `*.conf` | Stowed default (primary desktop config) |
+| `*.default.conf` | Generic template (VMs, fresh installs) |
+| `*.laptop.conf` | G14-specific settings |
+
+**Files with this pattern:**
+- `monitors.conf` - Monitor layout and workspaces
+- `autostart.conf` - Startup apps and workspace assignments
+- `input.conf` - Mouse/keyboard preferences
+- `ghostty/config` - Terminal preferences
+
+**For new machines:**
+- **Laptop**: `./install.sh laptop` (uses `*.laptop.conf`)
+- **VM**: Auto-detected, uses `*.default.conf`
+- **New desktop**: Customize `~/.config/hypr/*.conf` after install
+
 ## ASUS G14 Laptop
 
 The laptop profile includes support for ASUS G14:
@@ -189,6 +212,26 @@ powerprofilesctl set performance
 # GUI
 rog-control-center
 ```
+
+## Testing in VMs (Proxmox)
+
+For testing install.sh on fresh CachyOS minimal:
+
+```bash
+# Connect via SPICE (better than noVNC)
+# 1. In Proxmox web UI: VM → Console → SPICE dropdown
+# 2. Downloads a .vv file
+# 3. Open with:
+remote-viewer ~/Downloads/*.vv
+
+# Or install virt-viewer if not present
+sudo pacman -S virt-viewer
+```
+
+**VM setup notes:**
+- Use QXL display for SPICE support
+- install.sh auto-detects VMs and uses generic configs
+- qemu-guest-agent installed automatically in VMs
 
 ## Making Changes
 
