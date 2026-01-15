@@ -9,7 +9,68 @@
 #   ./install.sh [desktop|laptop]
 #
 
-set -e
+set -euo pipefail
+
+# Trap for cleanup on exit
+SUDO_PID=""
+cleanup() {
+  [[ -n "$SUDO_PID" ]] && kill "$SUDO_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+trap 'echo "Error at line $LINENO"; cleanup; exit 1' ERR
+
+# Verify ~/.dotfiles exists
+if [[ ! -d "$HOME/.dotfiles" ]]; then
+  echo "Error: ~/.dotfiles directory not found"
+  echo "Clone first: git clone https://github.com/AdeptOfficial/.dotfiles.git ~/.dotfiles"
+  exit 1
+fi
+
+# Verify running from correct location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -f "$SCRIPT_DIR/stow-all.sh" ]]; then
+  echo "Error: Must run from dotfiles root directory"
+  exit 1
+fi
+
+# Verify repo integrity (no uncommitted changes blocking)
+cd "$SCRIPT_DIR"
+if [[ -d .git ]] && ! git diff --quiet HEAD 2>/dev/null; then
+  echo "Warning: Uncommitted changes in dotfiles repo"
+fi
+
+# Initialize and verify submodules if any exist
+if [[ -f .gitmodules ]]; then
+  echo "Initializing git submodules..."
+  git submodule update --init --recursive
+  # Verify all submodules are properly initialized
+  if git submodule status | grep -q '^-'; then
+    echo "Error: Some submodules failed to initialize"
+    git submodule status
+    exit 1
+  fi
+fi
+
+# Check required tools
+for cmd in git sudo; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "Error: $cmd is required but not installed"
+    exit 1
+  fi
+done
+
+# Ensure AUR/yay prerequisites are installed (--needed skips if present)
+sudo pacman -S --needed --noconfirm base-devel git
+
+# Validate sudo works
+if ! sudo -v; then
+  echo "Error: sudo access required"
+  exit 1
+fi
+
+# Keep sudo alive during script (with cleanup)
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+SUDO_PID=$!
 
 # Colors
 GREEN='\033[0;32m'
@@ -89,9 +150,11 @@ fi
 echo -e "${GREEN}[1/9] Installing yay...${NC}"
 if ! command -v yay &>/dev/null; then
   sudo pacman -S --needed --noconfirm git base-devel
+  rm -rf /tmp/yay
   git clone https://aur.archlinux.org/yay.git /tmp/yay
   cd /tmp/yay && makepkg -si --noconfirm
   cd ~/.dotfiles
+  rm -rf /tmp/yay
 fi
 
 # ============================================
@@ -116,7 +179,8 @@ sudo pacman -S --needed --noconfirm \
   nautilus gvfs gvfs-mtp gvfs-smb \
   alacritty fish starship \
   ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
-  yq jq gum stow git uwsm
+  yq jq gum stow git uwsm \
+  libnotify xdg-utils xdg-user-dirs
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
@@ -133,7 +197,7 @@ fi
 # ============================================
 echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
-  walker ghostty satty gpu-screen-recorder helium-browser \
+  walker ghostty grimblast-git satty gpu-screen-recorder helium-browser \
   wiremix bluetui eww
 
 # ASUS G14 specific packages (laptop only)
@@ -174,18 +238,31 @@ fi
 # Backup existing configs that conflict with stow
 for dir in hypr waybar walker mako alacritty ghostty kitty; do
   if [[ -d ~/.config/$dir && ! -L ~/.config/$dir ]]; then
-    echo -e "${YELLOW}Backing up existing ~/.config/$dir${NC}"
-    mv ~/.config/$dir ~/.config/$dir.backup
+    if [[ -d ~/.config/$dir.backup ]]; then
+      echo "Backup already exists for $dir, skipping"
+    else
+      echo -e "${YELLOW}Backing up existing ~/.config/$dir${NC}"
+      mv ~/.config/$dir ~/.config/$dir.backup
+    fi
   fi
 done
 
 # Stow all packages
-STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww"
+STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww satty"
 for pkg in $STOW_PACKAGES; do
   if [[ -d "$pkg" ]]; then
-    stow "$pkg" 2>/dev/null || stow -R "$pkg"
+    if ! stow "$pkg"; then
+      echo "Stow failed for $pkg, trying restow..."
+      stow -R "$pkg"
+    fi
   fi
 done
+
+# Initialize XDG directories (graceful if command missing)
+if command -v xdg-user-dirs-update &>/dev/null; then
+  xdg-user-dirs-update
+fi
+mkdir -p ~/Pictures/Screenshots
 
 # ============================================
 # 7. Apply profile

@@ -1,0 +1,29 @@
+[general]
+early-exit = false
+copy-command = "wl-copy"
+corner-roundness = 12
+initial-tool = "arrow"
+brush-smooth-history-size = 5
+no-window-decoration = true
+output-filename = "/home/adept/Pictures/Screenshots/screenshot-%Y-%m-%d_%H-%M-%S.png"
+
+actions-on-enter = ["save-to-clipboard", "save-to-file", "exit"]
+actions-on-escape = ["exit"]
+actions-on-right-click = ["save-to-clipboard", "exit"]
+
+[font]
+family = "JetBrains Mono NF"
+style = "Regular"
+
+[keybinds]
+pointer = "p"
+crop = "c"
+brush = "b"
+line = "i"
+arrow = "z"
+rectangle = "r"
+ellipse = "e"
+text = "t"
+marker = "m"
+blur = "u"
+highlight = "g"
