@@ -208,6 +208,13 @@ if [[ "$PROFILE" == "laptop" ]]; then
   yay -S --needed --noconfirm rog-control-center
 fi
 
+# VM-specific packages (only if running in a VM)
+if [[ "$(systemd-detect-virt)" != "none" ]]; then
+  echo -e "${GREEN}[4c/9] Installing VM guest tools...${NC}"
+  sudo pacman -S --needed --noconfirm qemu-guest-agent
+  sudo systemctl enable qemu-guest-agent
+fi
+
 # ============================================
 # 5. Enable services
 # ============================================
