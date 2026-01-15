@@ -180,7 +180,8 @@ sudo pacman -S --needed --noconfirm \
   alacritty fish starship \
   ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
   yq jq gum stow git uwsm \
-  libnotify xdg-utils xdg-user-dirs
+  libnotify xdg-utils xdg-user-dirs \
+  fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
