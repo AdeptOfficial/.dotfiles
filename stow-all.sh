@@ -33,6 +33,7 @@ stow --adopt walker
 stow --adopt mako
 stow --adopt btop
 stow --adopt eww
+stow --adopt satty
 
 echo "✅ All dotfiles stowed! (Symlinks established.)"
 
@@ -40,7 +41,7 @@ echo "✅ All dotfiles stowed! (Symlinks established.)"
 echo ""
 echo "⚠️ Cleaning up adopted default config files in the Git repository..."
 
-PACKAGES="hypr fish xdg shell waybar fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww" 
+PACKAGES="hypr fish xdg shell waybar fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww satty" 
 
 # This command checks out your saved content from the Git index, 
 # overwriting the temporary default files that Stow adopted.
