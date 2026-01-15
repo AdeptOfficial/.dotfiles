@@ -236,7 +236,7 @@ if [[ ! -L ~/.bashrc ]]; then
 fi
 
 # Backup existing configs that conflict with stow
-for dir in hypr waybar walker mako alacritty ghostty kitty; do
+for dir in hypr waybar walker mako alacritty ghostty kitty fish; do
   if [[ -d ~/.config/$dir && ! -L ~/.config/$dir ]]; then
     if [[ -d ~/.config/$dir.backup ]]; then
       echo "Backup already exists for $dir, skipping"
