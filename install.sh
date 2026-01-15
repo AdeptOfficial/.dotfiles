@@ -281,9 +281,8 @@ if [[ "$PROFILE" == "laptop" ]]; then
   cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
   cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
 else
-  # Desktop is default in dotfiles, backup for switching later
-  cp ~/.config/hypr/monitors.conf ~/.config/hypr/monitors.desktop.conf 2>/dev/null || true
-  cp ~/.config/hypr/input.conf ~/.config/hypr/input.desktop.conf 2>/dev/null || true
+  # Desktop uses generic default - customize monitors.conf per-machine
+  cp ~/.dotfiles/hypr/.config/hypr/monitors.default.conf ~/.config/hypr/monitors.conf
 fi
 
 # ============================================
