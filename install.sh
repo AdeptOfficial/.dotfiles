@@ -278,12 +278,12 @@ mkdir -p ~/Pictures/Screenshots
 # ============================================
 echo -e "${GREEN}[7/9] Applying $PROFILE profile...${NC}"
 if [[ "$PROFILE" == "laptop" ]]; then
+  # Remove symlinks first (stow creates them), then copy as regular files
+  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/input.conf
   cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
   cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
-else
-  # Desktop uses generic default - customize monitors.conf per-machine
-  cp ~/.dotfiles/hypr/.config/hypr/monitors.default.conf ~/.config/hypr/monitors.conf
 fi
+# Desktop uses the stowed default monitors.conf (customize per-machine if needed)
 
 # ============================================
 # 8. Set default browser
