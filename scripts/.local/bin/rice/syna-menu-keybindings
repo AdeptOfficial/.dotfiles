@@ -79,7 +79,7 @@ parse_keycodes() {
 # Fetch dynamic keybindings from Hyprland
 #
 # Also do some pre-processing:
-# - Remove standard Omarchy bin path prefix
+# - Remove standard rice bin path prefix
 # - Remove uwsm prefix
 # - Map numeric modifier key mask to a textual rendition
 # - Output comma-separated values that the parser can understand
@@ -171,7 +171,7 @@ prioritize_entries() {
     if (match(line, /Browser/) && !match(line, /Browser[[:space:]]*\(/)) prio = 1
     if (match(line, /File manager/))  prio = 2
     if (match(line, /Launch apps/))  prio = 3
-    if (match(line, /Omarchy menu/))  prio = 4
+    if (match(line, /Syna menu/))  prio = 4
     if (match(line, /System menu/))  prio = 5
     if (match(line, /Theme menu/))  prio = 6
     if (match(line, /Full screen/))  prio = 7

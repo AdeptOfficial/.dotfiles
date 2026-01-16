@@ -4,5 +4,5 @@
 .DS_Store
 *.backup*
 
-# Legacy Omarchy configs - not needed on CachyOS
+# Legacy configs - not needed on CachyOS
 rice/.config/rice/defaults/pacman/

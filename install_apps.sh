@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# CachyOS + Omarchy Setup Script
+# CachyOS + Syna Setup Script
 # - System update via pacman ONLY
 # - Installs core tools
 # - Installs Vesktop (native)
 # - Keeps Hyprland / Walker clean
 # - No Flatpak
-# - No Omarchy updater (pacman is source of truth)
 
 set -e
 

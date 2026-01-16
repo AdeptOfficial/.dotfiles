@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Overwrite the user configs for the Waybar menu bar with the Omarchy defaults and restart the service.
+# Overwrite the user configs for the Waybar menu bar with the rice defaults and restart the service.
 
 syna-refresh-config waybar/config.jsonc
 syna-refresh-config waybar/style.css

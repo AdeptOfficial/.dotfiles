@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# Overwrite the user config for hyprlock with the Omarchy default.
+# Overwrite the user config for hyprlock with the rice default.
 
 syna-refresh-config hypr/hyprlock.conf

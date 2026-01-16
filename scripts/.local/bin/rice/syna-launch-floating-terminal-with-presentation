@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Launch a floating terminal with the Omarchy logo presentation, then execute the command passed in, and finally end with the syna-show-done presentation.
+# Launch a floating terminal with the Syna logo presentation, then execute the command passed in, and finally end with the syna-show-done presentation.
 # Used by actions such as Update System.
 
 cmd="$*"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Install one of the supported development environments. Usually called via Install > Development > * in the Omarchy Menu.
+# Install one of the supported development environments. Usually called via Install > Development > * in the Syna Menu.
 
 if [[ -z "$1" ]]; then
   echo "Usage: syna-install-dev-env <ruby|node|bun|go|laravel|symfony|php|python|elixir|phoenix|rust|java|ocaml|dotnet|clojure>" >&2

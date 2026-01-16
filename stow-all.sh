@@ -21,7 +21,7 @@ stow --adopt waybar
 stow --adopt shell
 stow --adopt fastfetch
 
-# Rice configs (migrated from omarchy)
+# Rice configs
 stow --adopt themes
 stow --adopt rice
 stow --adopt scripts

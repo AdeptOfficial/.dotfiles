@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Overwrite the user config for hypridle with the Omarchy default and restart the service.
+# Overwrite the user config for hypridle with the rice default and restart the service.
 
 syna-refresh-config hypr/hypridle.conf
 syna-restart-hypridle

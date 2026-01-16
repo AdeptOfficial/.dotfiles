@@ -1,43 +1,16 @@
 #!/bin/bash
 
-# syna-theme-install: Install a new theme from a git repo or known theme name
-# Usage: syna-theme-install <theme-name|git-repo-url>
-# Examples:
-#   syna-theme-install catppuccin
-#   syna-theme-install https://github.com/user/custom-theme
-
-# Known Omarchy themes (shorthand -> repo URL)
-declare -A KNOWN_THEMES=(
-  ["catppuccin"]="https://github.com/basecamp/omarchy-theme-catppuccin"
-  ["gruvbox"]="https://github.com/basecamp/omarchy-theme-gruvbox"
-  ["nord"]="https://github.com/basecamp/omarchy-theme-nord"
-  ["tokyo-night"]="https://github.com/basecamp/omarchy-theme-tokyo-night"
-  ["dracula"]="https://github.com/basecamp/omarchy-theme-dracula"
-  ["rose-pine"]="https://github.com/basecamp/omarchy-theme-rose-pine"
-  ["everforest"]="https://github.com/basecamp/omarchy-theme-everforest"
-  ["kanagawa"]="https://github.com/basecamp/omarchy-theme-kanagawa"
-  ["solarized"]="https://github.com/basecamp/omarchy-theme-solarized"
-  ["one-dark"]="https://github.com/basecamp/omarchy-theme-one-dark"
-)
-
-list_themes() {
-  echo -e "\e[32mAvailable themes:\e[0m"
-  for theme in "${!KNOWN_THEMES[@]}"; do
-    echo "  $theme"
-  done | sort
-  echo ""
-  echo "Or provide a custom git URL"
-}
+# syna-theme-install: Install a new theme from a git repo
+# Usage: syna-theme-install <git-repo-url>
+# Example: syna-theme-install https://github.com/user/custom-theme
 
 if [ -z "$1" ]; then
-  list_themes
+  echo "Usage: syna-theme-install <git-repo-url>"
   echo ""
-  INPUT=$(gum input --placeholder="Theme name or git URL" --header="")
+  echo "Example: syna-theme-install https://github.com/user/my-theme"
+  echo ""
+  INPUT=$(gum input --placeholder="Git URL for theme repo" --header="")
 else
-  if [ "$1" == "--list" ] || [ "$1" == "-l" ]; then
-    list_themes
-    exit 0
-  fi
   INPUT="$1"
 fi
 
@@ -45,19 +18,9 @@ if [ -z "$INPUT" ]; then
   exit 1
 fi
 
-# Check if input is a known theme name or a URL
-if [[ "$INPUT" =~ ^https?:// ]]; then
-  REPO_URL="$INPUT"
-  THEME_NAME=$(basename "$REPO_URL" .git | sed -E 's/^omarchy-theme-//; s/^syna-//; s/-theme$//')
-elif [[ -n "${KNOWN_THEMES[$INPUT]}" ]]; then
-  REPO_URL="${KNOWN_THEMES[$INPUT]}"
-  THEME_NAME="$INPUT"
-else
-  echo "Unknown theme: $INPUT"
-  echo ""
-  list_themes
-  exit 1
-fi
+# Extract theme name from URL
+REPO_URL="$INPUT"
+THEME_NAME=$(basename "$REPO_URL" .git | sed -E 's/^syna-//; s/-theme$//')
 
 THEMES_DIR="$HOME/.config/themes"
 THEME_PATH="$THEMES_DIR/$THEME_NAME"

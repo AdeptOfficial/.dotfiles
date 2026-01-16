@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# Reload opencode configuration (used by the Omarchy theme switching).
+# Reload opencode configuration (used by Syna theme switching).
 
 killall -SIGUSR2 opencode 2>/dev/null || true

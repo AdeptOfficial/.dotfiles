@@ -40,11 +40,11 @@ fi
 case "$LOG_TYPE" in
 install)
   ARCHINSTALL_LOG="/var/log/archinstall/install.log"
-  OMARCHY_LOG="/var/log/syna-install.log"
+  SYNA_LOG="/var/log/syna-install.log"
 
   # Combine system info with logs
   cat "$SYSTEM_INFO" >"$TEMP_LOG"
-  cat $ARCHINSTALL_LOG $OMARCHY_LOG >>"$TEMP_LOG" 2>/dev/null
+  cat $ARCHINSTALL_LOG $SYNA_LOG >>"$TEMP_LOG" 2>/dev/null
 
   if [ ! -s "$TEMP_LOG" ]; then
     echo "Error: No install logs found"

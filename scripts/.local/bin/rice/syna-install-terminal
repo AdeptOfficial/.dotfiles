@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Install one of the approved terminals and set it as the default for Omarchy (Super + Return etc).
+# Install one of the approved terminals and set it as the default (Super + Return etc).
 
 if (($# == 0)); then
   echo "Usage: syna-install-terminal [alacritty|ghostty|kitty]"

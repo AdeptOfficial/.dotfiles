@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# Creates a new Omarchy migration named after the unix timestamp of the last commit.
-# Only intended for Omarchy developers.
+# Legacy script - not used on standalone CachyOS setup.
+# Original purpose: create migration scripts for Omarchy updates.
 
-cd ~/.local/share/omarchy
-migration_file="$HOME/.local/share/omarchy/migrations/$(git log -1 --format=%cd --date=unix).sh"
+echo "This script is not used on standalone CachyOS setup."
+exit 1
+
+# cd ~/.local/share/omarchy
+# migration_file="$HOME/.local/share/omarchy/migrations/$(git log -1 --format=%cd --date=unix).sh"
 touch $migration_file
 
 if [[ "$1" != "--no-edit" ]]; then
