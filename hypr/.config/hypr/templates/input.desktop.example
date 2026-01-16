@@ -1,0 +1,14 @@
+# Desktop input overrides - Gaming mouse settings
+input {
+    numlock_by_default = true
+
+    # FPS-friendly: no acceleration curve (raw input)
+    accel_profile = flat
+
+    # Global mouse sensitivity (applies to all mice)
+    # Range: -1.0 to 1.0, negative = slower, 0 = default
+    sensitivity = -0.3
+
+    # Mouse scroll speed
+    scroll_factor = 2.0
+}

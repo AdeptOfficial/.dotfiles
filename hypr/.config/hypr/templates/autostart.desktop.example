@@ -1,0 +1,3 @@
+# Desktop autostart overrides - Dual monitor layout
+# btop on workspace 6 (secondary monitor)
+exec-once = [workspace 6 silent] ghostty -e btop

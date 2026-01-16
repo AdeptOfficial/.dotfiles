@@ -4,5 +4,10 @@
 .DS_Store
 *.backup*
 
+# Machine-specific local overrides (never tracked)
+hypr/.config/hypr/monitors.local.conf
+hypr/.config/hypr/input.local.conf
+hypr/.config/hypr/autostart.local.conf
+
 # Legacy configs - not needed on CachyOS
 rice/.config/rice/defaults/pacman/

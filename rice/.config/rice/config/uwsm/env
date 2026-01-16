@@ -1,5 +1,11 @@
 # Changes require a restart to take effect.
 
+# Ensure .local.conf files exist before Hyprland parses config
+# (safety net - install.sh should have created these)
+for f in monitors input autostart; do
+  [[ -f "$HOME/.config/hypr/${f}.local.conf" ]] || touch "$HOME/.config/hypr/${f}.local.conf"
+done
+
 # Rice scripts path
 export RICE_PATH=$HOME/.config
 export PATH=$HOME/.local/bin/rice:$PATH

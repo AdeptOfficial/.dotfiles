@@ -59,6 +59,14 @@ for cmd in git sudo; do
   fi
 done
 
+# Parse optional flags
+FORCE_OVERWRITE=false
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE_OVERWRITE=true ;;
+  esac
+done
+
 # Ensure AUR/yay prerequisites are installed (--needed skips if present)
 sudo pacman -S --needed --noconfirm base-devel git
 
@@ -290,34 +298,84 @@ fi
 mkdir -p ~/Pictures/Screenshots
 
 # ============================================
-# 7. Apply profile
+# 7. Apply profile (local override pattern)
 # ============================================
-# ============================================
-# Machine-Specific Config Pattern:
-# ============================================
-# Stowed files = your primary desktop config
-# *.default.conf = generic templates (auto-detect, works anywhere)
-# *.laptop.conf = G14-specific settings
+# Machine-specific configs go in .local.conf files (gitignored).
+# Stowed configs source these files, allowing per-machine customization
+# without git conflicts.
 #
-# For NEW machines:
-# - Laptop: ./install.sh laptop (uses *.laptop.conf)
-# - VM: auto-detected, uses *.default.conf
-# - New desktop: customize ~/.config/hypr/*.conf after install
+# Templates in hypr/.config/hypr/templates/:
+# - *.laptop.example  = G14-specific
+# - *.default.example = Generic/VM
+# - *.desktop.example = Desktop reference
 # ============================================
 
 echo -e "${GREEN}[7/9] Applying $PROFILE profile...${NC}"
-if [[ "$PROFILE" == "laptop" ]]; then
-  # Laptop: use laptop-specific configs
-  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/input.conf ~/.config/hypr/autostart.conf
-  cp ~/.dotfiles/hypr/.config/hypr/monitors.laptop.conf ~/.config/hypr/monitors.conf
-  cp ~/.dotfiles/hypr/.config/hypr/input.laptop.conf ~/.config/hypr/input.conf
-elif [[ "$(systemd-detect-virt)" != "none" ]]; then
-  # VM: use generic defaults (auto-detect monitors)
-  rm -f ~/.config/hypr/monitors.conf ~/.config/hypr/autostart.conf
-  cp ~/.dotfiles/hypr/.config/hypr/monitors.default.conf ~/.config/hypr/monitors.conf
-  cp ~/.dotfiles/hypr/.config/hypr/autostart.default.conf ~/.config/hypr/autostart.conf
+
+TEMPLATES_DIR="$HOME/.dotfiles/hypr/.config/hypr/templates"
+
+# Determine effective profile (VM overrides user choice)
+if [[ "$(systemd-detect-virt)" != "none" ]]; then
+  EFFECTIVE_PROFILE="vm"
+  echo -e "${YELLOW}VM detected - using default templates${NC}"
+else
+  EFFECTIVE_PROFILE="$PROFILE"
 fi
-# Physical desktop: uses stowed config (your setup)
+
+# Get template path for a config file and profile
+get_template() {
+  local file="$1"  # monitors, input, or autostart
+  local profile="$2"  # laptop, vm, or desktop
+  case "$profile" in
+    laptop)  echo "$TEMPLATES_DIR/${file}.laptop.example" ;;
+    vm)      echo "$TEMPLATES_DIR/${file}.default.example" ;;
+    desktop) echo "$TEMPLATES_DIR/${file}.desktop.example" ;;
+  esac
+}
+
+# Create .local.conf if missing (idempotent)
+create_local_if_missing() {
+  local target="$1"
+  local template="$2"
+  if [[ -f "$target" && "$FORCE_OVERWRITE" != "true" ]]; then
+    echo "  Keeping existing: $(basename "$target")"
+    return
+  fi
+  if [[ -n "$template" && -f "$template" ]]; then
+    cp "$template" "$target"
+    echo "  Created: $(basename "$target") (from $(basename "$template"))"
+  else
+    touch "$target"
+    echo "  Created: $(basename "$target") (empty)"
+  fi
+}
+
+# Create .local.conf files from templates
+echo "Creating machine-specific configs in ~/.config/hypr/:"
+for f in monitors input autostart; do
+  template="$(get_template "$f" "$EFFECTIVE_PROFILE")"
+  create_local_if_missing "$HOME/.config/hypr/${f}.local.conf" "$template"
+done
+
+# Migrate legacy configs if present (from old profile-switch pattern)
+migrate_legacy_config() {
+  local legacy="$1"
+  local target="$2"
+  [[ -f "$legacy" && ! -L "$legacy" ]] || return 0
+  if [[ -f "$target" ]]; then
+    echo -e "${YELLOW}  Found legacy: $(basename "$legacy") (target exists, skipping)${NC}"
+  else
+    mv "$legacy" "$target"
+    echo "  Migrated: $(basename "$legacy") → $(basename "$target")"
+  fi
+}
+
+echo "Checking for legacy configs to migrate:"
+for f in monitors input autostart; do
+  for suffix in desktop laptop default; do
+    migrate_legacy_config "$HOME/.config/hypr/${f}.${suffix}.conf" "$HOME/.config/hypr/${f}.local.conf"
+  done
+done
 
 # ============================================
 # 8. Set default browser
