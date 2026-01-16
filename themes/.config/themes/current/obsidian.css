@@ -1,4 +1,4 @@
-/* Adept Theme for Obsidian */
+/* Syna Theme for Obsidian */
 
 .theme-dark, .theme-light {
   /* Core colors */

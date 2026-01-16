@@ -93,7 +93,7 @@
   (box :class "widget profile-box" :orientation "h" :hexpand false :vexpand true :valign "fill"
     (box :orientation "h" :space-evenly false :spacing 16 :halign "center" :valign "center" :hexpand true
       (box :class "profile-pic"
-        (image :class "profile-img" :path "/home/adept/.config/eww/assets/profile.png" :image-width 56 :image-height 56))
+        (image :class "profile-img" :path "${EWW_CONFIG_DIR}/assets/profile.png" :image-width 56 :image-height 56))
       (box :orientation "v" :space-evenly false :spacing 6 :valign "center"
         (box :orientation "h" :space-evenly false :spacing 8
           (label :class "sysinfo-icon" :text "󰣇")
@@ -170,7 +170,7 @@
       ; Album art (left, prominent)
       (box :class "album-art-frame"
         (image :class "album-art-image"
-               :path {media?.art != "" ? media?.art : "/home/adept/.config/eww/assets/no-album.png"}
+               :path {media?.art != "" ? media?.art : "${EWW_CONFIG_DIR}/assets/no-album.png"}
                :image-width 200 :image-height 200))
       ; Controls stack (right of art)
       (box :class "media-controls" :orientation "v" :space-evenly false :spacing 10 :valign "center" :hexpand true

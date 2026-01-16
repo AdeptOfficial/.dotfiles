@@ -1,0 +1,3 @@
+# Default autostart overrides - Generic/VM
+# btop on workspace 4 (generic single-monitor layout)
+exec-once = [workspace 4 silent] ghostty -e btop

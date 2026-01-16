@@ -2,6 +2,22 @@
 # Cava audio visualizer for EWW
 # Outputs Unicode bar characters based on audio levels
 
+# Debug logging - helps diagnose eww freezes
+DEBUG_LOG="$HOME/.cache/eww/debug/cava-eww.log"
+mkdir -p "$(dirname "$DEBUG_LOG")"
+log_debug() { echo "[$(date '+%H:%M:%S')] $1" >> "$DEBUG_LOG"; }
+log_debug "=== cava-eww.sh started (PID $$) ==="
+
+# Heartbeat logger in background
+(
+  while true; do
+    sleep 30
+    log_debug "heartbeat (30s) - cava pipeline running"
+  done
+) &
+HEARTBEAT_PID=$!
+trap "kill $HEARTBEAT_PID 2>/dev/null" EXIT
+
 cava -p <(cat <<EOF
 [general]
 framerate = 30

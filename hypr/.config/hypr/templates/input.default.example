@@ -1,0 +1,8 @@
+# Default input overrides - Generic/VM
+# Uses stowed defaults from input.conf (no overrides needed)
+#
+# Add machine-specific input settings here if needed:
+# input {
+#     sensitivity = 0
+#     accel_profile = adaptive
+# }
