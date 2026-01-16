@@ -5,6 +5,12 @@
 CACHE_DIR="$HOME/.cache/eww/album-art"
 mkdir -p "$CACHE_DIR"
 
+# Debug logging - helps diagnose eww freezes
+DEBUG_LOG="$HOME/.cache/eww/debug/media-listen.log"
+mkdir -p "$(dirname "$DEBUG_LOG")"
+log_debug() { echo "[$(date '+%H:%M:%S')] $1" >> "$DEBUG_LOG"; }
+log_debug "=== media-listen.sh started (PID $$) ==="
+
 # Function to get current media state
 get_media_state() {
     local PLAYERS=$(playerctl -l 2>/dev/null)
@@ -78,21 +84,31 @@ get_media_state() {
 }
 
 # Output initial state
+log_debug "Outputting initial state"
 get_media_state
 
 # Follow all players for any changes and re-output state
 # Using -a to follow all players, -F for follow mode
+log_debug "Starting playerctl follow loop"
 playerctl -a -F metadata --format '{{status}}' 2>/dev/null | while read -r _; do
+    log_debug "playerctl event received"
     get_media_state
 done &
 
 # Also update on volume changes via pactl subscribe
+log_debug "Starting pactl subscribe loop"
 pactl subscribe 2>/dev/null | grep --line-buffered "sink" | while read -r _; do
+    log_debug "pactl sink event received"
     get_media_state
 done &
 
 # Update position every second (for progress bar)
+log_debug "Starting main position update loop"
+heartbeat_counter=0
 while true; do
     sleep 1
+    ((heartbeat_counter++))
+    # Log heartbeat every 30 seconds to avoid log spam
+    ((heartbeat_counter % 30 == 0)) && log_debug "heartbeat (30s) - still running"
     get_media_state
 done

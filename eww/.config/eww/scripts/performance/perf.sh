@@ -12,6 +12,12 @@
 
 set -u
 
+# Debug logging - helps diagnose eww freezes
+DEBUG_LOG="$HOME/.cache/eww/debug/perf.log"
+mkdir -p "$(dirname "$DEBUG_LOG")"
+log_debug() { echo "[$(date '+%H:%M:%S')] $1" >> "$DEBUG_LOG"; }
+log_debug "=== perf.sh started (PID $$) ==="
+
 # === Normalize label for comparison ===
 # Lowercase + remove all non-alphanumeric (handles "Package id 0", "Package_ID_0", etc.)
 # NOTE: Only called during startup (detection phase), NOT in the hot loop
@@ -331,6 +337,9 @@ while true; do
 
   # --- Output (temps as integers with validity flags) ---
   echo "{\"cpu\":{\"percent\":${cpu_pct},\"temp\":${cpu_temp},\"temp_ok\":${cpu_temp_ok}},\"ram\":{\"percent\":${mem_pct},\"used\":\"${mem_used}\"},\"gpu\":{\"vendor\":\"${GPU_VENDOR}\",\"percent\":${gpu_pct},\"temp\":${gpu_temp},\"temp_ok\":${gpu_temp_ok}},\"net\":{\"rx\":\"${net_rx_fmt}\",\"rx_unit\":\"${net_rx_unit}\",\"tx\":\"${net_tx_fmt}\",\"tx_unit\":\"${net_tx_unit}\",\"activity\":${net_activity}},\"disk\":{\"percent\":${disk_pct},\"used\":\"${disk_used}\"}}"
+
+  # Log heartbeat every 30 seconds (15 loops * 2s sleep)
+  ((loop_count % 15 == 0)) && log_debug "heartbeat (30s) - loop $loop_count"
 
   ((loop_count++))
   sleep "$SLEEP_INTERVAL"
