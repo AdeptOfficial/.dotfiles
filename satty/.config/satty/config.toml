@@ -5,7 +5,7 @@ corner-roundness = 12
 initial-tool = "arrow"
 brush-smooth-history-size = 5
 no-window-decoration = true
-output-filename = "/home/adept/Pictures/Screenshots/screenshot-%Y-%m-%d_%H-%M-%S.png"
+output-filename = "~/Pictures/Screenshots/screenshot-%Y-%m-%d_%H-%M-%S.png"
 
 actions-on-enter = ["save-to-clipboard", "save-to-file", "exit"]
 actions-on-escape = ["exit"]
