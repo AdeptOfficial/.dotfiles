@@ -17,7 +17,7 @@ FILES:
   Log:  /tmp/audio-daemon.log (when DEBUG=1)
   PID:  /tmp/syna-audio-opacity.pid
 
-DOCS: ~/.adept/issues/resolved/helium-browser-audio-opacity.md
+DOCS: ~/.syna/issues/resolved/helium-browser-audio-opacity.md
 """
 
 import atexit
