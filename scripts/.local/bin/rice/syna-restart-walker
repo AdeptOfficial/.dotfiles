@@ -1,15 +1,20 @@
 #!/bin/bash
 
 restart_services() {
+  # Restart elephant if running as systemd service
   if systemctl --user is-enabled elephant.service &>/dev/null; then
     systemctl --user restart elephant.service
   fi
 
-  if systemctl --user is-enabled app-walker@autostart.service &>/dev/null; then
-    systemctl --user restart app-walker@autostart.service
-  else
-    echo -e "\e[31mUnable to restart Walker -- RESTART MANUALLY\e[0m"
+  # Restart walker - kill and relaunch as gapplication service
+  if pgrep -x walker >/dev/null; then
+    pkill -x walker
+    sleep 0.5
   fi
+  # Start walker in background (gapplication service mode)
+  walker --gapplication-service &>/dev/null &
+  disown
+  echo "Walker restarted"
 }
 
 if [[ $EUID -eq 0 ]]; then
