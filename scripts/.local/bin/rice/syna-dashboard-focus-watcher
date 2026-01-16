@@ -1,6 +1,6 @@
 #!/bin/bash
-# Watch for window focus changes and close EWW dashboard
-# Only closes when user explicitly clicks/focuses a different window AFTER dashboard has been open
+# Watch for window focus changes and close EWW syna-dashboard
+# Only closes when user explicitly clicks/focuses a different window AFTER syna-dashboard has been open
 
 LAST_WINDOW=""
 DASHBOARD_WAS_OPEN=false
@@ -9,8 +9,8 @@ COOLDOWN_UNTIL=0
 while true; do
     CURRENT_TIME=$(date +%s)
 
-    # Check if dashboard is currently open
-    if eww active-windows 2>/dev/null | grep -q "dashboard"; then
+    # Check if syna-dashboard is currently open
+    if eww active-windows 2>/dev/null | grep -q "syna-dashboard"; then
         # Dashboard is open
         if [[ "$DASHBOARD_WAS_OPEN" == false ]]; then
             # Dashboard just opened - start cooldown (1.5 seconds)
@@ -28,7 +28,7 @@ while true; do
 
             # Only close if a real window (with class) gets focus AND it's different from baseline
             if [[ -n "$WINDOW_CLASS" && -n "$CURRENT_WINDOW" && "$CURRENT_WINDOW" != "$LAST_WINDOW" ]]; then
-                eww close dashboard
+                eww close syna-dashboard
                 DASHBOARD_WAS_OPEN=false
             fi
         fi

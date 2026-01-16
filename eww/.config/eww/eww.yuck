@@ -151,7 +151,7 @@
       (button :class "control-btn" :tooltip "Settings" "󰒓"))))
 
 ; ============ Dashboard Tab Content ============
-(defwidget dashboard-content []
+(defwidget syna-dashboard-content []
   (box :orientation "v" :space-evenly false :spacing 10 :hexpand true
     ; Top row: Weather | Profile+Sysinfo (expand) | Media
     (box :orientation "h" :space-evenly false :spacing 10 :hexpand true
@@ -337,10 +337,10 @@
     (label :class "placeholder-text" :text "Workspaces - To be implemented")))
 
 ; ============ Main Dashboard ============
-(defwidget dashboard []
+(defwidget syna-dashboard []
   ; NOTE: Hover auto-close disabled for now - using keybind instead
-  ; (eventbox :onhoverlost "eww close dashboard" ...)
-  (box :class "dashboard" :orientation "v" :space-evenly false :spacing 0
+  ; (eventbox :onhoverlost "eww close syna-dashboard" ...)
+  (box :class "syna-dashboard" :orientation "v" :space-evenly false :spacing 0
     ; Hidden labels to keep deflisten variables alive (must be in mounted widget)
     (box :class "sr-only"
       (label :text cava)
@@ -348,13 +348,13 @@
       (label :text {perf?.cpu?.percent ?: 0}))
     (tabs)
     (box :class "content" :orientation "v" :hexpand true
-      (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
+      (literal :content {active-tab == "dashboard" ? "(syna-dashboard-content)" :
                          active-tab == "media" ? "(media-content)" :
                          active-tab == "performance" ? "(performance-content)" :
                          "(workspaces-content)"}))))
 
 ; ============ Window Definition ============
-(defwindow dashboard
+(defwindow syna-dashboard
   :geometry (geometry :x "0%"
                       :y "0px"
                       :width "50%"
@@ -362,14 +362,14 @@
   :stacking "overlay"
   :exclusive false
   :focusable false
-  (dashboard))
+  (syna-dashboard))
 
 ; ============ Hover Trigger Zone (DISABLED) ============
-; NOTE: Hover zones disabled - using keybind to toggle dashboard instead
+; NOTE: Hover zones disabled - using keybind to toggle syna-dashboard instead
 ; To re-enable: rename windows back to hover-zone-0/1 and uncomment eventbox above
 
 (defwidget hover-trigger [monitor]
-  (eventbox :onhover "eww update cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y) && eww open dashboard --screen ${monitor}"
+  (eventbox :onhover "eww update cal-day=$(date +%d) cal-month=$(date +%m) cal-year=$(date +%Y) && eww open syna-dashboard --screen ${monitor}"
     (box :class "hover-zone")))
 
 (defwindow _disabled_hover-zone-0

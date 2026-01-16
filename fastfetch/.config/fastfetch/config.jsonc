@@ -68,7 +68,7 @@
       "type": "command",
       "key": "\ue900 OS",
       "keyColor": "#00ff88",
-      "text": "version=$(syna-version); echo \"AdeptOS\""
+      "text": "version=$(syna-version); echo \"SynaOS\""
     },
     {
       "type": "kernel",
