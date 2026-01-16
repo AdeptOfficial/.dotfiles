@@ -11,10 +11,10 @@ Crafted for a workspace that looks poised yet dynamic — where focus doesn’t 
 
 # Installation Theme
 
-To install this theme, simply use the adept-theme-install command:
+To install this theme, simply use the syna-theme-install command:
 
 ```bash
-adept-theme-install https://github.com/HANCORE-linux/adept-sapphire-theme.git
+syna-theme-install https://github.com/HANCORE-linux/adept-sapphire-theme.git
 ```
 ## Vesktop-Theme
 For Vesktop users, you can install this theme by copying the theme file to your Vesktop themes directory:

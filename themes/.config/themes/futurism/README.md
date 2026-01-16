@@ -11,7 +11,7 @@ A cyberpunk-inspired theme with neon accents.
 This theme is included in the dotfiles. To activate:
 
 ```bash
-adept-theme-set futurism
+syna-theme-set futurism
 ```
 
 ## Credits

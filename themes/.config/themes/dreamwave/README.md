@@ -41,7 +41,7 @@ Designed for Neovim, Alacritty, btop, and Hyprland Walker menus, Dreamwave provi
 
 Install using:
 ```bash
-adept-theme-install https://github.com/RiO7MAKK3R/adept-dreamwave-theme.git
+syna-theme-install https://github.com/RiO7MAKK3R/adept-dreamwave-theme.git
 ```
 OR 
 

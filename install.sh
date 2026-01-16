@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Adept Rice Bootstrap Script
+# Syna Rice Bootstrap Script
 # Run after fresh CachyOS minimal (CLI) install
 #
 # Usage:
@@ -80,7 +80,7 @@ NC='\033[0m'
 
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════╗"
-echo "║       Adept Rice Bootstrap Script         ║"
+echo "║        Syna Rice Bootstrap Script         ║"
 echo "╚═══════════════════════════════════════════╝"
 echo -e "${NC}"
 

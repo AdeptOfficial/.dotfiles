@@ -1,4 +1,4 @@
-# Adept Rice Dotfiles
+# Syna Rice Dotfiles
 
 Custom dotfiles for CachyOS (Arch-based) with Hyprland using GNU Stow.
 
