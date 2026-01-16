@@ -220,8 +220,9 @@ fi
 # VM-specific packages (only if running in a VM)
 if [[ "$(systemd-detect-virt)" != "none" ]]; then
   echo -e "${GREEN}[4c/9] Installing VM guest tools...${NC}"
-  sudo pacman -S --needed --noconfirm qemu-guest-agent
+  sudo pacman -S --needed --noconfirm qemu-guest-agent spice-vdagent
   sudo systemctl enable qemu-guest-agent
+  sudo systemctl enable spice-vdagentd
 fi
 
 # ============================================
