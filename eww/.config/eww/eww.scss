@@ -578,6 +578,7 @@ calendar.header {
   padding: 12px 20px 10px 20px;
   min-width: 150px;
   opacity: 0;
+  margin-top: 20px;
   animation: cardFadeIn 0.4s ease-out forwards;
 }
 
@@ -595,8 +596,14 @@ calendar.header {
 .delay-4 { animation-delay: 400ms; }
 
 @keyframes cardFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+    margin-top: 20px;
+  }
+  to {
+    opacity: 1;
+    margin-top: 0px;
+  }
 }
 
 // Card icon - centered above ring
