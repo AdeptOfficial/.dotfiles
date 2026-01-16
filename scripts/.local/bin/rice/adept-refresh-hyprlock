@@ -1,5 +1,0 @@
-#!/bin/bash
-
-# Overwrite the user config for hyprlock with the Omarchy default.
-
-adept-refresh-config hypr/hyprlock.conf

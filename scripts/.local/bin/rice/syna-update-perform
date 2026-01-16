@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+# Ensure screensaver/sleep doesn't set in during updates
+hyprctl dispatch tagwindow +noidle &> /dev/null || true
+
+# Perform all update steps
+syna-update-time
+syna-update-keyring
+syna-update-available-reset
+syna-update-system-pkgs
+syna-migrate
+syna-hook post-update
+syna-update-restart
+
+# Re-enable screensaver/sleep after updates
+hyprctl dispatch tagwindow -- -noidle &> /dev/null || true

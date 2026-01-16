@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Screenshot using grimblast (captures overlay layers) + satty (annotation)
+# Usage: syna-cmd-screenshot [region|window|output] [clipboard]
+#   region (default): Select area
+#   window: Capture active window
+#   output: Capture focused monitor
+#   clipboard: Skip annotation, copy directly
+
+[[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
+OUTPUT_DIR="${RICE_SCREENSHOT_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots}"
+
+if [[ ! -d "$OUTPUT_DIR" ]]; then
+  notify-send "Screenshot directory does not exist: $OUTPUT_DIR" -u critical -t 3000
+  exit 1
+fi
+
+# Cancel any existing selection
+pkill slurp && exit 0
+
+MODE="${1:-region}"
+PROCESSING="${2:-edit}"
+
+# Map old mode names for compatibility
+case "$MODE" in
+  smart) MODE="region" ;;
+  windows) MODE="window" ;;
+  fullscreen) MODE="output" ;;
+esac
+
+# Check if --freeze is supported (fallback if not)
+FREEZE=""
+if [[ "$MODE" == "region" ]]; then
+  if grimblast --help 2>&1 | grep -q "\-\-freeze\|\-f"; then
+    FREEZE="--freeze"
+  fi
+fi
+
+case "$MODE" in
+  region)
+    TARGET="area"
+    ;;
+  window)
+    TARGET="active"
+    ;;
+  output)
+    TARGET="output"
+    ;;
+  *)
+    TARGET="area"
+    ;;
+esac
+
+if [[ $PROCESSING == "clipboard" ]]; then
+  # Direct to clipboard with notification
+  grimblast --notify $FREEZE copy $TARGET
+else
+  # Capture with grimblast, annotate with satty
+  grimblast $FREEZE save $TARGET - | satty --filename - \
+    --output-filename "$OUTPUT_DIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
+fi

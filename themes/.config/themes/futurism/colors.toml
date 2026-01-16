@@ -1,9 +1,11 @@
 accent = "#00ff88"
-cursor = "#00ff88"
+cursor = "#8be9fd"
 foreground = "#F0F8FF"
 background = "#0A1428"
 selection_foreground = "#0A1428"
 selection_background = "#00ff88"
+border_top = "#8be9fd"
+border_bottom = "#ffffff"
 
 color0 = "#0A1428"
 color1 = "#ff5555"

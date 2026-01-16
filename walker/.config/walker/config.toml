@@ -46,4 +46,4 @@ provider = "clipboard"
 
 [[emergencies]]
 text = "Restart Walker"
-command = "adept-restart-walker"
+command = "syna-restart-walker"

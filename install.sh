@@ -330,8 +330,8 @@ xdg-settings set default-web-browser helium.desktop 2>/dev/null || true
 # ============================================
 echo -e "${GREEN}[9/9] Setting theme...${NC}"
 export PATH="$HOME/.local/bin/rice:$PATH"
-if [[ -x ~/.local/bin/rice/adept-theme-set ]]; then
-  ~/.local/bin/rice/adept-theme-set futurism 2>/dev/null || true
+if [[ -x ~/.local/bin/rice/syna-theme-set ]]; then
+  ~/.local/bin/rice/syna-theme-set futurism 2>/dev/null || true
 fi
 
 # ============================================
@@ -355,9 +355,9 @@ if [[ "$PROFILE" == "laptop" ]]; then
   echo ""
 fi
 echo "Useful commands:"
-echo "  - Switch theme: adept-theme-set <name>"
-echo "  - Install theme: adept-theme-install <name>"
-echo "  - Menu: adept-menu (or SUPER+ALT+SPACE)"
+echo "  - Switch theme: syna-theme-set <name>"
+echo "  - Install theme: syna-theme-install <name>"
+echo "  - Menu: syna-menu (or SUPER+ALT+SPACE)"
 echo ""
 echo -e "${YELLOW}Note: If audio doesn't work after reboot, run:${NC}"
 echo "  systemctl --user restart pipewire pipewire-pulse wireplumber"

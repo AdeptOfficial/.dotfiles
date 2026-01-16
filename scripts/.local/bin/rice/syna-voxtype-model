@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+
+syna-launch-floating-terminal-with-presentation "voxtype setup model"
+syna-restart-waybar

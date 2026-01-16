@@ -67,7 +67,7 @@ hyprctl reload
 ├── shell/          # Starship prompt
 ├── themes/         # Theme definitions and templates
 ├── rice/           # Rice configuration
-├── scripts/        # adept-* utility scripts
+├── scripts/        # syna-* utility scripts
 ├── alacritty/      # Alacritty terminal
 ├── ghostty/        # Ghostty terminal
 ├── kitty/          # Kitty terminal
@@ -89,15 +89,15 @@ Switch themes using the rice scripts:
 
 ```bash
 # List available themes
-adept-theme-list
+syna-theme-list
 
 # Set a theme
-adept-theme-set futurism
-adept-theme-set catppuccin
-adept-theme-set tokyo-night
+syna-theme-set futurism
+syna-theme-set catppuccin
+syna-theme-set tokyo-night
 
 # Install new themes
-adept-theme-install <name>
+syna-theme-install <name>
 ```
 
 Available themes: ado, catppuccin, dreamwave, futurism, gruvbox, nord, sapphire, tokyo-night
@@ -141,31 +141,31 @@ Located in `fish/.config/fish/conf.d/aliases.fish`:
 
 ## Rice Scripts
 
-The `scripts/` package includes 100+ utilities prefixed with `adept-`:
+The `scripts/` package includes 100+ utilities prefixed with `syna-`:
 
 ```bash
 # System
-adept-menu              # Main menu (SUPER+ALT+SPACE)
-adept-update            # System update
-adept-lock-screen       # Lock screen
+syna-menu              # Main menu (SUPER+ALT+SPACE)
+syna-update            # System update
+syna-lock-screen       # Lock screen
 
 # Theming
-adept-theme-set         # Change theme
-adept-theme-list        # List themes
-adept-theme-install     # Install theme
+syna-theme-set         # Change theme
+syna-theme-list        # List themes
+syna-theme-install     # Install theme
 
 # Launchers
-adept-launch-browser    # Open browser
-adept-launch-terminal   # Open terminal
-adept-launch-walker     # Application launcher
+syna-launch-browser    # Open browser
+syna-launch-terminal   # Open terminal
+syna-launch-walker     # Application launcher
 
 # Screenshots
-adept-cmd-screenshot    # Take screenshot
-adept-cmd-screenrecord  # Screen recording
+syna-cmd-screenshot    # Take screenshot
+syna-cmd-screenrecord  # Screen recording
 
 # Toggles
-adept-toggle-waybar     # Toggle status bar
-adept-toggle-nightlight # Toggle night light
+syna-toggle-waybar     # Toggle status bar
+syna-toggle-nightlight # Toggle night light
 ```
 
 ## Machine-Specific Configs

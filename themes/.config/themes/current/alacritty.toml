@@ -1,1 +1,47 @@
-/home/adept/.config/themes/futurism/alacritty.toml
+[colors.primary]
+background = "#0A1428"
+foreground = "#F0F8FF"
+
+[colors.cursor]
+text = "#0A1428"
+cursor = "#8be9fd"
+
+[colors.vi_mode_cursor]
+text = "#0A1428"
+cursor = "#8be9fd"
+
+[colors.search.matches]
+foreground = "#0A1428"
+background = "#f1fa8c"
+
+[colors.search.focused_match]
+foreground = "#0A1428"
+background = "#ff5555"
+
+[colors.footer_bar]
+foreground = "#0A1428"
+background = "#F0F8FF"
+
+[colors.selection]
+text = "#0A1428"
+background = "#00ff88"
+
+[colors.normal]
+black = "#0A1428"
+red = "#ff5555"
+green = "#00ff88"
+yellow = "#f1fa8c"
+blue = "#2C5A9A"
+magenta = "#ff79c6"
+cyan = "#8be9fd"
+white = "#F0F8FF"
+
+[colors.bright]
+black = "#1a2a48"
+red = "#ff6e6e"
+green = "#69ff94"
+yellow = "#ffffa5"
+blue = "#4d8fcc"
+magenta = "#ff92df"
+cyan = "#a4ffff"
+white = "#ffffff"

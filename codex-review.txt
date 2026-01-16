@@ -1,0 +1,63 @@
+Planned changes for install.sh (not yet applied):
+
+1) Preflight checks
+   - Refuse to run as root; require sudo to be present.
+   - Install pciutils if lspci is missing (for GPU detection).
+
+2) Enable multilib if needed
+   - Uncomment [multilib] block in /etc/pacman.conf when present.
+   - Run pacman -Sy after enabling, warn if block missing.
+
+3) AUR helper install robustness
+   - Remove any existing /tmp/yay before cloning.
+
+4) Add missing dependency
+   - Install xdg-utils since xdg-settings is used later.
+
+5) Handle /tmp noexec for yay builds
+   - Some installs mount /tmp with noexec; consider cloning/building in ~/builds/yay.
+
+6) Optional: prompt when /etc/pacman.conf is missing multilib block
+   - Emit guidance to manually enable multilib if needed for lib32 drivers.
+
+7) Optional: better failure messaging
+   - Add a short message if GPU detection fails (no lspci) and continue with no GPU packages.
+
+8) Ensure required services/user units exist
+   - Validate systemd user session is available before enabling pipewire services.
+   - If not (e.g. no user session during SSH), print instructions to enable on first login.
+
+9) Network readiness
+   - Minimal installs may not have networking enabled; check NetworkManager state and
+     warn if no connectivity (AUR steps will fail without internet).
+
+10) Make pkg list resilient
+    - Add --needed consistently and avoid failing if optional packages are missing.
+    - For AUR installs, consider split batches so one failure does not abort all.
+
+11) Fonts and locale
+    - Ensure locale is generated and set to avoid font/emoji render issues.
+    - Optionally install noto-fonts-cjk for wider coverage.
+
+12) Hyprland prerequisites
+    - Ensure seat management works (e.g. seatd or logind); confirm uwsm present.
+    - Warn if running in TTY without proper session.
+
+13) Backup behavior for stow
+    - Provide timestamped backups instead of overwriting .backup on re-run.
+
+14) XDG defaults
+    - If helium is not installed or desktop entry missing, warn and skip default browser.
+
+15) Idempotency
+    - Re-running should not move configs again if backups already exist.
+    - Avoid failing when a directory is already a symlink.
+
+16) Profile validation
+    - Validate profile arg values and show usage on invalid input.
+
+17) Cleanup
+    - Remove /tmp/yay after install to avoid stale builds.
+
+18) Optional dry-run mode
+    - Add a flag (e.g. --dry-run) to print actions without executing.

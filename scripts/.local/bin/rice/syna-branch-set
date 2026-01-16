@@ -1,0 +1,4 @@
+#!/bin/bash
+# Alias for syna-update-branch (set dotfiles git branch)
+
+exec syna-update-branch "$@"

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Switch git branch for dotfiles
+
+set -e
+
+if [[ ! -d "$HOME/.dotfiles/.git" ]]; then
+  echo "No git repo at ~/.dotfiles"
+  exit 1
+fi
+
+if (($# == 0)); then
+  echo "Usage: syna-update-branch <branch>"
+  echo ""
+  echo "Available branches:"
+  git -C ~/.dotfiles branch -a | sed 's/^/  /'
+  exit 1
+fi
+
+branch="$1"
+
+cd ~/.dotfiles
+git fetch origin
+git checkout "$branch"
+git pull
+
+echo "Switched to $branch"

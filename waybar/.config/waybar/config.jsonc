@@ -44,14 +44,14 @@
   "custom/menu": {
     //"format": "<span font='omarchy'>\ue900</span>",
     "format": "󰣇",
-    "on-click": "adept-menu",
+    "on-click": "syna-menu",
     "on-click-right": "xdg-terminal-exec",
     "tooltip-format": "Menu\n\nSuper + Alt + Space"
   },
   "cpu": {
     "interval": 5,
     "format": "󰍛",
-    "on-click": "adept-launch-or-focus-tui btop"
+    "on-click": "syna-launch-or-focus-tui btop"
   },
   "clock": {
     "format": "{:%H:%M:%S}",
@@ -69,7 +69,7 @@
     "tooltip-format-disconnected": "Disconnected",
     "interval": 3,
     "spacing": 1,
-    "on-click": "adept-launch-wifi"
+    "on-click": "syna-launch-wifi"
   },
   "battery": {
     "format": "{capacity}% {icon}",
@@ -84,7 +84,7 @@
     "tooltip-format-discharging": "{power:>1.0f}W↓ {capacity}%",
     "tooltip-format-charging": "{power:>1.0f}W↑ {capacity}%",
     "interval": 5,
-    "on-click": "adept-menu power",
+    "on-click": "syna-menu power",
     "states": {
       "warning": 20,
       "critical": 10
@@ -96,11 +96,11 @@
     "format-connected": "󰂱",
     "format-no-controller": "󰂲",
     "tooltip-format": "Devices connected: {num_connections}",
-    "on-click": "adept-launch-bluetooth"
+    "on-click": "syna-launch-bluetooth"
   },
   "pulseaudio": {
     "format": "{icon}",
-    "on-click": "adept-launch-audio",
+    "on-click": "syna-launch-audio",
     "on-click-right": "pamixer -t",
     "tooltip-format": "Playing at {volume}%",
     "scroll-step": 5,
@@ -108,7 +108,7 @@
     "format-icons": {
       "default": ["", "", ""]
     },
-    "on-click": "adept-launch-audio",
+    "on-click": "syna-launch-audio",
     "on-click-right": "pamixer -t",
     "tooltip-format": "Playing at {volume}%",
     "scroll-step": 5
@@ -126,8 +126,8 @@
     "tooltip": false
   },
   "custom/screenrecording-indicator": {
-    "on-click": "adept-cmd-screenrecord",
-    "exec": "$HOME/.local/bin/rice/adept-indicator-screenrecord",
+    "on-click": "syna-cmd-screenrecord",
+    "exec": "$HOME/.local/bin/rice/syna-indicator-screenrecord",
     "signal": 8,
     "return-type": "json"
   },

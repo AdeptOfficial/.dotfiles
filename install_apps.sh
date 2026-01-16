@@ -53,8 +53,8 @@ update-desktop-database "$HOME/.local/share/applications" &>/dev/null || true
 # Walker refresh
 # -------------------------
 echo "♻️ Refreshing Walker..."
-if command -v adept-refresh-walker &>/dev/null; then
-    adept-refresh-walker
+if command -v syna-refresh-walker &>/dev/null; then
+    syna-refresh-walker
 fi
 
 echo

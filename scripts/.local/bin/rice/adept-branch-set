@@ -1,4 +1,0 @@
-#!/bin/bash
-# Alias for adept-update-branch (set dotfiles git branch)
-
-exec adept-update-branch "$@"

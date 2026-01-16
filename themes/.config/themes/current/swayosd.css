@@ -1,1 +1,5 @@
-/home/adept/.config/themes/futurism/swayosd.css
+@define-color background-color #0A1428;
+@define-color border-color #F0F8FF;
+@define-color label #F0F8FF;
+@define-color image #F0F8FF;
+@define-color progress #00ff88;

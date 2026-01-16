@@ -188,7 +188,7 @@ cd ~/.dotfiles
 ### Step 3: Apply Laptop Profile
 
 ```bash
-adept-profile-switch laptop
+syna-profile-switch laptop
 ```
 
 ### Step 4: Set Default Browser
@@ -200,7 +200,7 @@ xdg-settings set default-web-browser helium.desktop
 ### Step 5: Activate Theme
 
 ```bash
-adept-theme-set futurism
+syna-theme-set futurism
 ```
 
 ### Step 6: Start Hyprland
@@ -260,9 +260,9 @@ rog-control-center
 ## Switching Between Desktop/Laptop
 
 ```bash
-adept-profile-switch laptop   # On laptop
-adept-profile-switch desktop  # On desktop
-adept-profile-switch status   # Check current
+syna-profile-switch laptop   # On laptop
+syna-profile-switch desktop  # On desktop
+syna-profile-switch status   # Check current
 ```
 
 ---

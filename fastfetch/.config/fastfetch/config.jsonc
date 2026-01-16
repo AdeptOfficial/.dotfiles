@@ -68,7 +68,7 @@
       "type": "command",
       "key": "\ue900 OS",
       "keyColor": "#00ff88",
-      "text": "version=$(adept-version); echo \"AdeptOS\""
+      "text": "version=$(syna-version); echo \"AdeptOS\""
     },
     {
       "type": "kernel",
@@ -135,7 +135,7 @@
       "type": "command",
       "key": " Update",
       "keyColor": "#ff79c6",
-      "text": "updated=$(adept-version-pkgs); echo \"$updated\""
+      "text": "updated=$(syna-version-pkgs); echo \"$updated\""
     },
     {
       "type": "custom",
