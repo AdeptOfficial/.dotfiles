@@ -527,3 +527,139 @@ calendar.header {
 }
 
 // (album-art styling moved to media-tab section above)
+
+// ============ Performance Tab Redesign ============
+
+.performance-tab {
+  padding: 12px 24px 12px 24px;
+  min-height: 300px;
+}
+
+// Status header - centered, no extra padding/margin
+.perf-status {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+// Status label - simple single label with dot and text
+.status-label {
+  font-size: 13px;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.status-label.normal { color: #10b981; }
+.status-label.warning { color: #f59e0b; }
+.status-label.critical { color: #ef4444; }
+.status-label.unknown { color: #6b7280; }
+
+// Status text (static)
+.status-text {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.status-text.normal { color: #10b981; }
+.status-text.warning { color: #f59e0b; }
+.status-text.critical { color: #ef4444; }
+.status-text.unknown { color: #6b7280; }
+
+// Cards container
+.perf-cards {
+  margin-bottom: 12px;
+}
+
+// Individual card - balanced padding
+.perf-card {
+  background-color: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px 20px 10px 20px;
+  min-width: 150px;
+  opacity: 0;
+  animation: cardFadeIn 0.4s ease-out forwards;
+}
+
+// Card hover highlight (eventbox triggers hover on child)
+.perf-card-hover:hover .perf-card {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+// Staggered animation delays
+.delay-0 { animation-delay: 0ms; }
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 300ms; }
+.delay-4 { animation-delay: 400ms; }
+
+@keyframes cardFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// Card icon - centered above ring
+.card-icon {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.card-icon.cpu { color: #f59e0b; }
+.card-icon.gpu { color: #10b981; }
+.card-icon.memory { color: #a855f7; }
+.card-icon.network { color: #c084fc; }
+.card-icon.disk { color: #f97316; }
+
+// Gauge track (background ring)
+.gauge-track {
+  color: rgba(255, 255, 255, 0.1);
+}
+
+// Gauge fill colors
+.gauge-fill.cpu { color: #f59e0b; }
+.gauge-fill.gpu { color: #10b981; }
+.gauge-fill.memory { color: #a855f7; }
+.gauge-fill.network { color: #c084fc; }
+.gauge-fill.disk { color: #f97316; }
+
+// Gauge center content
+.gauge-center {
+  padding: 10px;
+}
+
+// Card value (main number) - bigger
+.card-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+// Card secondary text
+.card-secondary {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+// Card label - raised closer to ring
+.card-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4px;
+}
+
+// Footer - single centered row
+.perf-footer {
+  margin-top: 4px;
+}
+
+.footer-item {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.footer-item.connected {
+  color: #10b981;
+}

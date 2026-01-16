@@ -26,6 +26,10 @@
 (deflisten cava :initial "▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁"
   `~/.config/eww/scripts/media/cava-eww.sh`)
 
+; Performance metrics (CPU, RAM, GPU)
+(deflisten perf :initial "{}"
+  `~/.config/eww/scripts/performance/perf.sh`)
+
 
 
 (defpoll calendar_day :interval "60s"
@@ -222,9 +226,111 @@
       (box :class "media-visualizer-bar" :orientation "h" :hexpand true
         (label :class "visualizer-bars" :text cava :halign "center" :hexpand true)))))
 
+;; ============ Performance Tab Redesign ============
+
+;; Performance card with icon, gauge, value (eventbox enables hover)
+(defwidget perf-card [icon value secondary percent label color delay-class]
+  (eventbox :class "perf-card-hover"
+    (box :class "perf-card ${delay-class}" :orientation "v" :space-evenly false :halign "center"
+      (label :class "card-icon ${color}" :text icon :halign "center")
+      (overlay
+        (circular-progress
+          :class "gauge-track"
+          :value 100
+          :start-at 75
+          :thickness 7
+          :clockwise true
+          :width 110
+          :height 110)
+        (circular-progress
+          :class "gauge-fill ${color}"
+          :value percent
+          :start-at 75
+          :thickness 7
+          :clockwise true
+          :width 110
+          :height 110)
+        (box :class "gauge-center" :orientation "v" :valign "center" :halign "center" :space-evenly false
+          (label :class "card-value" :text value :halign "center")
+          (label :class "card-secondary" :text secondary :halign "center")))
+      (label :class "card-label" :text label :halign "center"))))
+
+;; System status indicator (uses temp_ok flags) - simple single label
+(defwidget perf-status []
+  (box :class "perf-status" :halign "center"
+    (label
+      :class {!(perf?.cpu?.temp_ok ?: false) && !(perf?.gpu?.temp_ok ?: false) ? "status-label unknown" :
+              (perf?.cpu?.temp ?: 0) > 85 || (perf?.gpu?.temp ?: 0) > 85 ? "status-label critical" :
+              (perf?.cpu?.temp ?: 0) > 70 || (perf?.gpu?.temp ?: 0) > 70 ? "status-label warning" :
+              "status-label normal"}
+      :text {!(perf?.cpu?.temp_ok ?: false) && !(perf?.gpu?.temp_ok ?: false) ? "● SYSTEM UNKNOWN" :
+             (perf?.cpu?.temp ?: 0) > 85 || (perf?.gpu?.temp ?: 0) > 85 ? "● SYSTEM HOT" :
+             (perf?.cpu?.temp ?: 0) > 70 || (perf?.gpu?.temp ?: 0) > 70 ? "● SYSTEM WARM" :
+             "● SYSTEM NORMAL"})))
+
+;; Footer - single centered row
+(defwidget perf-footer []
+  (box :class "perf-footer" :orientation "h" :halign "center" :hexpand true :spacing 32
+    (label :class "footer-item connected" :text "●  Connected to ${sysinfo?.hostname ?: 'localhost'}")
+    (label :class "footer-item" :text "○  Uptime: ${sysinfo?.uptime ?: '...'}")))
+
+;; Performance tab - all rows share same width for consistent centering
 (defwidget performance-content []
-  (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
-    (label :class "placeholder-text" :text "Performance - To be implemented")))
+  (box :class "performance-tab" :orientation "v" :space-evenly false :vexpand true :hexpand true
+    ;; Status row - fixed width wrapper
+    (box :class "perf-row-wrapper" :width 900 :halign "center"
+      (perf-status))
+    ;; Cards row - fixed width wrapper
+    (box :class "perf-row-wrapper" :width 900 :halign "center" :vexpand true :valign "center"
+      (box :class "perf-cards" :orientation "h" :halign "center" :spacing 16
+        ;; CPU
+        (perf-card
+          :icon "󰍛"
+          :value {(perf?.cpu?.temp_ok ?: false) ? "${perf?.cpu?.temp}°C" : "--°C"}
+          :secondary "${perf?.cpu?.percent ?: 0}% usage"
+          :percent {perf?.cpu?.percent ?: 0}
+          :label "CPU"
+          :color "cpu"
+          :delay-class "delay-0")
+        ;; GPU
+        (perf-card
+          :icon "󰢮"
+          :value {(perf?.gpu?.temp_ok ?: false) ? "${perf?.gpu?.temp}°C" : "--°C"}
+          :secondary "${perf?.gpu?.percent ?: 0}% usage"
+          :percent {perf?.gpu?.percent ?: 0}
+          :label "GPU"
+          :color "gpu"
+          :delay-class "delay-1")
+        ;; Memory
+        (perf-card
+          :icon "󰘚"
+          :value "${perf?.ram?.used ?: '0'}GiB"
+          :secondary "${perf?.ram?.percent ?: 0}% used"
+          :percent {perf?.ram?.percent ?: 0}
+          :label "MEMORY"
+          :color "memory"
+          :delay-class "delay-2")
+        ;; Network
+        (perf-card
+          :icon "󰖩"
+          :value "↓${perf?.net?.rx ?: '0'}"
+          :secondary "↑${perf?.net?.tx ?: '0'} ${perf?.net?.tx_unit ?: 'KB/s'}"
+          :percent {perf?.net?.activity ?: 0}
+          :label "NETWORK"
+          :color "network"
+          :delay-class "delay-3")
+        ;; Disk
+        (perf-card
+          :icon "󰋊"
+          :value "${perf?.disk?.used ?: '0'}GB"
+          :secondary "${perf?.disk?.percent ?: 0}% used"
+          :percent {perf?.disk?.percent ?: 0}
+          :label "DISK"
+          :color "disk"
+          :delay-class "delay-4")))
+    ;; Footer row - fixed width wrapper
+    (box :class "perf-row-wrapper" :width 900 :halign "center"
+      (perf-footer))))
 
 (defwidget workspaces-content []
   (box :class "tab-content placeholder" :orientation "v" :valign "center" :halign "center" :vexpand true
@@ -238,7 +344,8 @@
     ; Hidden labels to keep deflisten variables alive (must be in mounted widget)
     (box :class "sr-only"
       (label :text cava)
-      (label :text {media?.status ?: ""}))
+      (label :text {media?.status ?: ""})
+      (label :text {perf?.cpu?.percent ?: 0}))
     (tabs)
     (box :class "content" :orientation "v" :hexpand true
       (literal :content {active-tab == "dashboard" ? "(dashboard-content)" :
