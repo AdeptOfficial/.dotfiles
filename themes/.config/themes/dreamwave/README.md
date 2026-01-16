@@ -3,9 +3,9 @@
 A cohesive, lo-fi, dreamy blue and violet theme for your terminal and editor.
 Designed for Neovim, Alacritty, btop, and Hyprland Walker menus, Dreamwave provides a calm, readable, and visually immersive aesthetic inspired by vaporwave and late-night coding sessions.
 
-![image alt](https://github.com/RiO7MAKK3R/adept-dreamwave-theme/blob/main/preview1.png)
-![image alt](https://github.com/RiO7MAKK3R/adept-dreamwave-theme/blob/main/preview3.png)
-![image alt](https://github.com/RiO7MAKK3R/adept-dreamwave-theme/blob/main/preview2.png)
+![image alt](https://github.com/RiO7MAKK3R/omarchy-dreamwave-theme/blob/main/preview1.png)
+![image alt](https://github.com/RiO7MAKK3R/omarchy-dreamwave-theme/blob/main/preview3.png)
+![image alt](https://github.com/RiO7MAKK3R/omarchy-dreamwave-theme/blob/main/preview2.png)
 ---
 
 ### Theme Concept
@@ -41,7 +41,7 @@ Designed for Neovim, Alacritty, btop, and Hyprland Walker menus, Dreamwave provi
 
 Install using:
 ```bash
-syna-theme-install https://github.com/RiO7MAKK3R/adept-dreamwave-theme.git
+syna-theme-install https://github.com/RiO7MAKK3R/omarchy-dreamwave-theme.git
 ```
 OR 
 

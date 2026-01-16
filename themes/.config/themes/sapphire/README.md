@@ -14,7 +14,7 @@ Crafted for a workspace that looks poised yet dynamic — where focus doesn’t 
 To install this theme, simply use the syna-theme-install command:
 
 ```bash
-syna-theme-install https://github.com/HANCORE-linux/adept-sapphire-theme.git
+syna-theme-install https://github.com/HANCORE-linux/omarchy-sapphire-theme.git
 ```
 ## Vesktop-Theme
 For Vesktop users, you can install this theme by copying the theme file to your Vesktop themes directory:
@@ -23,7 +23,7 @@ cp system24-Sapphire.css ~/.config/vesktop/themes/system24-Sapphire.css
 ```
 
 ## VSCode, ZED, Spotify , GTK Support
-- all yes! - thanks [imbypass](https://github.com/imbypass/adept-hook-theme-set-ex/tree/main) for his hook script!
+- all yes! - thanks [imbypass](https://github.com/imbypass/omarchy-theme-hook) for his hook script!
 - VSCode: click on manage (left down corner) > Themes > Color Theme > search for Sapphire
 
 ## Waybar-Theme
