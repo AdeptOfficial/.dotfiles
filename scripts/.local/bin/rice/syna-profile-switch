@@ -75,7 +75,7 @@ show_status() {
     local file="$HYPR_CONFIG/${f}.local.conf"
     if [[ -f "$file" ]]; then
       local size
-      size=$(wc -c < "$file")
+      size=$(stat -c%s "$file" 2>/dev/null || echo "?")
       echo "  ${f}.local.conf ($size bytes)"
     else
       echo "  ${f}.local.conf (MISSING)"
