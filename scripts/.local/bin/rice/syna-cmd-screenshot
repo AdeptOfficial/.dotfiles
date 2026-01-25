@@ -6,9 +6,25 @@
 #   window: Capture active window
 #   output: Capture focused monitor
 #   clipboard: Skip annotation, copy directly
+#
+# Safety: Includes timeout watchdog to prevent Hyprland freeze if grimblast crashes
 
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
 OUTPUT_DIR="${RICE_SCREENSHOT_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots}"
+
+# Timeout in seconds - kills hyprpicker/slurp if screenshot takes too long
+SCREENSHOT_TIMEOUT=30
+
+# Cleanup function to ensure hyprpicker doesn't hang
+cleanup() {
+  pkill -9 hyprpicker 2>/dev/null
+  pkill -9 slurp 2>/dev/null
+  # Kill the watchdog if it's still running
+  [[ -n "$WATCHDOG_PID" ]] && kill "$WATCHDOG_PID" 2>/dev/null
+}
+
+# Always cleanup on exit (normal or crash)
+trap cleanup EXIT
 
 if [[ ! -d "$OUTPUT_DIR" ]]; then
   notify-send "Screenshot directory does not exist: $OUTPUT_DIR" -u critical -t 3000
@@ -16,7 +32,10 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
 fi
 
 # Cancel any existing selection
-pkill slurp && exit 0
+if pkill slurp 2>/dev/null; then
+  pkill -9 hyprpicker 2>/dev/null
+  exit 0
+fi
 
 MODE="${1:-region}"
 PROCESSING="${2:-edit}"
@@ -51,6 +70,16 @@ case "$MODE" in
     ;;
 esac
 
+# Start watchdog timer in background - kills screenshot tools if they hang
+(
+  sleep "$SCREENSHOT_TIMEOUT"
+  pkill -9 hyprpicker 2>/dev/null
+  pkill -9 slurp 2>/dev/null
+  pkill -9 grimblast 2>/dev/null
+  notify-send "Screenshot timed out" "Killed hung screenshot process after ${SCREENSHOT_TIMEOUT}s" -u warning -t 5000
+) &
+WATCHDOG_PID=$!
+
 if [[ $PROCESSING == "clipboard" ]]; then
   # Direct to clipboard with notification
   grimblast --notify $FREEZE copy $TARGET
@@ -59,3 +88,6 @@ else
   grimblast $FREEZE save $TARGET - | satty --filename - \
     --output-filename "$OUTPUT_DIR/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
 fi
+
+# Kill the watchdog since we completed successfully
+kill "$WATCHDOG_PID" 2>/dev/null
