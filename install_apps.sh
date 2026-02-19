@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # CachyOS + Syna Setup Script
-# - System update via pacman ONLY
-# - Installs core tools
-# - Installs Vesktop (native)
-# - Keeps Hyprland / Walker clean
+# - Lightweight companion to install.sh (called by stow-all.sh)
+# - System update + stow
 # - No Flatpak
 
 set -e
@@ -12,19 +10,11 @@ set -e
 # Packages
 # -------------------------
 PACMAN_APPS=(
-  tailscale
   stow
-  vesktop
 )
 
 echo "📦 System update + pacman apps..."
 sudo pacman -Syu --needed --noconfirm "${PACMAN_APPS[@]}"
-
-# -------------------------
-# Tailscale
-# -------------------------
-echo "🌐 Enabling Tailscale..."
-sudo systemctl enable --now tailscaled
 
 # -------------------------
 # XDG / PATH sanity (native apps only)
@@ -59,7 +49,6 @@ fi
 echo
 echo "✅ DONE"
 echo "➡️ pacman -Syu is the only updater"
-echo "➡️ Vesktop is native (no Flatpak)"
 echo "➡️ Reboot recommended to apply environment.d"
 echo "➡️ Run: systemctl reboot"
 
