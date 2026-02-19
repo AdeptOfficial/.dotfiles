@@ -242,6 +242,13 @@ systemctl --user enable --now pipewire.service 2>/dev/null || true
 systemctl --user enable --now pipewire-pulse.service 2>/dev/null || true
 systemctl --user enable --now wireplumber.service 2>/dev/null || true
 
+# Enable Walker plugin daemon
+systemctl --user enable --now elephant.service 2>/dev/null || true
+
+# Setup fcitx5 input method environment
+mkdir -p "$HOME/.config/environment.d"
+cp -n "$HOME/.dotfiles/rice/.config/rice/config/environment.d/fcitx.conf" "$HOME/.config/environment.d/fcitx.conf" 2>/dev/null || true
+
 if [[ "$PROFILE" == "laptop" ]]; then
   sudo systemctl enable --now supergfxd.service
   sudo systemctl enable --now power-profiles-daemon.service
