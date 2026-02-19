@@ -175,8 +175,11 @@ show_font_menu() {
 }
 
 show_setup_menu() {
-  local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
-  command -v supergfxctl &>/dev/null && options="$options\n󰢮  GPU Mode"
+  if command -v supergfxctl &>/dev/null; then
+    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󰢮  Performance Mode\n  System Sleep\n󰍹  Monitors"
+  else
+    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
+  fi
   [ -f ~/.config/hypr/bindings.conf ] && options="$options\n  Keybindings"
   [ -f ~/.config/hypr/input.conf ] && options="$options\n  Input"
   options="$options\n󰱔  DNS\n  Security\n  Config"
@@ -185,8 +188,8 @@ show_setup_menu() {
   *Audio*) syna-launch-audio ;;
   *Wifi*) syna-launch-wifi ;;
   *Bluetooth*) syna-launch-bluetooth ;;
+  *Performance*) show_setup_performance_menu ;;
   *Power*) show_setup_power_menu ;;
-  *GPU*) show_setup_gpu_menu ;;
   *System*) show_setup_system_menu ;;
   *Monitors*) open_in_editor ~/.config/hypr/monitors.conf ;;
   *Keybindings*) open_in_editor ~/.config/hypr/bindings.conf ;;
@@ -208,17 +211,36 @@ show_setup_power_menu() {
   fi
 }
 
-show_setup_gpu_menu() {
-  local current=$(supergfxctl -g)
-  local supported=$(supergfxctl -s | tr -d '[]' | tr ',' '\n' | sed 's/^ //')
-  local mode=$(menu "GPU Mode" "$supported" "" "$current")
+show_setup_performance_menu() {
+  local current_gpu=$(supergfxctl -g)
+  local current_power=$(powerprofilesctl get)
+  local current_label="Balanced"
+  [[ "$current_power" == "performance" ]] && current_label="Turbo"
+  [[ "$current_power" == "power-saver" ]] && current_label="Eco"
 
-  if [[ "$mode" == "CNCLD" || -z "$mode" ]]; then
-    back_to show_setup_menu
-  else
-    supergfxctl -m "$mode"
-    notify-send "GPU Mode" "Switched to $mode - reboot required"
-  fi
+  local choice=$(menu "Performance" "Turbo\nBalanced\nEco" "" "$current_label")
+
+  case "$choice" in
+    "Turbo")
+      supergfxctl -m Hybrid
+      asusctl profile set Performance
+      powerprofilesctl set performance
+      notify-send "Performance Mode" "Turbo - max performance"
+      ;;
+    "Balanced")
+      supergfxctl -m Hybrid
+      asusctl profile set Balanced
+      powerprofilesctl set balanced
+      notify-send "Performance Mode" "Balanced"
+      ;;
+    "Eco")
+      supergfxctl -m Integrated
+      asusctl profile set Quiet
+      powerprofilesctl set power-saver
+      notify-send "Performance Mode" "Eco - reboot required for GPU change"
+      ;;
+    *) back_to show_setup_menu ;;
+  esac
 }
 
 show_setup_security_menu() {
