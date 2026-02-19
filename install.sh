@@ -193,7 +193,7 @@ sudo pacman -S --needed --noconfirm \
   pamixer hyprpicker hyprsunset imv mpv evince \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
-  zoxide lazygit neovim fwupd wayfreeze hyprland-guiutils
+  zoxide lazygit neovim fwupd hyprland-guiutils
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
@@ -213,7 +213,7 @@ yay -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
   wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
-  spotify visual-studio-code-bin
+  spotify visual-studio-code-bin wayfreeze-git
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
