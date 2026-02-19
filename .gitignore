@@ -16,3 +16,6 @@ fish/.config/fish/fish_variables
 
 # Legacy configs - not needed on CachyOS
 rice/.config/rice/defaults/pacman/
+
+# Claude Code (installed per-machine)
+scripts/.local/bin/claude
