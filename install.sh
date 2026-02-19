@@ -215,7 +215,7 @@ yay -S --needed --noconfirm \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
   wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
   spotify visual-studio-code-bin wayfreeze-git \
-  typora 1password voxtype
+  typora 1password voxtype-bin
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
