@@ -208,7 +208,7 @@ echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
-  wiremix bluetui eww xdg-terminal-exec
+  wiremix bluetui eww xdg-terminal-exec vesktop
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
