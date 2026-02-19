@@ -248,6 +248,9 @@ systemctl --user enable --now wireplumber.service 2>/dev/null || true
 # Enable Walker plugin daemon
 systemctl --user enable --now elephant.service 2>/dev/null || true
 
+# Add user to input group (needed for voxtype push-to-talk)
+sudo usermod -aG input "$USER"
+
 # Setup fcitx5 input method environment
 mkdir -p "$HOME/.config/environment.d"
 cp -n "$HOME/.dotfiles/rice/.config/rice/config/environment.d/fcitx.conf" "$HOME/.config/environment.d/fcitx.conf" 2>/dev/null || true
