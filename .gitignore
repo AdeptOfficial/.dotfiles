@@ -8,6 +8,7 @@
 hypr/.config/hypr/monitors.local.conf
 hypr/.config/hypr/input.local.conf
 hypr/.config/hypr/autostart.local.conf
+waybar/.config/waybar/workspaces.local.jsonc
 
 # Legacy configs - not needed on CachyOS
 rice/.config/rice/defaults/pacman/

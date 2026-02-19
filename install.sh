@@ -358,6 +358,15 @@ for f in monitors input autostart; do
   create_local_if_missing "$HOME/.config/hypr/${f}.local.conf" "$template"
 done
 
+# Waybar workspaces local config (persistent workspace count per machine)
+WAYBAR_TEMPLATES="$HOME/.dotfiles/waybar/.config/waybar/templates"
+case "$EFFECTIVE_PROFILE" in
+  laptop) WAYBAR_WS_TEMPLATE="$WAYBAR_TEMPLATES/workspaces.laptop.jsonc" ;;
+  *)      WAYBAR_WS_TEMPLATE="$WAYBAR_TEMPLATES/workspaces.desktop.jsonc" ;;
+esac
+echo "Creating machine-specific configs in ~/.config/waybar/:"
+create_local_if_missing "$HOME/.config/waybar/workspaces.local.jsonc" "$WAYBAR_WS_TEMPLATE"
+
 # Migrate legacy configs if present (from old profile-switch pattern)
 migrate_legacy_config() {
   local legacy="$1"
