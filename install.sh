@@ -186,7 +186,7 @@ sudo pacman -S --needed --noconfirm \
   polkit-gnome gnome-keyring \
   nautilus gvfs gvfs-mtp gvfs-smb \
   alacritty fish starship \
-  ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji yaru-icon-theme \
+  ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
   yq jq gum stow git uwsm github-cli \
   libnotify xdg-utils xdg-user-dirs \
   fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool
@@ -208,7 +208,7 @@ echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
-  wiremix bluetui eww xdg-terminal-exec vesktop
+  wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
