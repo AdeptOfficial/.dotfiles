@@ -189,7 +189,11 @@ sudo pacman -S --needed --noconfirm \
   ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
   yq jq gum stow git uwsm github-cli \
   libnotify xdg-utils xdg-user-dirs \
-  fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool
+  fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool \
+  pamixer hyprpicker hyprsunset imv mpv evince \
+  gnome-disk-utility gnome-themes-extra \
+  qt5-wayland qt6-wayland \
+  zoxide lazygit neovim fwupd wayfreeze hyprland-guiutils
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
@@ -208,7 +212,8 @@ echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 yay -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
-  wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme
+  wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
+  spotify visual-studio-code-bin
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
