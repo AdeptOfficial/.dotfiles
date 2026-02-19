@@ -222,22 +222,16 @@ show_setup_performance_menu() {
 
   case "$choice" in
     "Turbo")
-      supergfxctl -m Hybrid
-      asusctl profile set Performance
       powerprofilesctl set performance
       notify-send "Performance Mode" "Turbo - max performance"
       ;;
     "Balanced")
-      supergfxctl -m Hybrid
-      asusctl profile set Balanced
       powerprofilesctl set balanced
       notify-send "Performance Mode" "Balanced"
       ;;
     "Eco")
-      supergfxctl -m Integrated
-      asusctl profile set Quiet
       powerprofilesctl set power-saver
-      notify-send "Performance Mode" "Eco - reboot required for GPU change"
+      notify-send "Performance Mode" "Eco - power saver"
       ;;
     *) back_to show_setup_menu ;;
   esac
