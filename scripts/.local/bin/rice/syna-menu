@@ -176,9 +176,9 @@ show_font_menu() {
 
 show_setup_menu() {
   if command -v supergfxctl &>/dev/null; then
-    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󰢮  Performance Mode\n  System Sleep\n󰍹  Monitors"
+    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󰢮  Performance Mode\n  System Sleep\n󰍹  Monitors"
   else
-    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
+    local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
   fi
   [ -f ~/.config/hypr/bindings.conf ] && options="$options\n  Keybindings"
   [ -f ~/.config/hypr/input.conf ] && options="$options\n  Input"
