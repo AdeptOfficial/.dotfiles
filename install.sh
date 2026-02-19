@@ -193,7 +193,7 @@ sudo pacman -S --needed --noconfirm \
   pamixer hyprpicker hyprsunset imv mpv evince \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
-  zoxide lazygit neovim fwupd hyprland-guiutils
+  zoxide lazygit neovim fwupd hyprland-guiutils tailscale
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
@@ -236,6 +236,7 @@ fi
 echo -e "${GREEN}[5/9] Enabling services...${NC}"
 sudo systemctl enable --now bluetooth.service
 sudo systemctl enable --now NetworkManager.service
+sudo systemctl enable --now tailscaled.service
 
 # Enable user PipeWire services
 systemctl --user enable --now pipewire.service 2>/dev/null || true
