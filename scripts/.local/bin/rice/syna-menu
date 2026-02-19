@@ -176,6 +176,7 @@ show_font_menu() {
 
 show_setup_menu() {
   local options="  Audio\n  Wifi\n󰂯  Bluetooth\n󱐋  Power Profile\n  System Sleep\n󰍹  Monitors"
+  command -v supergfxctl &>/dev/null && options="$options\n󰢮  GPU Mode"
   [ -f ~/.config/hypr/bindings.conf ] && options="$options\n  Keybindings"
   [ -f ~/.config/hypr/input.conf ] && options="$options\n  Input"
   options="$options\n󰱔  DNS\n  Security\n  Config"
@@ -185,6 +186,7 @@ show_setup_menu() {
   *Wifi*) syna-launch-wifi ;;
   *Bluetooth*) syna-launch-bluetooth ;;
   *Power*) show_setup_power_menu ;;
+  *GPU*) show_setup_gpu_menu ;;
   *System*) show_setup_system_menu ;;
   *Monitors*) open_in_editor ~/.config/hypr/monitors.conf ;;
   *Keybindings*) open_in_editor ~/.config/hypr/bindings.conf ;;
@@ -203,6 +205,19 @@ show_setup_power_menu() {
     back_to show_setup_menu
   else
     powerprofilesctl set "$profile"
+  fi
+}
+
+show_setup_gpu_menu() {
+  local current=$(supergfxctl -g)
+  local supported=$(supergfxctl -s | tr -d '[]' | tr ',' '\n' | sed 's/^ //')
+  local mode=$(menu "GPU Mode" "$supported" "" "$current")
+
+  if [[ "$mode" == "CNCLD" || -z "$mode" ]]; then
+    back_to show_setup_menu
+  else
+    supergfxctl -m "$mode"
+    notify-send "GPU Mode" "Switched to $mode - reboot required"
   fi
 }
 
