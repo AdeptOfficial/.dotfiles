@@ -186,7 +186,7 @@ sudo pacman -S --needed --noconfirm \
   polkit-gnome gnome-keyring \
   nautilus gvfs gvfs-mtp gvfs-smb \
   alacritty fish starship \
-  ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji \
+  ttf-jetbrains-mono-nerd ttf-firacode-nerd ttf-liberation noto-fonts noto-fonts-emoji yaru-icon-theme \
   yq jq gum stow git uwsm github-cli \
   libnotify xdg-utils xdg-user-dirs \
   fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool
