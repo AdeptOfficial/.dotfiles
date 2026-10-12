@@ -2,6 +2,10 @@
 
 Custom dotfiles for CachyOS (Arch-based) with Hyprland using GNU Stow.
 
+## Documentation
+
+Operating guides and maintenance history live in the private [syna-docs](https://github.com/AdeptOfficial/syna-docs) repository. Start at its [guide index](https://github.com/AdeptOfficial/syna-docs/blob/main/guides/README.md). Deployable files stay in this repository; the optional [deej package and client build](maintenance/deej/README.md) are documented separately.
+
 ## Features
 
 - **Hyprland**: Window manager with custom keybindings, hyprlock, hypridle
@@ -44,18 +48,20 @@ The install script will:
 
 After reboot, SDDM will auto-login and start Hyprland via UWSM.
 
-## Existing System (Stow Only)
+## Existing system
+
+Inspect the working tree and preview one package before applying changes:
 
 ```bash
 cd ~/.dotfiles
-./stow-all.sh
-
-# Restart terminal
-exec fish
-
-# Reload Hyprland
+git status --short
+stow -n -v -R hypr
+# After resolving conflicts and preserving local overrides:
+stow -R hypr
 hyprctl reload
 ```
+
+The current `stow-all.sh` adopts existing files and then uses `git checkout` across packages. Do not use it as routine cleanup on a working tree with local edits. Preserve `.local.conf` and other machine-specific overrides. Editing an already-linked file does not itself require re-stowing.
 
 ## Directory Structure
 
@@ -77,10 +83,11 @@ hyprctl reload
 ├── btop/           # System monitor
 ├── fastfetch/      # System info display
 ├── xdg/            # Default applications
-├── docs/           # Documentation
+├── deej/           # Optional volume-controller package
+├── maintenance/    # Build/maintenance instructions
 ├── install.sh      # Full bootstrap script
 ├── install_apps.sh # App installation
-└── stow-all.sh     # Stow-only script
+└── stow-all.sh     # Legacy bulk adoption/reset helper; review before use
 ```
 
 ## Theming
