@@ -19,3 +19,9 @@ rice/.config/rice/defaults/pacman/
 
 # Claude Code (installed per-machine)
 scripts/.local/bin/claude
+
+# Generated Python caches and local editor backups
+**/__pycache__/
+*.py[cod]
+*.bak
+*.bak-*
