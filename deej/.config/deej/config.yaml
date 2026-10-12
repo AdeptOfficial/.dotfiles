@@ -1,0 +1,43 @@
+# deej config (Linux)
+# - names are case-insensitive: prefer application.process.binary (including Proton .exe),
+#   falling back to application.name with the patched client. Inspect live streams:
+#   pactl -f json list sink-inputs
+# - 'master'        = system master volume
+# - 'mic'           = default mic input level
+# - 'deej.unmapped' = everything not bound to another slider
+# important: slider indexes start at 0, regardless of which analog pins you use
+
+slider_mapping:
+  0: master
+  # Slider 2: Helium browser (actual executable, not its launcher).
+  1: helium
+  2: spotify
+  3:
+    - vesktop
+    - discord
+  # Slider 5: installed games; verify audio process names during gameplay.
+  4:
+    - "cs2"
+    - "cs2.exe"
+    - "Cyberpunk2077.exe"
+    - "REPO.exe"
+    - "Hollow Knight Silksong"
+    - "Hollow Knight Silksong.exe"
+    - "Expedition33_Steam.exe"
+    - "SandFall-Win64-Shipping.exe"
+    - "VRChat.exe"
+    - "MetroExodus.exe"
+    - "STRAFTAT.exe"
+    - "Wuthering Waves.exe"
+    - "Client-Win64-Shipping.exe"
+
+# set true if your sliders read inverted (top = 0%, bottom = 100%)
+invert_sliders: false
+
+# arduino serial connection (Linux device path, set by detection step)
+# Hardware is translated by deej_bridge.py (115200-baud MessagePack).
+com_port: /run/user/1000/deej/serial
+baud_rate: 9600
+
+# signal noise reduction: "low" (great hw) / "default" / "high" (noisy hw)
+noise_reduction: default

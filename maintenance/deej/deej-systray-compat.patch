@@ -1,0 +1,22 @@
+--- a/systray_nonwindows.go
++++ b/systray_nonwindows.go
+@@ -4,7 +4,7 @@
+ 
+ /*
+ #cgo linux CFLAGS: -DWEBVIEW_GTK=1
+-#cgo linux pkg-config: gtk+-3.0 webkit2gtk-4.0 appindicator3-0.1
++#cgo linux pkg-config: gtk+-3.0 webkit2gtk-4.1 ayatana-appindicator3-0.1
+ #cgo darwin CFLAGS: -DDARWIN -x objective-c -fobjc-arc
+ #cgo darwin LDFLAGS: -framework Cocoa -framework WebKit
+ 
+--- a/systray_linux.c
++++ b/systray_linux.c
+@@ -2,7 +2,7 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <limits.h>
+-#include <libappindicator/app-indicator.h>
++#include <libayatana-appindicator/app-indicator.h>
+ #include "systray.h"
+ 
+ static AppIndicator *global_app_indicator;

@@ -1,0 +1,16 @@
+[Unit]
+Description=Deej five-slider volume controller and serial adapter
+PartOf=graphical-session.target
+After=graphical-session.target pipewire-pulse.service
+Wants=pipewire-pulse.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python %h/.local/lib/deej/deej_bridge.py
+Restart=always
+RestartSec=3
+TimeoutStopSec=5
+
+[Install]
+WantedBy=graphical-session.target
