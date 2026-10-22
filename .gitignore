@@ -6,8 +6,11 @@
 
 # Machine-specific local overrides (never tracked)
 hypr/.config/hypr/monitors.local.conf
+*.local.lua
 hypr/.config/hypr/input.local.conf
+*.local.lua
 hypr/.config/hypr/autostart.local.conf
+*.local.lua
 waybar/.config/waybar/workspaces.local.jsonc
 fish/.config/fish/config.local.fish
 
