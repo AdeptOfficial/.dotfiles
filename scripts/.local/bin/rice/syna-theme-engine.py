@@ -108,6 +108,14 @@ def window_config(settings):
     return f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
 
 
+def window_config_lua(settings):
+    # Lua config (Hyprland 0.55+); the integers are range-checked in window_settings().
+    return ("hl.config({\n"
+            f"    general = {{ border_size = {settings['border_size']} }},\n"
+            f"    decoration = {{ rounding = {settings['rounding']} }},\n"
+            "})\n")
+
+
 def render(template, colors):
     colors = dict(colors)
     for key, source in PROMPT_DEFAULTS.items():
@@ -161,7 +169,8 @@ def build(name, stage):
             target.write_text(render(template.read_text(), colors))
     (stage / 'neovim.json').write_text(json.dumps(nvim_colors(name, colors)))
     (stage / 'window-geometry.conf').write_text(window_config(window_settings(name)))
-    for required in ('hyprland.conf', 'eww-colors.scss', 'fastfetch.jsonc'):
+    (stage / 'window-geometry.lua').write_text(window_config_lua(window_settings(name)))
+    for required in ('hyprland.conf', 'hyprland.lua', 'eww-colors.scss', 'fastfetch.jsonc'):
         if not (stage / required).is_file():
             raise ValueError(f'Missing generated file: {required}')
     (stage / '.theme-name').write_text(name + '\n')
@@ -187,7 +196,7 @@ def validate(stage):
     if (stage / 'starship.toml').exists():
         tomllib.loads((stage / 'starship.toml').read_text())
     for item in stage.iterdir():
-        if item.suffix in ('.conf', '.css', '.scss', '.toml', '.jsonc', '.ini', '.theme') and item.is_file():
+        if item.suffix in ('.conf', '.lua', '.css', '.scss', '.toml', '.jsonc', '.ini', '.theme') and item.is_file():
             if TOKEN.search(item.read_text()):
                 raise ValueError(f'Unresolved template placeholder in {item.name}')
     # Parse the full Hyprland configuration with only the theme include changed.
@@ -203,6 +212,21 @@ def validate(stage):
         candidate.unlink()
         if result.returncode or 'config ok' not in result.stdout + result.stderr:
             raise ValueError('Hyprland validation failed:\n' + result.stdout + result.stderr)
+    # Same for the Lua entry point: point its theme directory at the stage and parse it.
+    lua_config = Path.home() / '.config/hypr/hyprland.lua'
+    if lua_config.exists() and shutil.which('hyprland'):
+        text = lua_config.read_text()
+        needle = 'local theme = home .. "/.config/themes/current"'
+        if needle not in text:
+            raise ValueError('Cannot locate theme directory in hyprland.lua for validation')
+        candidate = stage / '.validate-hyprland.lua'
+        candidate.write_text(text.replace(needle, 'local theme = ' + json.dumps(str(stage))))
+        try:
+            result = run(['hyprland', '--verify-config', '-c', candidate])
+        finally:
+            candidate.unlink()
+        if result.returncode or 'config ok' not in result.stdout + result.stderr:
+            raise ValueError('Hyprland (Lua) validation failed:\n' + result.stdout + result.stderr)
     scss = Path.home() / '.config/eww/eww.scss'
     if scss.exists() and shutil.which('sassc'):
         candidate = stage / '.validate-eww.scss'

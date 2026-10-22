@@ -18,7 +18,8 @@
     "README.es.md": "8c3b318e942c8f75dfe36a58135a62097ff8e2b2af6475aed77f2969e7cd79cd",
     "my-hyprlock.conf": "4241db568ba3aed375858bd10a8b8018ca0bc29f253b75c1d478383d34d8884a",
     "neovim.lua": "6a5b054e16d5851c1cd7cafc9aad6f01e25157fcc3938f9e0316eb512c9b9def",
-    "colors.toml": "5089de8acb50f1a3bdbfba14e9cb60b1613dcbcde53686af1043b4606e184a2d"
+    "colors.toml": "5089de8acb50f1a3bdbfba14e9cb60b1613dcbcde53686af1043b4606e184a2d",
+    "hyprland.lua": "0b1201d99260e024a7b927207b1c67bdfa19a22ee677f3cb956c1b4355354b53"
   },
   "catppuccin": {
     "btop.theme": "19dc3669e81d5857c5cbe7b3a884b1004e7c069ce2b8261f3bcd03bacb3dea54",
@@ -47,7 +48,8 @@
     "waybar.css": "8ef024c5004e616603707132787a157edfc6fcb1bb878caf9f13087f0edfd252",
     "hyprland.conf": "23ce70d440cf84481afe06ecfde31517849307614bd3f7be30096c68f28de62a",
     "README.md": "bc334233641f222e6a78c1c69a1b97a2afa5849f4146e8bbda5b424a6a36b2f9",
-    "colors.toml": "f2091632c118b66d4849de01861fddaa4738f4721e8599157ae77ccc7f0ea0b8"
+    "colors.toml": "f2091632c118b66d4849de01861fddaa4738f4721e8599157ae77ccc7f0ea0b8",
+    "hyprland.lua": "383b473ae4d279480ccc238d2d08291a2cd06a80a5d165d8a0fdeee14eae8668"
   },
   "futurism": {
     "alacritty.toml": "10cd7e0385e69fa3e0472cc1db0f5bb8abf37690fa4bccf6aa004bdb95a06abe",
@@ -65,7 +67,8 @@
     "colors.toml": "be8db0f85a6d6b711b62442f78f1d3dd9a665526bf2f15ef4a13e3c7ee5d9875",
     "hyprland.conf": "2bbef2a1a0114e4950a83199a664d24acc14f21342e3b1ae6b1f6208abdab11c",
     "walker.css": "cfbd0c370787f9cf71acd0053d425f864173a525a9f4578362c3505a19d21351",
-    "README.md": "81e5a6534234ff1809b068f8294a4da8e1cfaf4926b08725a1d460859a558dac"
+    "README.md": "81e5a6534234ff1809b068f8294a4da8e1cfaf4926b08725a1d460859a558dac",
+    "hyprland.lua": "edf6ffea4b10d42822dc2a197a61be27c5f2f96333f84f896cbcf5641b993d76"
   },
   "gruvbox": {
     "btop.theme": "99114e42f0860ce7911a9c84b3a8cc887478d8675cf8c27742eeabeeed35c136",
@@ -104,7 +107,8 @@
     "zed.json": "e7f693a868d8e15e49582a2a99084c17a7a690eae82a4b48e0a6f97e32488889",
     "alacritty.toml": "a0cde3271f55b0e5227a2db6701a228379cb34811cfc627baed21ee2896fbff3",
     "colors.toml": "52f57ccdfdfaea74276091d4370b8828eb4e51fbda0b9e55010239224713c363",
-    "README.md": "ac4269749f4bdf1076304776a3047c4e6e87072086673ed225f397651e335e60"
+    "README.md": "ac4269749f4bdf1076304776a3047c4e6e87072086673ed225f397651e335e60",
+    "hyprland.lua": "2ca865c89c22734ce7fb4886c50a4e691d87e24206c92f0afa6c7fe0291c2413"
   },
   "tokyo-night": {
     "btop.theme": "313c2186d059f2b1b17a658e52f0e4e1d28ffd74e702a71f7a80bd1ed5ddcb11",
