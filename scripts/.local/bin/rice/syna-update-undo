@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Put back the previous version of a package (and its group) from the pacman cache.
+#
+#   syna-update-undo <package>                 Previous cached version of it and its group
+#   syna-update-undo <package> --to <version>  A specific cached version (e.g. 7.2.9-2)
+#
+# Groups move together, because their versions must match:
+#   linux-cachyos       → linux-cachyos, linux-cachyos-headers, linux-cachyos-nvidia-open
+#   linux-cachyos-lts   → the same three for -lts
+#   hyprland (or a lib) → hyprland, aquamarine, hyprutils, hyprlang, hyprgraphics,
+#                          xdg-desktop-portal-hyprland
+# NVIDIA driver downgrades (nvidia-utils) touch every kernel's module: ask an agent instead.
+# Interactive: shows the plan and asks before running sudo pacman -U.
+
+CACHE=$(pacman-conf CacheDir | head -1); CACHE=${CACHE%/}
+
+[[ -t 0 ]] || { echo "syna-update-undo is interactive: run it in your own terminal."; exit 2; }
+pkg=${1:-}; [[ -z $pkg || $pkg == -h || $pkg == --help ]] && { sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+want=""; [[ ${2:-} == --to ]] && want=${3:?version after --to}
+
+case $pkg in
+  linux-cachyos|linux-cachyos-headers|linux-cachyos-nvidia-open)
+    group="linux-cachyos linux-cachyos-headers linux-cachyos-nvidia-open"; kernel=yes ;;
+  linux-cachyos-lts|linux-cachyos-lts-headers|linux-cachyos-lts-nvidia-open)
+    group="linux-cachyos-lts linux-cachyos-lts-headers linux-cachyos-lts-nvidia-open"; kernel=yes ;;
+  hyprland|aquamarine|hyprutils|hyprlang|hyprgraphics|xdg-desktop-portal-hyprland)
+    group="hyprland aquamarine hyprutils hyprlang hyprgraphics xdg-desktop-portal-hyprland"; kernel=no ;;
+  nvidia-utils|lib32-nvidia-utils)
+    echo "NVIDIA driver downgrades must match every kernel's module package. Ask an agent to plan it."; exit 1 ;;
+  *) group=$pkg; kernel=no ;;
+esac
+
+# Cached versions of one package, newest first: file names are <name>-<ver>-<rel>-<arch>.pkg.tar.zst
+cached() {
+  local f v
+  for f in "$CACHE/$1"-*.pkg.tar.zst; do
+    [[ -f $f ]] || continue
+    v=$(basename "$f" | sed -E "s/^$(sed 's/[.+]/\\&/g' <<<"$1")-(([0-9]+:)?[0-9][^-]*-[0-9.]+)-[^-]+\.pkg\.tar\.zst$/\1/")
+    [[ $v == "$(basename "$f")" ]] && continue      # name prefix of another package
+    printf '%s\t%s\n' "$v" "$f"
+  done | sort -t$'\t' -k1,1 -V -r
+}
+
+files=(); plan=""
+for m in $group; do
+  inst=$(pacman -Q "$m" 2>/dev/null | awk '{print $2}'); [[ -z $inst ]] && continue
+  pick=""
+  while IFS=$'\t' read -r v f; do
+    [[ -z $v ]] && continue
+    if [[ -n $want ]]; then [[ $v == "$want" ]] && { pick="$v"$'\t'"$f"; break; }
+    elif (( $(vercmp "$v" "$inst") < 0 )); then pick="$v"$'\t'"$f"; break; fi
+  done < <(cached "$m")
+  if [[ -z $pick ]]; then
+    echo "No older cached version of $m (installed $inst)$( [[ -n $want ]] && echo " matching $want"). Nothing changed."; exit 1
+  fi
+  plan+="  $m: $inst -> ${pick%%$'\t'*}"$'\n'; files+=("${pick#*$'\t'}")
+done
+[[ ${#files[@]} -eq 0 ]] && { echo "$pkg is not installed."; exit 1; }
+
+echo "This will reinstall older versions:"; printf '%s' "$plan"
+read -r -p "Continue? [y/N] " a; [[ $a == [yY]* ]] || { echo "Nothing changed."; exit 0; }
+sudo pacman -U "${files[@]}" || { echo "pacman stopped; nothing else was run."; exit 1; }
+
+echo
+echo "Done. The next update would bring the newer version back. To keep this one for now, add to"
+echo "/etc/pacman.conf under [options]:  IgnorePkg = $group"
+echo "and record the hold in ~/.syna/guides/version-matrix.md (an agent can do this)."
+if [[ $kernel == yes ]]; then
+  echo
+  echo "Kernel changed: run  syna-update-check post  before restarting."
+fi

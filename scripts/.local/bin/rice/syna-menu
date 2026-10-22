@@ -450,7 +450,7 @@ show_remove_elixir_menu() {
 
 show_update_menu() {
   case $(menu "Update" "󰣇  System\n󰁯  Reset Configs\n󰸌  Extra Themes\n󰘚  Firmware\n󰌆  Password\n󰥔  Timezone\n󰅐  Time") in
-  *System*) present_terminal "sudo pacman -Syu && yay -Syu" ;;
+  *System*) present_terminal syna-update ;;
   *"Reset Configs"*) show_update_config_menu ;;
   *Themes*) present_terminal syna-theme-update ;;
   *Firmware*) present_terminal syna-update-firmware ;;

@@ -46,6 +46,9 @@ EOF
 ISSUE_QUERY=(regression OR crash OR freeze OR hang OR nvidia)
 SYNA=~/.syna
 SINCE_DAYS_FALLBACK=30
+# Soak: a candidate in these groups built fewer than SOAK_DAYS ago is flagged NEW (wait unless security)
+SOAK_DAYS=3
+SOAK_GROUPS=" kernel nvidia hypr walker "
 
 bold() { printf '\n\e[1m%s\e[0m\n' "$*"; }
 note() { printf '  %s\n' "$*"; }
@@ -86,6 +89,18 @@ research() {
     return 0
   fi
   [[ $repo == - ]] && { note "closed source: read the vendor release notes"; return; }
+  if [[ -n $cand && $SOAK_GROUPS == *" $group "* ]]; then
+    local built age
+    built=$(LC_ALL=C pacman -Si "$pkg" 2>/dev/null | awk -F': ' '/^Build Date/{print $2; exit}')
+    if [[ -n $built ]]; then
+      age=$(( ( $(date +%s) - $(date -d "$built" +%s) ) / 86400 ))
+      if (( age < SOAK_DAYS )); then
+        flag "NEW: $pkg $cv was built $age day(s) ago; safer to wait until $(date -d "$built + $SOAK_DAYS days" +%F) unless it fixes a security issue"
+      else
+        note "built $age days ago (soak rule: $SOAK_DAYS days) ok"
+      fi
+    fi
+  fi
   if [[ $ceiling != - ]] && ! newer "$ceiling" "$cv"; then
     stop "candidate $cv reaches ceiling $ceiling: do not install (see guides/version-matrix.md)"
   fi

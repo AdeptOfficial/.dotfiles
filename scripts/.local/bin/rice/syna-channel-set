@@ -16,4 +16,4 @@ case "$channel" in
 *) echo "Unknown channel: $channel"; exit 1; ;;
 esac
 
-syna-update -y
+syna-update

@@ -1,11 +1,153 @@
 #!/bin/bash
 
-set -e
+# Guided system update: checks, research summary, install, post-check, restart advice, and an
+# automatic check after the restart. Plain language; asks before every change.
+# Replaces the Omarchy-era chain (syna-update-perform etc.), which updated without checks.
+#
+#   syna-update                 Run the whole flow (interactive; needs your terminal)
+#   syna-update --after-reboot  Run by syna-update-after-reboot.service at login after a kernel update
+#   syna-update --write-note    Write the update note for the last pacman transaction
+#
+# Notes: ~/.syna/docs/updates/YYYY-MM-DD.md. Undo: syna-update-undo. Guide: ~/.syna/guides/system-update.md
 
-trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\n\nPlease review the output above carefully, correct the error, and retry the update.\033[0m"' ERR
+STATE=~/.local/state/syna
+NOTES=~/.syna/docs/updates
+PENDING=$STATE/post-reboot-pending
+strip() { sed 's/\x1b\[[0-9;]*m//g'; }
+step() { printf '\n\e[1;36m%s\e[0m\n' "$*"; }
+good() { printf '  \e[32m%s\e[0m\n' "$*"; }
+bad()  { printf '  \e[31m%s\e[0m\n' "$*"; }
+line() { printf '  %s\n' "$*"; }
+ask()  { local a; read -r -p "  $1 [y/N] " a; [[ $a == [yY]* ]]; }
 
-if [[ $1 == "-y" ]] || syna-update-confirm; then
-  syna-snapshot create || [ $? -eq 127 ]
-  syna-update-git
-  syna-update-perform
+# Package changes of the last full upgrade, from pacman.log ("upgraded name (old -> new)")
+last_transaction() {
+  awk '/\[PACMAN\] starting full system upgrade/{buf=""} /\[ALPM\] (upgraded|installed|removed|downgraded) /{buf=buf $0 "\n"} END{printf "%s", buf}' /var/log/pacman.log \
+    | sed -E 's/^\[[^]]+\] \[ALPM\] //'
+}
+
+# One note per update run; a second run on the same day gets -2, -3, …
+new_note_path() {
+  local f="$NOTES/$(date +%F).md" n=2
+  while [[ -f $f ]]; do f="$NOTES/$(date +%F)-$n.md"; n=$((n + 1)); done
+  echo "$f"
+}
+
+write_note() {   # $1 = post-check verdict
+  mkdir -p "$NOTES" "$STATE"
+  local f tx crit restart="no (no kernel change)"
+  f=$(new_note_path); tx=$(last_transaction)
+  crit=$(grep -E '^(upgraded|downgraded|installed|removed) (linux-cachyos|nvidia|lib32-nvidia|systemd |mkinitcpio|limine|hyprland|aquamarine|hyprutils|mesa|glibc|ca-certificates)' <<<"$tx")
+  grep -qE '^(upgraded|downgraded) linux-cachyos(-lts)? ' <<<"$tx" && restart="yes (kernel changed)"
+  {
+    echo "# Update $(date +%F)"
+    echo
+    local done_at; done_at=$(grep '\[ALPM\] transaction completed' /var/log/pacman.log | tail -1 | grep -oE '^\[[^]]+' | tr -d '[' | cut -c1-16 | tr T ' ')
+    echo "**Status:** installed ${done_at:-$(date '+%F %H:%M')}; restart needed: $restart"
+    echo "**Post-check (before restart):** $1"
+    echo "**After restart:** pending"
+    echo
+    echo "## Important changes"
+    echo
+    if [[ -n $crit ]]; then sed 's/^/- /' <<<"$crit"; else echo "- none of the boot/desktop-critical packages"; fi
+    echo
+    echo "## How to undo"
+    echo
+    echo "- One package (with its group, e.g. the kernel and its NVIDIA module): \`syna-update-undo <package>\`."
+    echo "  It reinstalls the previous version from the package cache and asks first."
+    echo "- New kernel won't start: pick **LTS** in the boot menu, then \`syna-update-undo linux-cachyos\`."
+    echo "- Everything: the boot menu's **Snapshots** entry has the pre-update snapshot (snap-pac). Boot it,"
+    echo "  check, then \`sudo limine-snapper-restore\`. Ask an agent first: this rolls back every package."
+    echo
+    echo "## All $(grep -c . <<<"$tx") package changes"
+    echo
+    sed 's/^/- /' <<<"$tx"
+  } >"$f"
+  echo "$f"
+}
+
+after_reboot() {
+  [[ -f $PENDING ]] || exit 0
+  local out rc f verdict
+  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}
+  f=$(<"$PENDING"); verdict=$(tail -1 <<<"$out" | sed 's/^ *//')
+  [[ -f $f ]] && sed -i "s|^\*\*After restart:\*\* pending|**After restart:** $(date '+%F %H:%M') on $(uname -r): $verdict|" "$f"
+  rm -f "$PENDING"
+  if [[ $rc -eq 0 ]]; then
+    notify-send -a "Syna update" "Update verified" "Kernel $(uname -r) is running and all checks passed. AUR updates next: paru -Sua"
+  else
+    notify-send -u critical -a "Syna update" "Update check found problems" "Open a terminal and run: syscheck"
+  fi
+}
+
+case ${1:-} in
+  --after-reboot) after_reboot; exit 0 ;;
+  --write-note)   write_note "${2:-see syna-update-check post}"; exit 0 ;;
+  -h|--help)      sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+[[ -t 0 ]] || { echo "syna-update is interactive: run it in your own terminal."; exit 2; }
+
+if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
+  step "An update is already installed and waiting for a restart"
+  if [[ -f $PENDING ]]; then line "After you restart and log in, the check runs by itself and shows a notification."
+  else line "Run: syna-update-check post   then restart, then: syscheck"; fi
+  exit 0
+fi
+
+step "Step 1 of 4: checking the system (asks for your password once)"
+pre=$(syna-update-check pre 2>&1 | tee /dev/tty | strip); prerc=${PIPESTATUS[0]}
+if (( prerc != 0 )); then
+  bad "The check found a problem (FAIL above). Nothing was changed. Ask an agent: \"update the system\"."
+  exit 1
+fi
+n=$(grep -oE '[0-9]+ repo packages' <<<"$pre" | grep -oE '^[0-9]+')
+[[ -z $n ]] && { good "No updates available. Nothing to do."; exit 0; }
+needs_restart=no; grep -q 'boot/desktop-critical: linux-cachyos' <<<"$pre" && needs_restart=yes
+
+step "Step 2 of 4: looking for known problems with these updates"
+research=$(syna-update-research 2>&1 | strip)
+holds=$(grep 'HOLD' <<<"$research")
+soak=$(grep 'NEW:' <<<"$research")
+leads=$(grep -c '^  ! open issues' <<<"$research")
+if [[ -n $holds ]]; then
+  bad "Something must be held back:"; sed 's/^ */    /' <<<"$holds"
+  line "Stopping here, nothing changed. Ask an agent to plan around it: \"update the system\"."
+  exit 1
+fi
+[[ -n $soak ]] && { line "Very new releases (not tested by many people yet):"; sed 's/^ */    /' <<<"$soak"; }
+line "$leads package(s) have open bug reports worth a look. Most never affect a given machine."
+line "Details: syna-update-research   (an agent can judge them against your hardware)"
+
+step "Ready: $n updates$( [[ $needs_restart == yes ]] && echo ', including a new kernel (restart needed afterwards)')"
+[[ -n $soak ]] && line "Unless this fixes a security problem, waiting a few days for the new releases is the safer choice."
+ask "Install now?" || { line "Nothing changed. Run syna-update again when you're ready."; exit 0; }
+
+step "Step 3 of 4: installing (pacman asks for confirmation)"
+sudo pacman -Syu || { bad "pacman stopped or failed. Read its message above; nothing else was run."; exit 1; }
+
+step "Step 4 of 4: checking the result before you restart"
+post=$(syna-update-check post 2>&1 | tee /dev/tty | strip); postrc=${PIPESTATUS[0]}
+f=$(write_note "$(tail -1 <<<"$post" | sed 's/^ *//')")
+echo
+if (( postrc != 0 )); then
+  bad "DO NOT RESTART. The check found a problem (FAIL above)."
+  line "Your current session is fine. Ask an agent with the output above. Note: ${f/#$HOME/\~}"
+  exit 1
+fi
+good "All checks passed. Update note: ${f/#$HOME/\~}"
+if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
+  echo "$f" >"$PENDING"
+  line "Restart when convenient. After you log in, the check runs by itself and shows a notification."
+  line "If the new kernel doesn't start: pick LTS in the boot menu (the note explains how to undo)."
+else
+  line "No kernel change: no restart required."
+fi
+
+aur=$(paru -Qua 2>/dev/null | grep -c .)
+if (( aur > 0 )); then
+  echo
+  line "$aur AUR update(s) waiting. These are community build recipes: paru shows each recipe's"
+  line "changes before building. Read them, especially for apps marked 'runs as root' in step 1."
+  ask "Run the AUR updates now (paru -Sua)?" && paru -Sua
 fi

@@ -1,0 +1,14 @@
+[Unit]
+Description=Syna: verify the system after a kernel update (runs once, at login)
+ConditionPathExists=%h/.local/state/syna/post-reboot-pending
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+# Let the desktop settle (notifications, network) before checking
+ExecStartPre=/bin/sleep 45
+Environment=PATH=%h/.local/bin/rice:%h/.local/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/bin/rice/syna-update --after-reboot
+
+[Install]
+WantedBy=graphical-session.target
