@@ -18,6 +18,7 @@ slider_mapping:
   # Slider 5: installed games; verify audio process names during gameplay.
   4:
     - "Moonlight"
+    - "streaming_client"
     - "cs2"
     - "cs2.exe"
     - "Cyberpunk2077.exe"
@@ -31,6 +32,8 @@ slider_mapping:
     - "STRAFTAT.exe"
     - "Wuthering Waves.exe"
     - "Client-Win64-Shipping.exe"
+    # CachyOS Proton PipeWire reports Wuthering Waves as UE4, without a binary.
+    - "UE4"
 
 # set true if your sliders read inverted (top = 0%, bottom = 100%)
 invert_sliders: false

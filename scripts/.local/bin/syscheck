@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+echo "=============================="
+echo " Kernel version (uname -r)"
+echo "=============================="
+uname -r
+echo
+
+echo "=============================="
+echo " Installed CachyOS kernel packages"
+echo "=============================="
+pacman -Qs linux-cachyos
+echo
+
+echo "=============================="
+echo " NVIDIA driver status (nvidia-smi)"
+echo "=============================="
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi
+else
+    echo "nvidia-smi not found (NVIDIA driver not installed)"
+fi
+echo
+
+# Verdict: running kernel, NVIDIA match, Hyprland config, failed units vs the pre-update baseline
+if command -v syna-update-check >/dev/null 2>&1; then
+    syna-update-check boot
+fi
