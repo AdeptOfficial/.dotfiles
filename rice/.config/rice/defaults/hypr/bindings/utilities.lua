@@ -13,7 +13,7 @@ hl.bind("XF86Calculator", hl.dsp.exec_cmd("gnome-calculator"), { description = "
 hl.bind("SUPER + SHIFT + SPACE", hl.dsp.exec_cmd("syna-toggle-waybar"), { description = "Toggle top bar" })
 hl.bind("SUPER + CTRL + SPACE", hl.dsp.exec_cmd("~/.local/bin/rice/syna-theme-bg-next"), { description = "Next background in theme" })
 hl.bind("SUPER + SHIFT + CTRL + SPACE", hl.dsp.exec_cmd("syna-menu theme"), { description = "Theme menu" })
-hl.bind("SUPER + BACKSPACE", hl.dsp.window.set_prop({ prop = "activewindow", value = "-j | jq -r '.address')\" opaque toggle", window = "\"address:$(hyprctl" }), { description = "Toggle window transparency" })
+hl.bind("SUPER + BACKSPACE", hl.dsp.window.set_prop({ prop = "opaque", value = "toggle" }), { description = "Toggle window transparency" })  -- active window; the converter mangled the old shell form
 hl.bind("SUPER + SHIFT + BACKSPACE", hl.dsp.exec_cmd("syna-hyprland-workspace-toggle-gaps"), { description = "Toggle workspace gaps" })
 
 -- Notifications

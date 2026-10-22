@@ -129,8 +129,10 @@ check_esp() {
 
 # Parses the live config with the installed binary: after an update, that is the new version
 check_hyprland_config() {
-  section "Hyprland config vs installed Hyprland $(pkg_ver hyprland)"
-  local cfg="$USER_HOME/.config/hypr/hyprland.conf" out
+  # Hyprland uses hyprland.lua when it exists (0.55+), else hyprland.conf
+  local cfg="$USER_HOME/.config/hypr/hyprland.lua" out
+  [[ -f $cfg ]] || cfg="$USER_HOME/.config/hypr/hyprland.conf"
+  section "Hyprland config ($(basename "$cfg")) vs installed Hyprland $(pkg_ver hyprland)"
   out=$(timeout 30 Hyprland --verify-config -c "$cfg" 2>&1)
   if grep -q '^config ok' <<<"$out"; then
     ok "config parses cleanly"
