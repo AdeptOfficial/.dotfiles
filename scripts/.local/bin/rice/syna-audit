@@ -92,6 +92,9 @@ grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$pacnew" &
 orph=$(pacman -Qdtq 2>/dev/null)
 add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
+rb=$(command -v checkrebuild >/dev/null && checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
+add "- Needing rebuild (linked against removed libraries): ${rb:-none}"
+[[ -n $rb ]] && flag "$(grep -c . <<<"$rb") AUR/foreign packages need a rebuild: $(tr '\n' ' ' <<<"$rb")(paru -S --rebuild <pkg>)"
 fw=$(timeout 60 fwupdmgr get-updates --no-unreported-check 2>/dev/null | grep -E '^[│├└ ]*[A-Za-z].*→|New version' | head -5)
 [[ -n $fw ]] && { flag "Firmware updates available (fwupdmgr get-updates)"; add "- Firmware: $fw"; } || add "- Firmware: no updates reported"
 

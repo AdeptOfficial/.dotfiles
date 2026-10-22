@@ -67,7 +67,7 @@ for arg in "$@"; do
   esac
 done
 
-# Ensure AUR/yay prerequisites are installed (--needed skips if present)
+# Ensure AUR/paru prerequisites are installed (--needed skips if present)
 sudo pacman -S --needed --noconfirm base-devel git
 
 # Validate sudo works
@@ -161,16 +161,19 @@ if pacman -Qs pulseaudio > /dev/null 2>&1; then
 fi
 
 # ============================================
-# 1. Install yay (AUR helper)
+# 1. Install paru (AUR helper; same one syna-update-check and the update workflow use)
 # ============================================
-echo -e "${GREEN}[1/9] Installing yay...${NC}"
-if ! command -v yay &>/dev/null; then
+echo -e "${GREEN}[1/9] Installing paru...${NC}"
+if ! command -v paru &>/dev/null; then
   sudo pacman -S --needed --noconfirm git base-devel
-  rm -rf /tmp/yay
-  git clone https://aur.archlinux.org/yay.git /tmp/yay
-  cd /tmp/yay && makepkg -si --noconfirm
-  cd ~/.dotfiles
-  rm -rf /tmp/yay
+  # CachyOS ships paru prebuilt; elsewhere build paru-bin from the AUR
+  if ! sudo pacman -S --needed --noconfirm paru; then
+    rm -rf /tmp/paru-bin
+    git clone https://aur.archlinux.org/paru-bin.git /tmp/paru-bin
+    cd /tmp/paru-bin && makepkg -si --noconfirm
+    cd ~/.dotfiles
+    rm -rf /tmp/paru-bin
+  fi
 fi
 
 # ============================================
@@ -203,7 +206,7 @@ sudo pacman -S --needed --noconfirm \
   qt5-wayland qt6-wayland \
   zoxide lazygit neovim fwupd hyprland-guiutils tailscale \
   gnome-calculator gamescope lazydocker signal-desktop obsidian \
-  cava python-yaml lm_sensors pacman-contrib
+  cava python-yaml lm_sensors pacman-contrib rebuild-detector
 
 # Update safety net (syna-update-check): pacman snapshots + bootable snapshot entries.
 # Only where they apply: Btrfs root with snapper, and Limine as the bootloader.
@@ -226,7 +229,7 @@ fi
 # 4. Install AUR packages
 # ============================================
 echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
-yay -S --needed --noconfirm \
+paru -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
   wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
@@ -237,7 +240,7 @@ yay -S --needed --noconfirm \
 if [[ "$PROFILE" == "laptop" ]]; then
   echo -e "${GREEN}[4b/9] Installing ASUS G14 packages...${NC}"
   sudo pacman -S --needed --noconfirm asusctl supergfxctl power-profiles-daemon
-  yay -S --needed --noconfirm rog-control-center
+  paru -S --needed --noconfirm rog-control-center
 fi
 
 # VM-specific packages (only if running in a VM)

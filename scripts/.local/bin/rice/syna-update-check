@@ -140,6 +140,36 @@ check_hyprland_config() {
   fi
 }
 
+# AUR packages are user-submitted build recipes: list them, mark the ones that run with root
+# privileges (system services, setuid/setgid programs) and remind to read the recipe diff.
+check_aur_pending() {
+  section "AUR updates (install separately: paru -Sua)"
+  command -v paru >/dev/null || { info "paru not installed"; return; }
+  local list pkg old new mark f
+  list=$(paru -Qua 2>/dev/null)
+  [[ -z $list ]] && { ok "no AUR updates"; return; }
+  while read -r pkg old _ new; do
+    mark=""
+    pacman -Qlq "$pkg" 2>/dev/null | grep -qE '^/usr/lib/systemd/system/.+\.service$' && mark+=" system-service"
+    while read -r f; do [[ -f $f && ( -u $f || -g $f ) ]] && { mark+=" setuid"; break; }; done < <(pacman -Qlq "$pkg" 2>/dev/null)
+    if [[ -n $mark ]]; then warn "$pkg $old -> $new  (runs as root:$mark)"
+    else info "$pkg $old -> $new"; fi
+  done <<<"$list"
+  info "paru shows each build-recipe (PKGBUILD) diff before building: read it, above all for packages marked root"
+}
+
+# AUR/foreign programs linked against libraries the update replaced stop launching until rebuilt
+check_rebuilds() {
+  section "AUR programs needing a rebuild"
+  command -v checkrebuild >/dev/null || { warn "checkrebuild missing: sudo pacman -S rebuild-detector"; return; }
+  local out; out=$(checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
+  if [[ -z $out ]]; then ok "no foreign packages linked against removed libraries"
+  else
+    warn "rebuild after the update (not a reboot blocker): $(tr '\n' ' ' <<<"$out")"
+    info "paru -S --rebuild <pkg> for each"
+  fi
+}
+
 pre() {
   check_running_kernel
 
@@ -169,10 +199,7 @@ pre() {
     grep -q '^linux-cachyos-lts ' <<<"$list" && grep -q '^linux-cachyos ' <<<"$list" \
       && warn "both kernels update together: the LTS fallback is also untested afterwards"
   fi
-  command -v paru >/dev/null && {
-    local aur; aur=$(paru -Qua 2>/dev/null | wc -l)
-    info "$aur AUR updates (paru -Sua, run separately after the repo update)"
-  }
+  check_aur_pending
 
   section "Arch news (read anything that says manual intervention)"
   if command -v paru >/dev/null; then
@@ -184,6 +211,7 @@ pre() {
 
   check_nvidia_modules
   check_esp
+  check_rebuilds   # baseline: what is already broken before this update
 
   section "Disk and snapshots"
   local use; use=$(df --output=pcent / | tail -1 | tr -dc 0-9)
@@ -209,6 +237,7 @@ post() {
   check_nvidia_modules
   check_esp
   check_hyprland_config
+  check_rebuilds
   local new; new=$(pacdiff -o 2>/dev/null)
   [[ -n $new ]] && warn ".pacnew files to merge: $(tr '\n' ' ' <<<"$new")"
   grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$new" && \

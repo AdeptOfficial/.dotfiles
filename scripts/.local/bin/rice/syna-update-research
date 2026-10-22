@@ -36,6 +36,10 @@ neovim                      neovim/neovim                    -     -
 linux-cachyos               CachyOS/linux-cachyos            -     kernel
 nvidia-utils                NVIDIA/open-gpu-kernel-modules   -     nvidia
 systemd                     systemd/systemd                  -     -
+coolercontrold-bin          gitlab:coolercontrol/coolercontrol -   cooler
+coolercontrol-bin           gitlab:coolercontrol/coolercontrol -   cooler
+vesktop                     Vencord/Vesktop                  -     -
+1password-beta              -                                -     -
 EOF
 )
 # Separate words: gh quotes a single argument as one phrase, which silently matches nothing
@@ -75,6 +79,13 @@ research() {
   [[ -z $inst ]] && return
 
   local iv cv; iv=$(plain "$inst"); cv=$(plain "${cand:-$inst}")
+  # Not on GitHub: point at the release notes instead of querying
+  if [[ $repo == gitlab:* ]]; then
+    note "GitLab project: read https://gitlab.com/${repo#gitlab:}/-/releases and open issues by hand"
+    local ours; ours=$(local_issues "${pkg%-bin}"); [[ -n $ours ]] && sed 's/^/      /' <<<"$ours"
+    return 0
+  fi
+  [[ $repo == - ]] && { note "closed source: read the vendor release notes"; return; }
   if [[ $ceiling != - ]] && ! newer "$ceiling" "$cv"; then
     stop "candidate $cv reaches ceiling $ceiling: do not install (see guides/version-matrix.md)"
   fi
@@ -122,6 +133,7 @@ upcoming() {
   while read -r pkg repo ceiling group; do
     inst=$(pacman -Q "$pkg" 2>/dev/null | awk '{print $2}') || true
     [[ -z $inst ]] && continue
+    [[ $repo == gitlab:* || $repo == - ]] && continue
     latest=$(releases "$repo" | head -1 | cut -f1)
     [[ -z $latest ]] && continue
     if newer "$(plain "$latest")" "$(plain "$inst")"; then
