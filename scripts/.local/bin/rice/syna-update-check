@@ -75,7 +75,7 @@ check_nvidia_modules() {
 check_esp() {
   section "ESP: UKIs and Limine entries"
   if ! have_root; then
-    warn "skipped: /boot is root-only. Rerun with: sudo $(basename "$0") $MODE"
+    warn "skipped: /boot is root-only. Rerun with: sudo ~/.local/bin/rice/$(basename "$0") $MODE  (sudo ignores ~/.local/bin)"
     return
   fi
   local pkg dir uki newest_vmlinuz
