@@ -109,6 +109,16 @@ after_reboot() {
   fi
 }
 
+# AUR updates last: community build recipes, so paru shows each recipe's changes before building
+offer_aur() {
+  local aur; aur=$(paru -Qua 2>/dev/null | grep -c .)
+  (( aur > 0 )) || return 0
+  echo
+  line "$aur AUR update(s) waiting. These are community build recipes: paru shows each recipe's"
+  line "changes before building. Read them, especially for apps marked 'runs as root' in step 1."
+  ask "Run the AUR updates now (paru -Sua)?" && paru -Sua
+}
+
 case ${1:-} in
   --after-reboot) after_reboot; exit 0 ;;
   --test-lts)
@@ -136,7 +146,7 @@ if (( prerc != 0 )); then
   exit 1
 fi
 n=$(grep -oE '[0-9]+ repo packages' <<<"$pre" | grep -oE '^[0-9]+')
-[[ -z $n ]] && { good "No updates available. Nothing to do."; exit 0; }
+[[ -z $n ]] && { good "No system (repo) updates."; offer_aur; exit 0; }
 needs_restart=no; grep -q 'boot/desktop-critical: linux-cachyos' <<<"$pre" && needs_restart=yes
 
 step "Step 2 of 4: looking for known problems with these updates"
@@ -178,10 +188,4 @@ else
   line "No kernel change: no restart required."
 fi
 
-aur=$(paru -Qua 2>/dev/null | grep -c .)
-if (( aur > 0 )); then
-  echo
-  line "$aur AUR update(s) waiting. These are community build recipes: paru shows each recipe's"
-  line "changes before building. Read them, especially for apps marked 'runs as root' in step 1."
-  ask "Run the AUR updates now (paru -Sua)?" && paru -Sua
-fi
+offer_aur
