@@ -94,8 +94,10 @@ add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
 cache=$(du -sm "$(pacman-conf CacheDir | head -1)" 2>/dev/null | cut -f1)
 add "- Package cache: $(( ${cache:-0} / 1024 )) GB (old versions are what syna-update-undo reinstalls)"
-systemctl is-enabled paccache.timer >/dev/null 2>&1 || flag "Weekly package-cache cleanup is off: sudo systemctl enable --now paccache.timer (one time)"
-(( ${cache:-0} > 20480 )) && flag "Package cache is $(( cache / 1024 )) GB: enable cleanup that keeps the last 3 versions (sudo systemctl enable --now paccache.timer)"
+# Size alone is fine while weekly cleanup (keep 3 versions) runs; only flag when cleanup is off
+if ! systemctl is-enabled paccache.timer >/dev/null 2>&1; then
+  flag "Weekly package-cache cleanup is off ($(( ${cache:-0} / 1024 )) GB cached): sudo systemctl enable --now paccache.timer (one time)"
+fi
 # Reviewed false positives, same list and reasons as syna-update-check
 REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2"
 rb=$(command -v checkrebuild >/dev/null && checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
