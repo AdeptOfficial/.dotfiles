@@ -1,0 +1,11 @@
+// Generated from the selected Syna palette.
+$theme-background: #0A1428;
+$theme-foreground: #F0F8FF;
+$theme-accent: #00ff88;
+$theme-success: #00ff88;
+$theme-warning: #f1fa8c;
+$theme-error: #ff5555;
+$theme-secondary: #ff79c6;
+$theme-muted: mix($theme-foreground, $theme-background, 50%);
+$theme-surface: mix($theme-foreground, $theme-background, 5%);
+$theme-surface-raised: mix($theme-foreground, $theme-background, 10%);
