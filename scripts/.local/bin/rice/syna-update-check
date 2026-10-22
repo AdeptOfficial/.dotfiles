@@ -299,6 +299,12 @@ case $MODE in
 esac
 
 section "Verdict"
+# Result stamp read by syna-update-guard (the agent hook that gates update commands)
+if [[ $MODE == pre || $MODE == post ]]; then
+  mkdir -p "$STATE_DIR"
+  printf '%s %s %d\n' "$(date +%s)" "$MODE" "$FAILS" >"$STATE_DIR/last-$MODE"
+  [[ -n ${SUDO_USER:-} ]] && chown "$SUDO_USER:" "$STATE_DIR/last-$MODE"
+fi
 if (( FAILS > 0 )); then
   case $MODE in
     pre)  printf '  \e[31m%d failure(s): do not update yet\e[0m\n' "$FAILS" ;;

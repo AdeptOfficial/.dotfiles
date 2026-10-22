@@ -1,0 +1,24 @@
+deny	sudo pacman -Syu
+deny	pacman -Syyu --noconfirm
+deny	paru
+deny	paru -Sua
+deny	yay -Syu
+deny	sudo pacman -Sy firefox
+deny	cd x && sudo pacman -Su
+deny	sudo paru
+deny	bash -c 'sudo pacman -Syu'
+deny	sh -c "paru -Syu"
+deny	eval "pacman -Syu"
+deny	true; paru
+allow	pacman -Qi systemd
+allow	pacman -Ss hyprland
+allow	paru -Qua
+allow	checkupdates
+allow	sudo pacman -S rebuild-detector
+allow	syna-update-check pre
+allow	grep paru file
+allow	git commit -m "Block pacman -Syu, paru and yay upgrades"
+allow	echo 'run sudo pacman -Syu later'
+allow	python3 - <<'EOF'\ns = "agents (pacman -Sy/-Su, paru, yay) are denied"\nEOF
+allow	cat > f <<'EOF'\nsudo pacman -Syu\nparu -Sua\nEOF
+allow	ls # then paru

@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Claude Code PreToolUse hook (Bash): agents may not start a system update unless
+# `syna-update-check pre` passed within the last 3 hours. Then the user still confirms.
+# Reads the hook JSON on stdin; prints a permission decision as JSON, or nothing to allow.
+# Workflow: ~/.syna/workflows/update-system.md
+# Regression cases (want<TAB>command, \n escapes): ~/.dotfiles/maintenance/syna-update-guard.cases
+
+MAX_AGE=$((3 * 3600))
+STAMP=~/.local/state/syna/last-pre
+WORKFLOW="~/.syna/workflows/update-system.md"
+
+cmd=$(jq -r '.tool_input.command // empty' 2>/dev/null)
+[[ -z $cmd ]] && exit 0
+
+# Only executable text counts: drop heredoc bodies, quoted strings and comments, so docs and
+# commit messages that mention updates pass. Commands that execute strings (bash/sh/zsh -c,
+# eval) are checked unstripped, so quoting cannot hide an update.
+if grep -qE '(^|[^[:alnum:]_])((ba|z)?sh[[:space:]]+-c|eval)([[:space:]]|$)' <<<"$cmd"; then
+  code=$cmd
+else
+  code=$(python3 -c '
+import re, sys
+s = sys.stdin.read()
+out, skip = [], None
+for line in s.split("\n"):
+    if skip is not None:
+        if line.strip() == skip:
+            skip = None
+        continue
+    m = re.search(r"<<-?\s*[\x27\"]?(\w+)[\x27\"]?", line)
+    out.append(line)
+    if m:
+        skip = m.group(1)
+s = "\n".join(out)
+s = re.sub(r"\x27[^\x27]*\x27", "\x27\x27", s)          # single-quoted
+s = re.sub(r"\"(?:\\\\.|[^\"\\\\])*\"", "\"\"", s)     # double-quoted
+s = re.sub(r"(^|\s)#[^\n]*", r"\1", s)                  # comments
+print(s)
+' <<<"$cmd")
+fi
+
+# Full or partial upgrades: pacman/paru/yay with -S…y/-S…u or long forms, bare paru/yay, -Sua.
+# Read-only queries (-Q, -Si, -Ss, -Qua, checkupdates) and single installs (-S pkg) pass.
+upgrade='(^|[;&|(`'"'"'"[:space:]])(sudo[[:space:]]+)?(pacman|paru|yay)[[:space:]]+([^;&|]*[[:space:]])?(-S[a-zA-Z]*[yu][a-zA-Z]*|--sysupgrade|--refresh)([[:space:]'"'"'"]|$)'
+bare='(^[[:space:]]*|[;&|(`'"'"'"][[:space:]]*|sudo[[:space:]]+)(paru|yay)[[:space:]]*($|[;&|)'"'"'"])'
+grep -qE -- "$upgrade" <<<"$code" || grep -qE -- "$bare" <<<"$code" || exit 0
+
+decide() {   # $1 = deny|ask, $2 = reason
+  jq -n --arg d "$1" --arg r "$2" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $d, permissionDecisionReason: $r}}'
+  exit 0
+}
+
+if [[ ! -f $STAMP ]]; then
+  decide deny "System update blocked: no syna-update-check pre result. Follow $WORKFLOW: the user runs syna-update-check pre, then syna-update-research, before any update."
+fi
+read -r when _ fails <"$STAMP"
+age=$(( $(date +%s) - when ))
+if (( age > MAX_AGE )); then
+  decide deny "System update blocked: the last syna-update-check pre is $((age / 60)) minutes old (limit 180). Rerun it and the research step per $WORKFLOW."
+fi
+if (( fails > 0 )); then
+  decide deny "System update blocked: the last syna-update-check pre reported $fails FAIL(s). Resolve them first per $WORKFLOW."
+fi
+decide ask "Pre-check passed $((age / 60)) minutes ago with no failures. Confirm the research step was done and this is a reboot window ($WORKFLOW)."
