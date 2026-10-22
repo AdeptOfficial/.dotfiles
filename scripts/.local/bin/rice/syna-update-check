@@ -73,9 +73,16 @@ check_nvidia_modules() {
 }
 
 check_esp() {
-  section "ESP: UKIs and Limine entries"
+  [[ $MODE == __esp ]] || section "ESP: UKIs and Limine entries"
   if ! have_root; then
-    warn "skipped: /boot is root-only. Rerun with: sudo ~/.local/bin/rice/$(basename "$0") $MODE  (sudo ignores ~/.local/bin)"
+    # Only this part needs root (/boot is root-only). Re-run just it through sudo:
+    # interactive terminals get a password prompt; agents without a terminal skip it.
+    local self; self=$(readlink -f "$0")
+    if [[ -t 0 ]] || sudo -n true 2>/dev/null; then
+      sudo "$self" __esp || FAILS=$((FAILS + 1))
+    else
+      warn "skipped: /boot is root-only and no terminal for a sudo prompt. Run syna-update-check $MODE yourself"
+    fi
     return
   fi
   local pkg dir uki newest_vmlinuz
@@ -249,6 +256,7 @@ boot() {
 }
 
 case $MODE in
+  __esp) check_esp; exit $(( FAILS > 0 )) ;;   # internal: root part, called via sudo
   pre)  pre ;;
   post) post ;;
   boot) boot ;;
