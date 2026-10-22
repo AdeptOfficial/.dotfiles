@@ -3,7 +3,9 @@
 -- Slow app launch fix -- set systemd vars
 
 hl.on("hyprland.start", function()
-    hl.exec_cmd("] && uwsm-app -- hypridle", { ["["] = "! -f ~/.local/state/rice/toggles/idle-off" })
+    -- hypridle unless the idle-off toggle is set (was a bash [[ ]] test the converter mangled)
+    local idle_off = io.open(os.getenv("HOME") .. "/.local/state/rice/toggles/idle-off")
+    if idle_off then idle_off:close() else hl.exec_cmd("uwsm-app -- hypridle") end
     hl.exec_cmd("uwsm-app -- mako")
     hl.exec_cmd("uwsm-app -- waybar")
     hl.exec_cmd("uwsm-app -- fcitx5")
