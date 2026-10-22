@@ -1,0 +1,246 @@
+#!/bin/bash
+
+# Read-only checks around a system update. Never installs, removes or rebuilds anything.
+#
+#   syna-update-check pre    Before updating: risk summary, fallback readiness, failed-unit baseline
+#   syna-update-check post   After pacman, BEFORE reboot: UKIs, NVIDIA modules, VFIO UKI, Limine entries
+#   syna-update-check boot   After reboot: running kernel, NVIDIA driver, failed units vs baseline
+#
+# ESP checks (/boot is root-only) run when invoked with sudo, otherwise they are skipped and reported.
+# Guide: ~/.syna/guides/system-update.md
+
+MODE="${1:-}"
+USER_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+STATE_DIR="$USER_HOME/.local/state/syna"
+BASELINE="$STATE_DIR/failed-units.baseline"
+ESP=/boot
+UKI_DIR="$ESP/EFI/Linux"
+KERNEL_PKGS=(linux-cachyos linux-cachyos-lts)
+
+FAILS=0
+WARNS=0
+ok()   { printf '  \e[32mok\e[0m    %s\n' "$*"; }
+warn() { printf '  \e[33mwarn\e[0m  %s\n' "$*"; WARNS=$((WARNS + 1)); }
+fail() { printf '  \e[31mFAIL\e[0m  %s\n' "$*"; FAILS=$((FAILS + 1)); }
+info() { printf '  ..    %s\n' "$*"; }
+section() { printf '\n\e[1m%s\e[0m\n' "$*"; }
+
+have_root() { [[ $EUID -eq 0 ]]; }
+
+pkg_ver() { pacman -Q "$1" 2>/dev/null | awk '{print $2}'; }
+
+# Kernel release dir in /usr/lib/modules for a pkgbase (e.g. linux-cachyos -> 7.2.9-2-cachyos)
+modules_dir_for() {
+  local f
+  for f in /usr/lib/modules/*/pkgbase; do
+    [[ $(<"$f") == "$1" ]] && { dirname "$f"; return; }
+  done
+}
+
+failed_units() { systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort; }
+
+check_running_kernel() {
+  section "Running kernel"
+  local rel; rel=$(uname -r)
+  if [[ -d /usr/lib/modules/$rel ]]; then
+    ok "$rel is installed (modules present)"
+  else
+    fail "$rel has no modules dir: a kernel update is installed but not booted yet. Reboot before updating again"
+  fi
+}
+
+check_nvidia_modules() {
+  section "NVIDIA kernel modules"
+  local utils; utils=$(pkg_ver nvidia-utils | cut -d- -f1)
+  info "nvidia-utils $utils"
+  local pkg dir mod mver
+  for pkg in "${KERNEL_PKGS[@]}"; do
+    dir=$(modules_dir_for "$pkg")
+    [[ -z $dir ]] && { warn "$pkg: not installed"; continue; }
+    mod=$(find "$dir" -name 'nvidia.ko*' 2>/dev/null | head -1)
+    if [[ -z $mod ]]; then
+      fail "$pkg ($(basename "$dir")): no nvidia module, desktop will not start on this kernel"
+      continue
+    fi
+    mver=$(modinfo -F version "$mod" 2>/dev/null)
+    if [[ $mver == "$utils" ]]; then
+      ok "$pkg ($(basename "$dir")): nvidia $mver matches userspace"
+    else
+      fail "$pkg ($(basename "$dir")): nvidia module $mver != nvidia-utils $utils"
+    fi
+  done
+}
+
+check_esp() {
+  section "ESP: UKIs and Limine entries"
+  if ! have_root; then
+    warn "skipped: /boot is root-only. Rerun with: sudo $(basename "$0") $MODE"
+    return
+  fi
+  local pkg dir uki newest_vmlinuz
+  for pkg in "${KERNEL_PKGS[@]}"; do
+    dir=$(modules_dir_for "$pkg")
+    [[ -z $dir ]] && continue
+    uki=$(ls -1t "$UKI_DIR"/*"_${pkg}.efi" 2>/dev/null | head -1)
+    if [[ -z $uki ]]; then
+      fail "$pkg: no UKI matching $UKI_DIR/*_${pkg}.efi"
+    elif [[ $uki -ot $dir/vmlinuz ]]; then
+      fail "$pkg: UKI $(basename "$uki") is older than the installed kernel, rebuild did not run"
+    else
+      ok "$pkg: $(basename "$uki") ($(date -r "$uki" '+%F %R'))"
+    fi
+  done
+
+  # limine-vfio-rebuild builds from the newest vmlinuz by version sort
+  newest_vmlinuz=$(ls -1 /usr/lib/modules/*/vmlinuz 2>/dev/null | sort -V | tail -1)
+  uki=$(ls -1 "$UKI_DIR"/*_linux-cachyos-vfio.efi 2>/dev/null | head -1)
+  if [[ -z $uki ]]; then
+    fail "VFIO UKI missing"
+  elif [[ $uki -ot $newest_vmlinuz ]]; then
+    fail "VFIO UKI is older than $newest_vmlinuz, 99-limine-vfio.hook did not run"
+  else
+    ok "VFIO UKI built from $(basename "$(dirname "$newest_vmlinuz")") ($(date -r "$uki" '+%F %R'))"
+  fi
+  [[ $newest_vmlinuz == *lts* ]] && warn "newest kernel by version sort is LTS: VFIO UKI is using the LTS kernel"
+
+  local conf="$ESP/limine.conf" want
+  if [[ ! -f $conf ]]; then
+    fail "$conf missing"
+  else
+    for want in linux-cachyos-lts linux-cachyos-vfio; do
+      grep -q -- "$want" "$conf" && ok "limine.conf references $want" || fail "limine.conf has no $want entry"
+    done
+    grep -qE -- 'linux-cachyos(\.efi|[^-])' "$conf" && ok "limine.conf references linux-cachyos" \
+      || warn "could not confirm main linux-cachyos entry in limine.conf, inspect manually"
+    grep -qi 'snapshot' "$conf" && ok "snapshot submenu present" || warn "no snapshot entries in limine.conf"
+  fi
+
+  local use; use=$(df --output=pcent "$ESP" | tail -1 | tr -dc 0-9)
+  (( use < 80 )) && ok "ESP ${use}% used" || warn "ESP ${use}% used"
+}
+
+pre() {
+  check_running_kernel
+
+  section "Pending updates"
+  local list; list=$(checkupdates 2>/dev/null)
+  if [[ -z $list ]]; then
+    info "no repo updates (or checkupdates failed)"
+  else
+    info "$(wc -l <<<"$list") repo packages"
+    local risky
+    risky=$(grep -E '^(linux-cachyos|nvidia|lib32-nvidia|systemd|mkinitcpio|limine|glibc|mesa|linux-firmware|hyprland|aquamarine|sddm|plymouth|cryptsetup|btrfs-progs|snapper)' <<<"$list")
+    # One line per family: linux-firmware-* and systemd-* split into many packages
+    [[ -n $risky ]] && awk '
+      { fam=$1; sub(/^lib32-/, "", fam)
+        if (fam ~ /^linux-firmware/) fam="linux-firmware"; else if (fam ~ /^systemd/) fam="systemd"
+        if (fam ~ /-headers$/) next
+        if (!(fam in first)) { first[fam]=$0; order[++n]=fam }; count[fam]++ }
+      END { for (i=1; i<=n; i++) { f=order[i]; extra=count[f]>1 ? " (+" count[f]-1 " related)" : ""; print first[f] extra } }
+    ' <<<"$risky" | while read -r l; do warn "boot/desktop-critical: $l"; done
+    # A kernel without its matching NVIDIA module package means no desktop after reboot
+    local k
+    for k in "${KERNEL_PKGS[@]}"; do
+      if grep -q "^$k " <<<"$list" && ! grep -q "^$k-nvidia-open " <<<"$list"; then
+        fail "$k updates but $k-nvidia-open does not: wait for the module package"
+      fi
+    done
+    grep -q '^linux-cachyos-lts ' <<<"$list" && grep -q '^linux-cachyos ' <<<"$list" \
+      && warn "both kernels update together: the LTS fallback is also untested afterwards"
+  fi
+  command -v paru >/dev/null && {
+    local aur; aur=$(paru -Qua 2>/dev/null | wc -l)
+    info "$aur AUR updates (paru -Sua, run separately after the repo update)"
+  }
+
+  section "Arch news (read anything that says manual intervention)"
+  if command -v paru >/dev/null; then
+    paru -Pw 2>/dev/null | sed 's/^/  /' | head -20
+    info "(empty = no unread news since last upgrade)"
+  else
+    info "check https://archlinux.org/news/ and https://cachyos.org/blog/"
+  fi
+
+  check_nvidia_modules
+  check_esp
+
+  section "Disk and snapshots"
+  local use; use=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+  (( use < 90 )) && ok "root ${use}% used" || fail "root ${use}% used, free space before updating"
+  pacman -Qq snap-pac >/dev/null 2>&1 && ok "snap-pac installed (pre/post snapshots automatic)" || warn "snap-pac not installed"
+  local pacnew; pacnew=$(pacdiff -o 2>/dev/null | wc -l)
+  (( pacnew == 0 )) && ok "no pending .pacnew files" || warn "$pacnew .pacnew files from earlier updates (pacdiff -o)"
+
+  section "Failed-unit baseline"
+  mkdir -p "$STATE_DIR"
+  failed_units >"$BASELINE"
+  [[ -n $SUDO_USER ]] && chown -R "$SUDO_USER:" "$STATE_DIR"
+  info "saved $(wc -l <"$BASELINE") failed units to $BASELINE"
+  sed 's/^/        /' "$BASELINE"
+}
+
+post() {
+  section "Transaction"
+  info "$(grep -E 'starting full system upgrade|transaction completed' /var/log/pacman.log | tail -1)"
+  local errs; errs=$(awk '/starting full system upgrade/{buf=""} {buf=buf"\n"$0} END{print buf}' /var/log/pacman.log \
+    | grep -iE 'error|failed|warning: .*(mkinitcpio|limine)' | grep -v 'pacnew' )
+  [[ -z $errs ]] && ok "no errors in the last upgrade log" || while read -r l; do [[ -n $l ]] && warn "${l:0:160}"; done <<<"$errs"
+  check_nvidia_modules
+  check_esp
+  local new; new=$(pacdiff -o 2>/dev/null)
+  [[ -n $new ]] && warn ".pacnew files to merge: $(tr '\n' ' ' <<<"$new")"
+}
+
+boot() {
+  check_running_kernel
+  section "Running kernel vs installed package"
+  local rel pkg dir; rel=$(uname -r)
+  for pkg in "${KERNEL_PKGS[@]}"; do
+    dir=$(modules_dir_for "$pkg")
+    [[ $(basename "${dir:-x}") == "$rel" ]] && ok "booted $pkg $rel"
+  done
+
+  section "NVIDIA driver"
+  if nvidia-smi --query-gpu=name,driver_version --format=csv,noheader >/dev/null 2>&1; then
+    ok "$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader | head -1)"
+  else
+    fail "nvidia-smi failed"
+  fi
+  [[ -n $(lspci -nnk -s 10:00.0 2>/dev/null | grep 'in use: vfio-pci') ]] && ok "GTX 1080 (10:00.0) bound to vfio-pci" \
+    || info "10:00.0 not on vfio-pci (expected only on the VFIO entry)"
+
+  section "Failed units vs baseline"
+  local now; now=$(failed_units)
+  if [[ ! -f $BASELINE ]]; then
+    warn "no baseline at $BASELINE (run 'pre' before updating)"
+    while read -r u; do [[ -n $u ]] && info "failed: $u"; done <<<"$now"
+  else
+    local added; added=$(comm -13 "$BASELINE" <(echo "$now") | sed '/^$/d')
+    local gone; gone=$(comm -23 "$BASELINE" <(echo "$now") | sed '/^$/d')
+    [[ -z $added ]] && ok "no new failed units" || while read -r u; do fail "newly failed: $u"; done <<<"$added"
+    [[ -n $gone ]] && while read -r u; do ok "no longer failing: $u"; done <<<"$gone"
+  fi
+
+  section "Kernel errors this boot"
+  local n; n=$(journalctl -k -b -p err --no-pager -q 2>/dev/null | wc -l)
+  info "$n kernel error lines (journalctl -k -b -p err), compare against the known ones in the guide"
+  journalctl -k -b -p err --no-pager -q 2>/dev/null | grep -iE 'btrfs|nvme|i/o error|panic|oops|BUG' | sed 's/^/  /' | head -10
+}
+
+case $MODE in
+  pre)  pre ;;
+  post) post ;;
+  boot) boot ;;
+  *) sed -n '3,10p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac
+
+section "Verdict"
+if (( FAILS > 0 )); then
+  case $MODE in
+    pre)  printf '  \e[31m%d failure(s): do not update yet\e[0m\n' "$FAILS" ;;
+    post) printf '  \e[31m%d failure(s): DO NOT REBOOT, fix first (see guide: Recovery)\e[0m\n' "$FAILS" ;;
+    boot) printf '  \e[31m%d failure(s): investigate; LTS entry is the fallback\e[0m\n' "$FAILS" ;;
+  esac
+  exit 1
+fi
+printf '  \e[32mno failures\e[0m, %d warning(s) to read above\n' "$WARNS"
