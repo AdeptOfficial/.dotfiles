@@ -1,6 +1,8 @@
 [Unit]
-Description=Syna: verify the system after a kernel update (runs once, at login)
-ConditionPathExists=%h/.local/state/syna/post-reboot-pending
+Description=Syna: verify the system after a kernel update or an LTS fallback test (once, at login)
+# Either trigger file (the "|" makes the conditions OR instead of AND)
+ConditionPathExists=|%h/.local/state/syna/post-reboot-pending
+ConditionPathExists=|%h/.local/state/syna/lts-test-pending
 After=graphical-session.target
 
 [Service]

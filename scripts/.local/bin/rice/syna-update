@@ -7,12 +7,14 @@
 #   syna-update                 Run the whole flow (interactive; needs your terminal)
 #   syna-update --after-reboot  Run by syna-update-after-reboot.service at login after a kernel update
 #   syna-update --write-note    Write the update note for the last pacman transaction
+#   syna-update --test-lts      Arm a one-time check of the LTS fallback kernel for the next login
 #
 # Notes: ~/.syna/docs/updates/YYYY-MM-DD.md. Undo: syna-update-undo. Guide: ~/.syna/guides/system-update.md
 
 STATE=~/.local/state/syna
 NOTES=~/.syna/docs/updates
 PENDING=$STATE/post-reboot-pending
+LTS_PENDING=$STATE/lts-test-pending
 strip() { sed 's/\x1b\[[0-9;]*m//g'; }
 step() { printf '\n\e[1;36m%s\e[0m\n' "$*"; }
 good() { printf '  \e[32m%s\e[0m\n' "$*"; }
@@ -66,8 +68,35 @@ write_note() {   # $1 = post-check verdict
   echo "$f"
 }
 
+# Fallback test: verify the LTS kernel once, so the boot-menu fallback is known to work
+lts_test() {
+  [[ -f $LTS_PENDING ]] || return 0
+  if [[ $(uname -r) != *lts* ]]; then
+    notify-send -a "Syna update" "LTS test still armed" "This boot used $(uname -r). Next restart, pick linux-cachyos-lts in the boot menu."
+    return 0
+  fi
+  local out rc f="$NOTES/lts-test-$(date +%F).md"
+  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}
+  mkdir -p "$NOTES"
+  { echo "# LTS fallback test $(date +%F)"; echo
+    echo "**Result:** $( ((rc == 0)) && echo passed || echo FAILED ) on $(uname -r), $(date '+%F %H:%M')"; echo
+    echo '```'; echo "$out"; echo '```'; } >"$f"
+  rm -f "$LTS_PENDING"
+  if (( rc == 0 )); then
+    notify-send -a "Syna update" "LTS fallback verified" "$(uname -r) boots with all checks passing. Restart to return to the normal kernel."
+  else
+    notify-send -u critical -a "Syna update" "LTS fallback has problems" "Run syscheck; result saved in ${f/#$HOME/\~}"
+  fi
+}
+
 after_reboot() {
+  lts_test
   [[ -f $PENDING ]] || exit 0
+  # On the LTS kernel the update check would test the wrong kernel: keep it armed for the normal one
+  if [[ $(uname -r) == *lts* ]]; then
+    notify-send -a "Syna update" "Running the LTS kernel" "The update check waits for the normal kernel. If the new kernel failed to start, see the update note's undo section."
+    exit 0
+  fi
   local out rc f verdict
   out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}
   f=$(<"$PENDING"); verdict=$(tail -1 <<<"$out" | sed 's/^ *//')
@@ -82,8 +111,13 @@ after_reboot() {
 
 case ${1:-} in
   --after-reboot) after_reboot; exit 0 ;;
+  --test-lts)
+    mkdir -p "$STATE"; date +%F >"$LTS_PENDING"
+    echo "LTS test armed. Restart, pick linux-cachyos-lts in the boot menu, and log in."
+    echo "About a minute later a notification shows the result; then restart back to the normal kernel."
+    exit 0 ;;
   --write-note)   write_note "${2:-see syna-update-check post}"; exit 0 ;;
-  -h|--help)      sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help)      sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
 [[ -t 0 ]] || { echo "syna-update is interactive: run it in your own terminal."; exit 2; }
