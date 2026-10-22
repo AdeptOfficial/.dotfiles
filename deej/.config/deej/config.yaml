@@ -17,6 +17,7 @@ slider_mapping:
     - discord
   # Slider 5: installed games; verify audio process names during gameplay.
   4:
+    - "Moonlight"
     - "cs2"
     - "cs2.exe"
     - "Cyberpunk2077.exe"
