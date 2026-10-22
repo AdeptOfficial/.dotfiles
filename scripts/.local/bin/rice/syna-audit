@@ -86,7 +86,9 @@ done < <(df --output=target,pcent / /home /boot 2>/dev/null | tail -n +2 | sort 
 sec "Packages"
 pacnew=$(pacdiff -o 2>/dev/null)
 add "- .pacnew/.pacsave files: $(grep -c . <<<"$pacnew")"
-[[ -n $pacnew ]] && { add "$(sed 's/^/  - /' <<<"$pacnew")"; flag "$(grep -c . <<<"$pacnew") unmerged .pacnew files (merge with pacdiff)"; }
+[[ -n $pacnew ]] && { add "$(sed 's/^/  - /' <<<"$pacnew")"; flag "$(grep -c . <<<"$pacnew") unmerged .pacnew files (review one at a time with pacdiff)"; }
+grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$pacnew" && \
+  flag "Boot-critical .pacnew present (mkinitcpio/limine-snapper-sync): never accept wholesale, it drops LUKS unlock/VFIO"
 orph=$(pacman -Qdtq 2>/dev/null)
 add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"

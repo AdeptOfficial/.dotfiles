@@ -204,6 +204,8 @@ post() {
   check_hyprland_config
   local new; new=$(pacdiff -o 2>/dev/null)
   [[ -n $new ]] && warn ".pacnew files to merge: $(tr '\n' ' ' <<<"$new")"
+  grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$new" && \
+    warn "never accept mkinitcpio/limine-snapper-sync .pacnew wholesale: they drop LUKS unlock, VFIO and snapshot settings"
 }
 
 boot() {
