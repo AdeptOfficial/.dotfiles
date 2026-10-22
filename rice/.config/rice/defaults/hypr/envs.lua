@@ -21,10 +21,16 @@ hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 hl.env("XCOMPOSEFILE", "~/.XCompose")
 
 hl.env("RICE_PATH", "~/.config")
-hl.env("PATH", "~/.local/bin/rice:$PATH")
+-- PATH: hyprlang expanded "$PATH"; the converter kept it literally, which broke every exec (2026-10-22).
+-- Prepend the rice scripts once (Lua re-runs this file on every reload).
+local rice_bin = os.getenv("HOME") .. "/.local/bin/rice"
+local path = os.getenv("PATH") or "/usr/local/bin:/usr/bin"
+if not (":" .. path .. ":"):find(":" .. rice_bin .. ":", 1, true) then
+    hl.env("PATH", rice_bin .. ":" .. path)
+end
 
 hl.env("RICE_PATH", "~/.config")
-hl.env("PATH", "~/.local/bin/rice:$PATH")
+-- (duplicate PATH line from the hyprlang source dropped)
 
 hl.config({
     xwayland = {
