@@ -1,0 +1,8 @@
+# Reviewed gitleaks findings (accepted, not secrets of this user).
+# 2026-10-22: Chromium Google-account OAuth client ID/secret, byte-identical (sha256 prefix
+# df12ce7af1a4d106) to the public basecamp/omarchy bin/omarchy-install-chromium-google-account.
+# Installed-app OAuth clients are not confidential. New findings must be reviewed, not added blindly.
+f18e42240b2af04347cf82c0b58b49f6d3673520:scripts/.local/bin/rice/adept-install-chromium-google-account:generic-api-key:12
+f18e42240b2af04347cf82c0b58b49f6d3673520:scripts/.local/bin/rice/adept-install-chromium-google-account:generic-api-key:13
+scripts/.local/bin/rice/syna-install-chromium-google-account:generic-api-key:12
+scripts/.local/bin/rice/syna-install-chromium-google-account:generic-api-key:13
