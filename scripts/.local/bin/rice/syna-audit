@@ -92,6 +92,13 @@ grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$pacnew" &
 orph=$(pacman -Qdtq 2>/dev/null)
 add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
+last_review=$(ls -1 "$SYNA/docs/packages/"*.md 2>/dev/null | sort | tail -1)
+if [[ -z $last_review ]]; then flag "No package review yet: workflows/review-packages.md"
+else
+  rd=$(basename "$last_review" .md | cut -c1-10); ra=$(days_since "$rd")
+  add "- Last package review: $rd ($ra days ago)"
+  (( ra > 90 )) && flag "Package review overdue ($ra days): workflows/review-packages.md"
+fi
 cache=$(du -sm "$(pacman-conf CacheDir | head -1)" 2>/dev/null | cut -f1)
 add "- Package cache: $(( ${cache:-0} / 1024 )) GB (old versions are what syna-update-undo reinstalls)"
 # Size alone is fine while weekly cleanup (keep 3 versions) runs; only flag when cleanup is off
