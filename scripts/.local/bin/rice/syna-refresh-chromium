@@ -1,21 +1,6 @@
 #!/bin/bash
 
 # Refresh the ~/.config/chromium-flags.conf file from the rice defaults.
+# (The Omarchy Google-account OAuth helper was removed 2026-10-22: Chromium is not used.)
 
-CONFIG_FILE="$HOME/.config/chromium-flags.conf"
-INSTALL_GOOGLE_ACCOUNTS=false
-
-# Check if google accounts were installed
-if [[ -f "$CONFIG_FILE" ]] && \
-  grep -q -- "--oauth2-client-id" "$CONFIG_FILE" && \
-  grep -q -- "--oauth2-client-secret" "$CONFIG_FILE"; then
-  INSTALL_GOOGLE_ACCOUNTS=true
-fi
-
-# Refresh the Chromium configuration
 syna-refresh-config chromium-flags.conf
-
-# Re-install Google accounts if previously configured
-if [[ "$INSTALL_GOOGLE_ACCOUNTS" == true ]]; then
-  syna-install-chromium-google-account
-fi
