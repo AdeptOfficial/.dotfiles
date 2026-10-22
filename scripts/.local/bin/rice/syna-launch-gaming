@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Open or reuse Steam on the primary display's gaming workspace.
+set -euo pipefail
+command -v steam >/dev/null
+hyprctl dispatch workspace 3 >/dev/null
+# Workspace rules apply to new windows; move an existing Steam window too.
+while IFS= read -r address; do
+    [[ -n "$address" ]] || continue
+    hyprctl dispatch movetoworkspacesilent "3,address:$address" >/dev/null
+done < <(hyprctl clients -j | jq -r '.[] | select(.class | test("^[Ss]team$")) | .address')
+exec steam steam://open/bigpicture

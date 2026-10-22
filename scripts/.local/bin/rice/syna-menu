@@ -155,14 +155,7 @@ show_style_menu() {
 }
 
 show_theme_menu() {
-  local current_theme=$(cat ~/.config/themes/current.name 2>/dev/null | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g')
-  local theme=$(menu "Theme" "$(syna-theme-list)" "--width 350" "$current_theme")
-  if [[ "$theme" == "CNCLD" || -z "$theme" ]]; then
-    back_to show_style_menu
-  else
-    syna-theme-set "$theme"
-    notify-send "󰸌  Theme changed" "$theme"
-  fi
+  python3 "$HOME/.local/bin/rice/syna-theme-picker.py"
 }
 
 show_font_menu() {
