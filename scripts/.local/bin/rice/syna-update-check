@@ -7,6 +7,7 @@
 #   syna-update-check boot   After reboot: running kernel, NVIDIA driver, failed units vs baseline
 #
 # ESP checks (/boot is root-only) run when invoked with sudo, otherwise they are skipped and reported.
+# Upstream research (release notes, open regressions): syna-update-research
 # Guide: ~/.syna/guides/system-update.md
 
 MODE="${1:-}"
@@ -119,6 +120,19 @@ check_esp() {
   (( use < 80 )) && ok "ESP ${use}% used" || warn "ESP ${use}% used"
 }
 
+# Parses the live config with the installed binary: after an update, that is the new version
+check_hyprland_config() {
+  section "Hyprland config vs installed Hyprland $(pkg_ver hyprland)"
+  local cfg="$USER_HOME/.config/hypr/hyprland.conf" out
+  out=$(timeout 30 Hyprland --verify-config -c "$cfg" 2>&1)
+  if grep -q '^config ok' <<<"$out"; then
+    ok "config parses cleanly"
+  else
+    fail "config errors with this Hyprland version, fix before logging out:"
+    grep -vE '^=+|^$' <<<"$out" | tail -8 | sed 's/^/        /'
+  fi
+}
+
 pre() {
   check_running_kernel
 
@@ -187,6 +201,7 @@ post() {
   [[ -z $errs ]] && ok "no errors in the last upgrade log" || while read -r l; do [[ -n $l ]] && warn "${l:0:160}"; done <<<"$errs"
   check_nvidia_modules
   check_esp
+  check_hyprland_config
   local new; new=$(pacdiff -o 2>/dev/null)
   [[ -n $new ]] && warn ".pacnew files to merge: $(tr '\n' ' ' <<<"$new")"
 }
@@ -208,6 +223,10 @@ boot() {
   fi
   [[ -n $(lspci -nnk -s 10:00.0 2>/dev/null | grep 'in use: vfio-pci') ]] && ok "GTX 1080 (10:00.0) bound to vfio-pci" \
     || info "10:00.0 not on vfio-pci (expected only on the VFIO entry)"
+
+  check_hyprland_config
+  local cerr; cerr=$(hyprctl configerrors 2>/dev/null | sed '/^\s*$/d')
+  [[ -z $cerr ]] && ok "hyprctl configerrors: none" || warn "hyprctl configerrors: $(head -3 <<<"$cerr" | tr '\n' ' ')"
 
   section "Failed units vs baseline"
   local now; now=$(failed_units)
