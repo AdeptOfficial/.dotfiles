@@ -258,6 +258,8 @@ echo -e "${GREEN}[5/9] Enabling services...${NC}"
 sudo systemctl enable --now bluetooth.service
 sudo systemctl enable --now NetworkManager.service
 sudo systemctl enable --now tailscaled.service
+# Weekly package-cache cleanup; keeps the last 3 versions of each package (enough for syna-update-undo)
+sudo systemctl enable --now paccache.timer
 
 # Enable user PipeWire services
 systemctl --user enable --now pipewire.service 2>/dev/null || true
