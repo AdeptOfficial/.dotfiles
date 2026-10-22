@@ -1,0 +1,11 @@
+[Plymouth Theme]
+Name=Syna
+Description=Syna boot splash in AdepT branding (dotfiles: rice/defaults/plymouth/syna).
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/syna
+ScriptFile=/usr/share/plymouth/themes/syna/syna.script
+ConsoleLogBackgroundColor=0x0a1014
+Font=JetBrains Mono 14
+MonospaceFont=JetBrains Mono 14
