@@ -1,0 +1,10 @@
+[Unit]
+Description=Syna monthly read-only system audit (report for agent review)
+
+[Service]
+Type=oneshot
+# Persistent timers fire right at login; give the keyring (gh auth) and network a moment
+ExecStartPre=/bin/sleep 120
+Environment=PATH=%h/.local/bin/rice:%h/.local/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/bin/rice/syna-audit
+Nice=10

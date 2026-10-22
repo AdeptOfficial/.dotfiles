@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Syna system audit on the 1st of each month
+
+[Timer]
+OnCalendar=*-*-01 10:00
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

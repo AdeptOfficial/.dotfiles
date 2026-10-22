@@ -1,0 +1,17 @@
+#!/bin/bash
+# Session-start nudge: one line while the newest audit awaits review or audits are overdue.
+# Prints nothing otherwise. Used by the Claude Code SessionStart hook and workflows/process-inbox.md.
+dir=~/.syna/docs/audits
+newest=$(ls -1 "$dir"/*-audit.md 2>/dev/null | sort | tail -1)
+if [[ -z $newest ]]; then
+  echo "Syna audit: none yet. Run syna-audit, then review it with ~/.syna/workflows/audit-system.md"
+  exit 0
+fi
+if grep -q '^\*\*Review:\*\* pending' "$newest"; then
+  n=$(grep -c '^- \[ \]' "$newest")
+  echo "Syna audit pending review: ${newest#"$HOME"/} ($n flags). Review it first: ~/.syna/workflows/audit-system.md"
+  exit 0
+fi
+age=$(( ( $(date +%s) - $(date -r "$newest" +%s) ) / 86400 ))
+(( age > 35 )) && echo "Syna audit overdue: last report ${age} days old. Check syna-audit.timer, or run syna-audit."
+exit 0

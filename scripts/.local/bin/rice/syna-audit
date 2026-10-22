@@ -1,0 +1,180 @@
+#!/bin/bash
+
+# Monthly read-only system audit. Writes a report for an agent to review; changes nothing.
+#
+#   syna-audit            Write ~/.syna/docs/audits/YYYY-MM-DD-audit.md (Review: pending)
+#   syna-audit --stdout   Print the report instead
+#
+# Runs monthly from syna-audit.timer; the session-start hook (syna-audit-pending) then asks
+# the next agent session to review it. Review procedure: ~/.syna/workflows/audit-system.md
+
+SYNA=~/.syna
+DOTS=~/.dotfiles
+OUT_DIR="$SYNA/docs/audits"
+BASELINE=~/.local/state/syna/failed-units.baseline
+BACKUP_REPO=/mnt/SharedData/CachyOS_BackUp/restic
+LAST_UPDATE_MAX_DAYS=14
+BACKUP_MAX_DAYS=30
+
+FLAGS=()
+BODY=""
+flag() { FLAGS+=("$*"); }
+add()  { BODY+="$*"$'\n'; }
+sec()  { add ""; add "## $*"; add ""; }
+days_since() { echo $(( ( $(date +%s) - $(date -d "$1" +%s) ) / 86400 )); }
+strip() { sed 's/\x1b\[[0-9;]*m//g'; }
+
+# --- Updates -------------------------------------------------------------------
+sec "Updates"
+last=$(grep 'starting full system upgrade' /var/log/pacman.log | tail -1 | grep -oE '^\[[^]]+' | tr -d '[')
+if [[ -n $last ]]; then
+  age=$(days_since "$last")
+  add "- Last full upgrade: ${last:0:10} ($age days ago)"
+  (( age > LAST_UPDATE_MAX_DAYS )) && flag "Last full upgrade was $age days ago (> $LAST_UPDATE_MAX_DAYS): run workflows/update-system.md"
+fi
+pending=$(checkupdates 2>/dev/null)
+add "- Pending repo updates: $(grep -c . <<<"$pending")"
+command -v paru >/dev/null && add "- Pending AUR updates: $(paru -Qua 2>/dev/null | grep -c .)"
+crit=$(grep -E '^(linux-cachyos|nvidia|systemd |mkinitcpio|limine|hyprland|aquamarine|hyprutils|walker|elephant|mesa|glibc)' <<<"$pending")
+[[ -n $crit ]] && { add "- Critical pending:"; add "$(sed 's/^/  - /' <<<"$crit")"; }
+news=$(paru -Pw 2>/dev/null | grep -E '^[0-9]{4}-' )
+if [[ -n $news ]]; then
+  add "- Unread Arch news:"; add "$(sed 's/^/  - /' <<<"$news")"
+  flag "Unread Arch news ($(grep -c . <<<"$news")): read before updating; security advisories raise urgency"
+fi
+[[ ! -d /usr/lib/modules/$(uname -r) ]] && flag "Running kernel $(uname -r) is no longer installed: reboot pending since the last update"
+
+# --- Upstream: ceilings and releases not yet in repos ----------------------------
+sec "Upstream (syna-update-research --upcoming)"
+raw=$(timeout 180 syna-update-research --upcoming 2>&1 | strip)
+if grep -q 'Upstream releases' <<<"$raw"; then
+  up=$(sed '1,/Upstream releases/d' <<<"$raw")
+  add "${up:-  all tracked packages current}"
+else
+  up=""
+  flag "Upstream research did not run (ceilings unchecked): $(head -1 <<<"$raw")"
+  add "  failed: $(head -1 <<<"$raw")"
+fi
+grep -q 'HOLD' <<<"$up" && flag "Upstream release reaches a ceiling: $(grep HOLD <<<"$up" | head -1 | sed 's/^ *//')"
+
+# --- Health ----------------------------------------------------------------------
+sec "Health"
+failed=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort)
+ufailed=$(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort)
+add "- Failed system units: $(tr '\n' ' ' <<<"${failed:-none}")"
+add "- Failed user units: $(tr '\n' ' ' <<<"${ufailed:-none}")"
+if [[ -f $BASELINE ]]; then
+  new=$(comm -13 "$BASELINE" <(echo "$failed") | sed '/^$/d')
+  [[ -n $new ]] && flag "Failed units not in baseline: $(tr '\n' ' ' <<<"$new")"
+fi
+[[ -n $ufailed ]] && flag "Failed user units: $(tr '\n' ' ' <<<"$ufailed")"
+kerr=$(journalctl -k -b -p err --no-pager -q 2>/dev/null | grep -iE 'btrfs|nvme|i/o error|ata[0-9]|oops|BUG|panic|mce|hardware error')
+[[ -n $kerr ]] && { flag "Storage/hardware errors in this boot's kernel log ($(grep -c . <<<"$kerr"))"; add "- Kernel storage/hardware errors:"; add "$(head -5 <<<"$kerr" | cut -c1-200 | sed 's/^/  - /')"; }
+bstats=$(btrfs device stats / 2>/dev/null | awk '$2 != 0')
+[[ -n $bstats ]] && flag "Btrfs device error counters non-zero: $(tr '\n' ' ' <<<"$bstats")"
+add "- Btrfs error counters: ${bstats:-all zero}"
+add "- Uptime: $(uptime -p)"
+
+# --- Disk ------------------------------------------------------------------------
+sec "Disk"
+while read -r mnt pct; do
+  add "- $mnt: $pct used"
+  (( ${pct%\%} >= 85 )) && flag "$mnt is $pct full"
+done < <(df --output=target,pcent / /home /boot 2>/dev/null | tail -n +2 | sort -u)
+
+# --- Packages --------------------------------------------------------------------
+sec "Packages"
+pacnew=$(pacdiff -o 2>/dev/null)
+add "- .pacnew/.pacsave files: $(grep -c . <<<"$pacnew")"
+[[ -n $pacnew ]] && { add "$(sed 's/^/  - /' <<<"$pacnew")"; flag "$(grep -c . <<<"$pacnew") unmerged .pacnew files (merge with pacdiff)"; }
+orph=$(pacman -Qdtq 2>/dev/null)
+add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
+add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
+fw=$(timeout 60 fwupdmgr get-updates --no-unreported-check 2>/dev/null | grep -E '^[│├└ ]*[A-Za-z].*→|New version' | head -5)
+[[ -n $fw ]] && { flag "Firmware updates available (fwupdmgr get-updates)"; add "- Firmware: $fw"; } || add "- Firmware: no updates reported"
+
+# --- Desktop config --------------------------------------------------------------
+sec "Desktop config"
+hv=$(timeout 30 Hyprland --verify-config 2>&1)
+if grep -q '^config ok' <<<"$hv"; then add "- Hyprland --verify-config: ok"
+else flag "Hyprland config does not verify"; add "- Hyprland --verify-config:"; add "$(grep -vE '^=+|^$' <<<"$hv" | tail -5 | sed 's/^/  - /')"; fi
+hyprctl version >/dev/null 2>&1 && {
+  ce=$(hyprctl configerrors 2>/dev/null | sed '/^\s*$/d')
+  [[ -n $ce ]] && flag "hyprctl configerrors: $(head -1 <<<"$ce")"
+  add "- hyprctl configerrors: ${ce:-none}"
+}
+
+# --- Dotfiles drift --------------------------------------------------------------
+sec "Dotfiles"
+# shellcheck source=/dev/null
+source "$DOTS/stow-packages.conf"
+drift=""
+for pkg in $STOW_PACKAGES $STOW_PACKAGES_DESKTOP; do
+  [[ -d $DOTS/$pkg ]] || continue
+  while IFS= read -r f; do
+    rel=${f#"$DOTS/$pkg/"}; tgt=~/"$rel"
+    [[ -e $tgt || -L $tgt ]] || continue
+    real=$(readlink -f "$tgt"); [[ $real == "$DOTS/"* ]] && continue
+    if cmp -s "$f" "$tgt"; then drift+="  - $rel (copy, identical)"$'\n'
+    else drift+="  - $rel (copy, DIFFERS from repo)"$'\n'; fi
+  done < <(find "$DOTS/$pkg" -type f -not -name '*.example' -not -name '*.bak*' 2>/dev/null)
+done
+if [[ -n $drift ]]; then
+  add "- Live files that are copies, not stow links:"; add "${drift%$'\n'}"
+  flag "$(grep -c 'DIFFERS' <<<"$drift") live config copies differ from the repo, $(grep -c identical <<<"$drift") identical copies (not linked)"
+else add "- All stowed files are links into ~/.dotfiles"; fi
+for repo in "$DOTS" "$SYNA"; do
+  dirty=$(git -C "$repo" status --porcelain 2>/dev/null | grep -c .)
+  ahead=$(git -C "$repo" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo "?")
+  add "- $(basename "$repo"): $dirty uncommitted, $ahead unpushed"
+  (( dirty > 0 )) && flag "$(basename "$repo") has $dirty uncommitted paths"
+  [[ $ahead != "?" ]] && (( ahead > 10 )) && flag "$(basename "$repo") has $ahead unpushed commits (no off-machine copy)"
+done
+
+# --- Backups ---------------------------------------------------------------------
+sec "Backups"
+if [[ -r $BACKUP_REPO/snapshots ]]; then
+  newest=$(ls -t "$BACKUP_REPO/snapshots" 2>/dev/null | head -1)
+  if [[ -n $newest ]]; then
+    bdate=$(date -r "$BACKUP_REPO/snapshots/$newest" +%F)
+    bage=$(days_since "$bdate")
+    add "- Newest restic snapshot: $bdate ($bage days ago)"
+    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS); backups are manual"
+  fi
+elif mountpoint -q /mnt/SharedData 2>/dev/null; then add "- Restic repo not readable without root; check manually"
+else flag "Backup disk /mnt/SharedData not mounted"; fi
+add "- Off-machine copy: none configured (known gap, backup-recovery README)"
+
+# --- Records and docs drift ------------------------------------------------------
+sec "Records"
+decisions=$(grep -rlE --include='*.md' '^(- )?(\*\*)?Status:(\*\*)? *Awaiting user decision' "$SYNA" 2>/dev/null | grep -v docs/archive | sed "s#^$SYNA/##")
+add "- Awaiting user decision: ${decisions:-none}"
+[[ -n $decisions ]] && flag "$(grep -c . <<<"$decisions") records awaiting a user decision"
+matrix="$SYNA/guides/version-matrix.md"
+for pkg in linux-cachyos linux-cachyos-lts nvidia-utils systemd hyprland; do
+  inst=$(pacman -Q "$pkg" 2>/dev/null | awk '{print $2}'); [[ -z $inst ]] && continue
+  short=${inst#*:}; short=${short%-*}
+  grep -q -- "$short" "$matrix" 2>/dev/null || flag "Version matrix stale: $pkg $inst installed, not recorded as known good"
+done
+
+# --- Report ----------------------------------------------------------------------
+report="# System audit $(date +%F)
+
+**Review:** pending
+**Host:** $(hostname) · kernel $(uname -r) · generated by \`syna-audit\`
+
+## Flags
+"
+if (( ${#FLAGS[@]} )); then
+  for f in "${FLAGS[@]}"; do report+="- [ ] $f"$'\n'; done
+else report+="- none"$'\n'; fi
+report+="$BODY"
+
+if [[ ${1:-} == --stdout ]]; then printf '%s' "$report"; exit 0; fi
+mkdir -p "$OUT_DIR"
+file="$OUT_DIR/$(date +%F)-audit.md"
+printf '%s' "$report" >"$file"
+echo "wrote $file (${#FLAGS[@]} flags)"
+command -v notify-send >/dev/null && [[ -n ${WAYLAND_DISPLAY:-} ]] && \
+  notify-send -a "Syna audit" "Monthly audit ready" "${#FLAGS[@]} flags; the next agent session will review it"
+exit 0
