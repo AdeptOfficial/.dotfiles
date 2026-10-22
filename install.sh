@@ -332,6 +332,15 @@ for pkg in $STOW_PACKAGES; do
   fi
 done
 
+# gitleaks pre-commit hook: blocks commits that stage a secret (hooks are not cloned)
+if [[ ! -e ~/.dotfiles/.git/hooks/pre-commit ]]; then
+  sudo pacman -S --needed --noconfirm gitleaks
+  printf '%s\n' '#!/bin/sh' 'export PATH="$HOME/.local/bin:$PATH"' \
+    'command -v gitleaks >/dev/null 2>&1 || { echo "gitleaks not found"; exit 1; }' \
+    'exec gitleaks git --pre-commit --staged --redact --no-banner' > ~/.dotfiles/.git/hooks/pre-commit
+  chmod +x ~/.dotfiles/.git/hooks/pre-commit
+fi
+
 # Initialize XDG directories (graceful if command missing)
 if command -v xdg-user-dirs-update &>/dev/null; then
   xdg-user-dirs-update
