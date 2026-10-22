@@ -1,9 +1,8 @@
 #!/bin/bash
-
-THEME_NAME_PATH="$HOME/.config/themes/current.name"
-
-if [[ -f $THEME_NAME_PATH ]]; then
-  cat $THEME_NAME_PATH | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
+id=$(cat "$HOME/.config/themes/current.name" 2>/dev/null) || { echo Unknown; exit 0; }
+label="$HOME/.config/themes/.overrides/$id.name"
+if [[ -f "$label" ]]; then
+  cat "$label"
 else
-  echo "Unknown"
+  printf '%s\n' "$id" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
 fi

@@ -24,10 +24,10 @@
 
   /* Links and accents */
   --text-link: #2C5A9A;
-  --text-accent: #00ff88;
-  --text-accent-hover: #00ff88;
-  --interactive-accent: #00ff88;
-  --interactive-accent-hover: #00ff88;
+  --text-accent: #1c71d8;
+  --text-accent-hover: #1c71d8;
+  --interactive-accent: #1c71d8;
+  --interactive-accent-hover: #1c71d8;
 
   /* Muted text */
   --text-muted: #1a2a48;
@@ -47,7 +47,7 @@
 
   /* Graph */
   --graph-line: #1a2a48;
-  --graph-node: #00ff88;
+  --graph-node: #1c71d8;
   --graph-node-focused: #2C5A9A;
   --graph-node-tag: #8be9fd;
   --graph-node-attachment: #00ff88;
@@ -81,7 +81,7 @@
 
 /* Blockquotes */
 .markdown-rendered blockquote {
-  border-left-color: #00ff88;
+  border-left-color: #1c71d8;
 }
 
 /* Active elements */

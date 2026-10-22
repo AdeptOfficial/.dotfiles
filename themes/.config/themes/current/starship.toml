@@ -1,0 +1,36 @@
+[username]
+style_user = "bold #2C5A9A"
+style_root = "bold #ff5555"
+format = "[$user]($style)"
+disabled = false
+show_always = true
+
+[hostname]
+ssh_only = false
+format = "[@$hostname]($style) "
+style = "bold #00ff88"
+disabled = false
+
+[directory]
+format = ": [$path]($style) "
+style = "bold #8be9fd"
+truncation_length = 0
+truncate_to_repo = false
+
+[character]
+success_symbol = "[❯](bold #00ff88)"
+error_symbol = "[❯](bold #ff5555)"
+
+# Disable everything else for minimal prompt
+[git_branch]
+disabled = true
+[git_status]
+disabled = true
+[package]
+disabled = true
+[nodejs]
+disabled = true
+[python]
+disabled = true
+[rust]
+disabled = true

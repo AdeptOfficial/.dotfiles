@@ -1,0 +1,6 @@
+general {
+    border_size = 2
+}
+decoration {
+    rounding = 8
+}

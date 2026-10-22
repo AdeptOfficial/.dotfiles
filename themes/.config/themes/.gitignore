@@ -1,0 +1,11 @@
+
+# Theme switch runtime state; templates and palettes remain versioned.
+.switch.lock
+.syna-stage-*/
+.current.name.tmp
+previous/
+current/.theme-name
+
+# Trash from the theme/wallpaper remover; not versioned
+.removed-themes/
+.removed-wallpapers/

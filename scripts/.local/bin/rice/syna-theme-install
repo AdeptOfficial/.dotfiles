@@ -1,46 +1,19 @@
 #!/bin/bash
-
-# syna-theme-install: Install a new theme from a git repo
-# Usage: syna-theme-install <git-repo-url>
-# Example: syna-theme-install https://github.com/user/custom-theme
-
-if [ -z "$1" ]; then
-  echo "Usage: syna-theme-install <git-repo-url>"
-  echo ""
-  echo "Example: syna-theme-install https://github.com/user/my-theme"
-  echo ""
-  INPUT=$(gum input --placeholder="Git URL for theme repo" --header="")
-else
-  INPUT="$1"
-fi
-
-if [ -z "$INPUT" ]; then
-  exit 1
-fi
-
-# Extract theme name from URL
-REPO_URL="$INPUT"
-THEME_NAME=$(basename "$REPO_URL" .git | sed -E 's/^syna-//; s/-theme$//')
-
-THEMES_DIR="$HOME/.config/themes"
-THEME_PATH="$THEMES_DIR/$THEME_NAME"
-
-# Remove existing theme if present
-if [ -d "$THEME_PATH" ]; then
-  echo "Removing existing $THEME_NAME..."
-  rm -rf "$THEME_PATH"
-fi
-
-echo "Installing $THEME_NAME from $REPO_URL..."
-
-# Clone the repo directly to ~/.config/themes
-if ! git clone "$REPO_URL" "$THEME_PATH" 2>/dev/null; then
-  echo "Error: Failed to clone theme repo."
-  exit 1
-fi
-
-# Remove .git from cloned theme (keep it clean)
-rm -rf "$THEME_PATH/.git"
-
-echo -e "\e[32mTheme '$THEME_NAME' installed!\e[0m"
-echo "Run 'syna-theme-set $THEME_NAME' to activate it."
+set -euo pipefail
+INPUT="${1:-}"
+[[ -n $INPUT ]] || INPUT=$(gum input --placeholder="https://host/owner/theme.git")
+# HTTPS only: no option injection, local paths, or git transport helpers.
+[[ $INPUT =~ ^https://[a-zA-Z0-9][a-zA-Z0-9.-]+/[^[:space:]?#]+$ ]] || { echo 'Use an HTTPS repository URL' >&2; exit 1; }
+THEME_NAME=$(basename -- "${INPUT%/}" .git | sed -E 's/^syna-//; s/-theme$//')
+HELPER="$(dirname "$0")/syna-theme-safe.py"
+THEME_PATH=$(python3 "$HELPER" validate "$THEME_NAME")
+[[ ! -e $THEME_PATH ]] || { echo 'Theme already exists; remove or rename it first' >&2; exit 1; }
+mkdir -p "$HOME/.config/themes"
+STAGING=$(mktemp -d "$HOME/.config/themes/.install.XXXXXXXX")
+trap 'rm -rf -- "$STAGING"' EXIT
+# No hooks from a user/global template directory or alternate protocols.
+git -c core.hooksPath=/dev/null -c protocol.allow=never -c protocol.https.allow=always clone --template= --depth 1 -- "$INPUT" "$STAGING/theme"
+python3 "$HELPER" check "$STAGING/theme"
+# Keep provenance; theme-set will stage only validated palette and image data.
+mv -- "$STAGING/theme" "$THEME_PATH"
+printf 'Installed %s. Activate with: syna-theme-set %s\n' "$THEME_NAME" "$THEME_NAME"

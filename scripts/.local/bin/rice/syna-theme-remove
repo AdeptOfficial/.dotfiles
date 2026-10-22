@@ -21,7 +21,7 @@ else
 fi
 
 THEMES_DIR="$HOME/.config/themes"
-THEME_PATH="$THEMES_DIR/$THEME_NAME"
+THEME_PATH=$(python3 "$(dirname "$0")/syna-theme-safe.py" validate "$THEME_NAME") || exit 1
 
 # Ensure a theme was selected
 if [ -z "$THEME_NAME" ]; then
