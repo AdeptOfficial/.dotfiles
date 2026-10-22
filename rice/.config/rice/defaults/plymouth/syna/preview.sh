@@ -16,7 +16,7 @@ sudo install -m 644 "$here"/syna.plymouth "$here"/syna.script "$here"/images/*.p
 mode=boot; [[ ${1:-} == dark ]] && mode=shutdown
 sudo pkill -x plymouthd 2>/dev/null
 sudo env DISPLAY="$DISPLAY" XAUTHORITY="${XAUTHORITY:-}" plymouthd --mode="$mode" \
-  --kernel-command-line="splash plymouth.splash=syna" --debug --debug-file="$log" --pid-file=/tmp/syna-plymouth-preview.pid
+  --kernel-command-line="splash plymouth.splash=syna" --debug-file="$log" --pid-file=/tmp/syna-plymouth-preview.pid
 sudo plymouth show-splash
 step() { echo "· $1"; sleep "${2:-3}"; }
 
@@ -27,9 +27,9 @@ else
   for unit in "Network Manager" "Bluetooth service" "Login Service" "Syna relays"; do
     sudo plymouth update --status="$unit"; step "live status: $unit" 1.5
   done
-  echo "· unlock prompt: type anything + Enter (it is discarded). Try Caps Lock too."
+  echo "· unlock prompt: click the Plymouth window, type anything + Enter there (discarded). Try Caps Lock."
   sudo plymouth ask-for-password --prompt="Passphrase" >/dev/null
-  echo "· second prompt = the wrong-password view: type anything + Enter"
+  echo "· second prompt = the wrong-password view: type in the window again + Enter"
   sudo plymouth ask-for-password --prompt="Passphrase" >/dev/null
   sudo plymouth display-message --text="message line test"; step "message line" 3
 fi

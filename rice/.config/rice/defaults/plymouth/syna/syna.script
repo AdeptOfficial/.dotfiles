@@ -103,19 +103,25 @@ Plymouth.SetUpdateStatusFunction(update_status_callback);
 
 box.image = Image("box.png");
 box.x = cx - box.image.GetWidth() / 2;
-box.y = cy - box.image.GetHeight() / 2 + 10;
+box.y = cy - box.image.GetHeight() / 2 + 20;   # clear of the status line above
 box.sprite = Sprite(box.image);
 box.sprite.SetPosition(box.x, box.y, 20);
 
 prompt.image = Image("prompt.png");
 prompt.sprite = Sprite(prompt.image);
 prompt.x = box.x + 24;
-prompt.sprite.SetPosition(prompt.x, box.y + (box.image.GetHeight() - prompt.image.GetHeight()) / 2, 21);
+prompt.sprite.SetPosition(prompt.x, box.y + 14, 21);   # line 1: adept@syna:~$ cryptsetup open syna
+
+prompt2.image = Image("prompt2.png");                    # line 2: Enter passphrase for syna:
+prompt2.sprite = Sprite(prompt2.image);
+prompt2.y = box.y + box.image.GetHeight() - 14 - prompt2.image.GetHeight();
+prompt2.sprite.SetPosition(prompt.x, prompt2.y, 21);
+input.x = prompt.x + prompt2.image.GetWidth();           # bullets and cursor follow line 2
 
 bullet.image = Image("bullet.png");
 bullet.step = bullet.image.GetWidth() + 2;
 bullet.sprites = [];
-bullet.max = Math.Int((box.x + box.image.GetWidth() - 40 - (prompt.x + prompt.image.GetWidth())) / bullet.step);
+bullet.max = Math.Int((box.x + box.image.GetWidth() - 40 - input.x) / bullet.step);
 
 cursor.image = Image("cursor.png");
 cursor.sprite = Sprite(cursor.image);
@@ -132,6 +138,7 @@ fun show_prompt(on)
     prompt_state.visible = on;
     box.sprite.SetOpacity(on);
     prompt.sprite.SetOpacity(on);
+    prompt2.sprite.SetOpacity(on);
     cursor.sprite.SetOpacity(on);
     if (!on)
       {
@@ -161,13 +168,13 @@ fun display_password_callback(text, bullets)
         if (!bullet.sprites[i])
           {
             bullet.sprites[i] = Sprite(bullet.image);
-            bullet.sprites[i].SetPosition(prompt.x + prompt.image.GetWidth() + i * bullet.step,
-                                          box.y + (box.image.GetHeight() - bullet.image.GetHeight()) / 2, 21);
+            bullet.sprites[i].SetPosition(input.x + i * bullet.step,
+                                          prompt2.y + (prompt2.image.GetHeight() - bullet.image.GetHeight()) / 2, 21);
           }
         if (i < shown) bullet.sprites[i].SetOpacity(1); else bullet.sprites[i].SetOpacity(0);
       }
-    cursor.sprite.SetPosition(prompt.x + prompt.image.GetWidth() + shown * bullet.step,
-                              box.y + (box.image.GetHeight() - cursor.image.GetHeight()) / 2, 21);
+    cursor.sprite.SetPosition(input.x + shown * bullet.step,
+                              prompt2.y + (prompt2.image.GetHeight() - cursor.image.GetHeight()) / 2, 21);
     prompt_state.typed = bullets;
   }
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
