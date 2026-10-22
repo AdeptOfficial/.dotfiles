@@ -152,13 +152,13 @@ pre() {
     local risky
     risky=$(grep -E '^(linux-cachyos|nvidia|lib32-nvidia|systemd|mkinitcpio|limine|glibc|mesa|linux-firmware|hyprland|aquamarine|sddm|plymouth|cryptsetup|btrfs-progs|snapper)' <<<"$list")
     # One line per family: linux-firmware-* and systemd-* split into many packages
-    [[ -n $risky ]] && awk '
+    [[ -n $risky ]] && while read -r l; do warn "boot/desktop-critical: $l"; done < <(awk '
       { fam=$1; sub(/^lib32-/, "", fam)
         if (fam ~ /^linux-firmware/) fam="linux-firmware"; else if (fam ~ /^systemd/) fam="systemd"
         if (fam ~ /-headers$/) next
         if (!(fam in first)) { first[fam]=$0; order[++n]=fam }; count[fam]++ }
       END { for (i=1; i<=n; i++) { f=order[i]; extra=count[f]>1 ? " (+" count[f]-1 " related)" : ""; print first[f] extra } }
-    ' <<<"$risky" | while read -r l; do warn "boot/desktop-critical: $l"; done
+    ' <<<"$risky")
     # A kernel without its matching NVIDIA module package means no desktop after reboot
     local k
     for k in "${KERNEL_PKGS[@]}"; do
