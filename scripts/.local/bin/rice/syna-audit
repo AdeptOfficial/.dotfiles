@@ -92,7 +92,8 @@ grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$pacnew" &
 orph=$(pacman -Qdtq 2>/dev/null)
 add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
-last_review=$(ls -1 "$SYNA/docs/packages/"*.md 2>/dev/null | sort | tail -1)
+# Only date-named notes count (YYYY-MM-DD*.md); newest date wins
+last_review=$(ls -1 "$SYNA/docs/packages/" 2>/dev/null | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}.*\.md$" | sort | tail -1)
 if [[ -z $last_review ]]; then flag "No package review yet: workflows/review-packages.md"
 else
   rd=$(basename "$last_review" .md | cut -c1-10); ra=$(days_since "$rd")
