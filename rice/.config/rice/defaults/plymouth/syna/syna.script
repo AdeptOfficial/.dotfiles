@@ -51,7 +51,7 @@ else
     place(status.sprite, status.images[0], cx - status.images[0].GetWidth() / 2, cy - 55 - status.images[0].GetHeight() / 2, 10);
   }
 
-footer.image = Image("footer.png");
+if (dark) footer.image = Image("footer-dark.png"); else footer.image = Image("footer.png");
 footer.sprite = centred(footer.image, bottom - 60, 10);
 
 #----------------------------------------- Progress --------------------------------
