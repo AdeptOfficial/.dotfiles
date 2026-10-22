@@ -1,114 +1,81 @@
 #!/bin/bash
-# Media info via playerctl --follow (deflisten version)
-# Outputs JSON whenever media state changes
-
+# One bounded producer: complete JSON records, no concurrent event-loop writers.
 CACHE_DIR="$HOME/.cache/eww/album-art"
 mkdir -p "$CACHE_DIR"
+export CACHE_DIR
 
-# Debug logging - helps diagnose eww freezes
-DEBUG_LOG="$HOME/.cache/eww/debug/media-listen.log"
-mkdir -p "$(dirname "$DEBUG_LOG")"
-log_debug() { echo "[$(date '+%H:%M:%S')] $1" >> "$DEBUG_LOG"; }
-log_debug "=== media-listen.sh started (PID $$) ==="
-
-# Function to get current media state
 get_media_state() {
-    local PLAYERS=$(playerctl -l 2>/dev/null)
-
-    if [[ -z "$PLAYERS" ]]; then
-        echo '{"status":"stopped","title":"","artist":"","album":"","art":"","position":0,"duration":0,"position_fmt":"0:00","duration_fmt":"0:00","player":"","players":[],"volume":50,"muted":false}'
-        return
-    fi
-
-    # Convert players to JSON array
-    local PLAYERS_JSON=$(echo "$PLAYERS" | jq -R . | jq -sc .)
-
-    # Get selected player from eww or auto-detect
-    local SELECTED=$(eww get selected-player 2>/dev/null)
-
-    # Find active player
-    local ACTIVE_PLAYER=""
-    if [[ -n "$SELECTED" ]] && echo "$PLAYERS" | grep -q "^$SELECTED$"; then
-        ACTIVE_PLAYER="$SELECTED"
-    else
-        while IFS= read -r player; do
-            local status=$(playerctl -p "$player" status 2>/dev/null)
-            if [[ "$status" == "Playing" ]]; then
-                ACTIVE_PLAYER="$player"
+    local raw volume muted players selected player status title artist album art_url
+    local position duration_us duration art_path="" tmp hash
+    raw=$(timeout 1 wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)
+    volume=$(awk '{print int($2 * 100 + 0.5)}' <<< "$raw")
+    [[ $volume =~ ^[0-9]+$ ]] || volume=0
+    muted=false
+    [[ $raw == *MUTED* ]] && muted=true
+    players=$(timeout 1 playerctl -l 2>/dev/null)
+    selected=$(timeout 1 eww get selected-player 2>/dev/null)
+    player=""
+    if [[ -n $selected ]] && grep -Fxq -- "$selected" <<< "$players"; then
+        player=$selected
+    elif [[ -n $players ]]; then
+        player=$(head -1 <<< "$players")
+        while IFS= read -r candidate; do
+            if [[ $(timeout 0.5 playerctl -p "$candidate" status 2>/dev/null) == Playing ]]; then
+                player=$candidate
                 break
             fi
-        done <<< "$PLAYERS"
-        [[ -z "$ACTIVE_PLAYER" ]] && ACTIVE_PLAYER=$(echo "$PLAYERS" | head -1)
+        done <<< "$players"
     fi
-
-    # Get media info
-    local STATUS=$(playerctl -p "$ACTIVE_PLAYER" status 2>/dev/null || echo "stopped")
-    local TITLE=$(playerctl -p "$ACTIVE_PLAYER" metadata title 2>/dev/null)
-    local ARTIST=$(playerctl -p "$ACTIVE_PLAYER" metadata artist 2>/dev/null)
-    local ALBUM=$(playerctl -p "$ACTIVE_PLAYER" metadata album 2>/dev/null)
-    local ART_URL=$(playerctl -p "$ACTIVE_PLAYER" metadata mpris:artUrl 2>/dev/null)
-
-    # Get position and duration
-    local POSITION=$(playerctl -p "$ACTIVE_PLAYER" position 2>/dev/null || echo "0")
-    POSITION=${POSITION%.*}
-    local DURATION_US=$(playerctl -p "$ACTIVE_PLAYER" metadata mpris:length 2>/dev/null || echo "0")
-    local DURATION=$((DURATION_US / 1000000))
-
-    # Format time (MM:SS)
-    local POSITION_FMT=$(printf "%d:%02d" $((POSITION / 60)) $((POSITION % 60)))
-    local DURATION_FMT=$(printf "%d:%02d" $((DURATION / 60)) $((DURATION % 60)))
-
-    # Handle album art
-    local ART_PATH=""
-    if [[ "$ART_URL" == file://* ]]; then
-        ART_PATH="${ART_URL#file://}"
-    elif [[ "$ART_URL" == http* ]]; then
-        local HASH=$(echo "$ART_URL" | md5sum | cut -d' ' -f1)
-        ART_PATH="$CACHE_DIR/$HASH.png"
-        [[ ! -f "$ART_PATH" ]] && curl -s -o "$ART_PATH" "$ART_URL" 2>/dev/null &
+    status=stopped; title=""; artist=""; album=""; position=0; duration_us=0
+    if [[ -n $player ]]; then
+        status=$(timeout 1 playerctl -p "$player" status 2>/dev/null)
+        title=$(timeout 1 playerctl -p "$player" metadata title 2>/dev/null)
+        artist=$(timeout 1 playerctl -p "$player" metadata artist 2>/dev/null)
+        album=$(timeout 1 playerctl -p "$player" metadata album 2>/dev/null)
+        position=$(timeout 1 playerctl -p "$player" position 2>/dev/null)
+        duration_us=$(timeout 1 playerctl -p "$player" metadata mpris:length 2>/dev/null)
+        art_url=$(timeout 1 playerctl -p "$player" metadata mpris:artUrl 2>/dev/null)
+        if [[ $art_url == file://* ]]; then
+            art_path=${art_url#file://}
+        elif [[ $art_url == https://* || $art_url == http://* ]]; then
+            hash=$(printf %s "$art_url" | sha256sum | cut -d' ' -f1)
+            art_path="$CACHE_DIR/$hash.png"
+            if [[ ! -s $art_path ]]; then
+                tmp=$(mktemp "$CACHE_DIR/.download.XXXXXX")
+                if curl -fsSL --connect-timeout 1 --max-time 2 --max-filesize 5242880 -o "$tmp" "$art_url" && [[ -s $tmp ]]; then
+                    mv "$tmp" "$art_path"
+                else
+                    rm -f "$tmp"
+                fi
+            fi
+        fi
     fi
-    [[ ! -f "$ART_PATH" ]] && ART_PATH=""
-
-    # Get system volume
-    local VOLUME_RAW=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)
-    local VOLUME=$(echo "$VOLUME_RAW" | awk '{print int($2 * 100)}')
-    local MUTED=$(echo "$VOLUME_RAW" | grep -q "MUTED" && echo "true" || echo "false")
-    [[ -z "$VOLUME" ]] && VOLUME=0
-
-    # Escape strings for JSON
-    TITLE=$(echo "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    ARTIST=$(echo "$ARTIST" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    ALBUM=$(echo "$ALBUM" | sed 's/\\/\\\\/g; s/"/\\"/g')
-
-    echo "{\"status\":\"$STATUS\",\"title\":\"$TITLE\",\"artist\":\"$ARTIST\",\"album\":\"$ALBUM\",\"art\":\"$ART_PATH\",\"position\":$POSITION,\"duration\":$DURATION,\"position_fmt\":\"$POSITION_FMT\",\"duration_fmt\":\"$DURATION_FMT\",\"player\":\"$ACTIVE_PLAYER\",\"players\":$PLAYERS_JSON,\"volume\":$VOLUME,\"muted\":$MUTED}"
+    [[ -s $art_path ]] || art_path=""
+    position=${position%%.*}
+    [[ $position =~ ^[0-9]{1,12}$ ]] || position=0
+    [[ $duration_us =~ ^[0-9]{1,16}$ ]] || duration_us=0
+    position=$((10#$position)); duration=$((10#$duration_us / 1000000))
+    jq -cn --arg status "${status:-stopped}" --arg title "$title" --arg artist "$artist" \
+      --arg album "$album" --arg art "$art_path" --arg player "$player" \
+      --arg players "$players" --argjson position "$position" --argjson duration "$duration" \
+      --arg position_fmt "$(printf '%d:%02d' $((position / 60)) $((position % 60)))" \
+      --arg duration_fmt "$(printf '%d:%02d' $((duration / 60)) $((duration % 60)))" \
+      --argjson volume "$volume" --argjson muted "$muted" \
+      '{status:$status,title:$title,artist:$artist,album:$album,art:$art,player:$player,
+        players:($players|split("\n")|map(select(length>0))),position:$position,duration:$duration,
+        position_fmt:$position_fmt,duration_fmt:$duration_fmt,volume:$volume,muted:$muted}'
 }
-
-# Output initial state
-log_debug "Outputting initial state"
-get_media_state
-
-# Follow all players for any changes and re-output state
-# Using -a to follow all players, -F for follow mode
-log_debug "Starting playerctl follow loop"
-playerctl -a -F metadata --format '{{status}}' 2>/dev/null | while read -r _; do
-    log_debug "playerctl event received"
-    get_media_state
-done &
-
-# Also update on volume changes via pactl subscribe
-log_debug "Starting pactl subscribe loop"
-pactl subscribe 2>/dev/null | grep --line-buffered "sink" | while read -r _; do
-    log_debug "pactl sink event received"
-    get_media_state
-done &
-
-# Update position every second (for progress bar)
-log_debug "Starting main position update loop"
-heartbeat_counter=0
+export -f get_media_state
+failed=false
 while true; do
+    # No partial record reaches EWW on timeout; retain the previous good state.
+    if state=$(timeout --kill-after=1 6 bash -c get_media_state) && jq -e . >/dev/null <<< "$state"; then
+        if $failed; then printf '[media] snapshot updates recovered\n' >&2; fi
+        failed=false
+        printf '%s\n' "$state" || exit 0
+    else
+        if ! $failed; then printf '[media] snapshot failed or timed out; retaining previous state and retrying\n' >&2; fi
+        failed=true
+    fi
     sleep 1
-    ((heartbeat_counter++))
-    # Log heartbeat every 30 seconds to avoid log spam
-    ((heartbeat_counter % 30 == 0)) && log_debug "heartbeat (30s) - still running"
-    get_media_state
 done

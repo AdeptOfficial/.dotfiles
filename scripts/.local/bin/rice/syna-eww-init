@@ -1,13 +1,17 @@
 #!/bin/bash
-# Initialize EWW dashboard hover zones for connected monitors
-# Opens hover-zone-N for each monitor N detected by Hyprland
+# Start one daemon; hover zones are disabled in the dashboard configuration.
+exec 9>"${XDG_RUNTIME_DIR:?}/syna-eww-init.lock"
+flock -w 3 9 || exit 0
+if timeout 1 eww ping >/dev/null 2>&1; then
+    exit 0
+fi
+mkdir -p "$HOME/.cache/eww"
+# Do not let the daemon inherit the startup lock or a short-lived terminal pipe.
+timeout 3 eww daemon 9>&- >>"$HOME/.cache/eww/daemon.log" 2>&1
 
-# Get number of connected monitors
-monitor_count=$(hyprctl monitors -j | jq 'length')
-
-# Open hover zone for each monitor
-for ((i=0; i<monitor_count; i++)); do
-  eww open "hover-zone-$i" 2>/dev/null &
+# Hold startup lock until the IPC socket is accepting requests.
+for attempt in {1..20}; do
+    timeout 1 eww ping >/dev/null 2>&1 && exit 0
+    sleep 0.1
 done
-
-wait
+exit 1

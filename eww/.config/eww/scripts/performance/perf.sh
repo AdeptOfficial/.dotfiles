@@ -248,14 +248,14 @@ while true; do
       # Poll nvidia-smi at configurable interval (default 10s) to reduce overhead
       if $NVIDIA_AVAILABLE && ((loop_count % NVIDIA_POLL_INTERVAL == 0)); then
         # Pure bash parsing - no head/tr subprocesses
-        nv_out=$(nvidia-smi --query-gpu=utilization.gpu,temperature.gpu \
+        nv_out=$(timeout --kill-after=1 2 nvidia-smi --query-gpu=utilization.gpu,temperature.gpu \
           --format=csv,noheader,nounits 2>/dev/null)
         nv_out="${nv_out%%$'\n'*}"  # First line only (bash, no head)
         IFS=',' read -r nvidia_gpu_pct nvidia_gpu_temp <<< "$nv_out"
         nvidia_gpu_pct="${nvidia_gpu_pct// /}"  # Strip spaces (bash, no tr)
         nvidia_gpu_temp="${nvidia_gpu_temp// /}"
-        nvidia_gpu_pct="${nvidia_gpu_pct:-0}"
-        if [[ -n "$nvidia_gpu_temp" && "$nvidia_gpu_temp" != "--" ]]; then
+        [[ $nvidia_gpu_pct =~ ^[0-9]+$ ]] || nvidia_gpu_pct=0
+        if [[ $nvidia_gpu_temp =~ ^[0-9]+$ ]]; then
           nvidia_gpu_temp_ok=true
         else
           nvidia_gpu_temp=0
@@ -324,7 +324,7 @@ while true; do
 
   # --- Disk (poll every 10th iteration - disk changes slowly) ---
   if ((disk_poll_counter == 0)); then
-    read -r _ disk_total_kb disk_used_kb _ disk_pct_raw _ < <(df -k / | tail -1)
+    read -r _ disk_total_kb disk_used_kb _ disk_pct_raw _ < <(timeout --kill-after=1 2 df -k / | tail -1)
     if [[ -n "$disk_total_kb" && "$disk_total_kb" -gt 0 ]]; then
       disk_pct=${disk_pct_raw%\%}
       disk_used=$(awk "BEGIN {printf \"%.0f\", $disk_used_kb / 1048576}")

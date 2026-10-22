@@ -2,7 +2,7 @@
 # Fetch weather from Open-Meteo API (free, no API key required)
 
 # Get location from IP
-LOCATION=$(curl -s "http://ip-api.com/json" 2>/dev/null)
+LOCATION=$(curl -fsS --connect-timeout 2 --max-time 5 "http://ip-api.com/json" 2>/dev/null)
 if [[ -z "$LOCATION" ]]; then
     echo '{"temp": "--", "condition": "Offline", "icon": "☁️", "city": ""}'
     exit 0
@@ -13,7 +13,7 @@ LON=$(echo "$LOCATION" | jq -r '.lon')
 CITY=$(echo "$LOCATION" | jq -r '.city')
 
 # Fetch weather data from Open-Meteo
-DATA=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,weather_code&timezone=auto" 2>/dev/null)
+DATA=$(curl -fsS --connect-timeout 2 --max-time 5 "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,weather_code&timezone=auto" 2>/dev/null)
 
 if [[ -z "$DATA" ]] || [[ "$(echo "$DATA" | jq -r '.current')" == "null" ]]; then
     echo '{"temp": "--", "condition": "Error", "icon": "☁️", "city": ""}'

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Serialize toggles and bound IPC waits so repeated keypresses cannot pile up.
+exec 9>"${XDG_RUNTIME_DIR:?}/syna-dashboard-toggle.lock"
+flock -n 9 || exit 0
+if ! windows=$(timeout 2 eww active-windows); then
+    notify-send "Dashboard unavailable" "EWW did not respond. Check its logs before restarting."
+    exit 1
+fi
+if grep -q '^syna-dashboard:' <<< "$windows"; then
+    timeout 2 eww close syna-dashboard
+else
+    monitor=$(timeout 2 hyprctl monitors -j | jq -er '.[] | select(.focused) | .id') || exit 1
+    timeout 2 eww update "cal-day=$(date +%-d)" "cal-month=$(date +%-m)" "cal-year=$(date +%Y)" || exit 1
+    timeout 3 eww open syna-dashboard --screen "$monitor"
+fi
+# Drop key-repeat bursts while the window is settling.
+sleep 0.15
