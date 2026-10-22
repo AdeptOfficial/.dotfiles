@@ -206,7 +206,7 @@ sudo pacman -S --needed --noconfirm \
   qt5-wayland qt6-wayland \
   zoxide lazygit neovim fwupd hyprland-guiutils tailscale \
   gnome-calculator gamescope lazydocker signal-desktop obsidian \
-  cava python-yaml lm_sensors pacman-contrib rebuild-detector
+  cava python-yaml lm_sensors pacman-contrib rebuild-detector sassc
 
 # Update safety net (syna-update-check): pacman snapshots + bootable snapshot entries.
 # Only where they apply: Btrfs root with snapper, and Limine as the bootloader.
