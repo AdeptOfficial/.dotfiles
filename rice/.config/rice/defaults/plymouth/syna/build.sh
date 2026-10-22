@@ -10,8 +10,8 @@ txt() { magick -background none -font "$1" -pointsize "$2" -fill "$3" label:"$4"
 t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 
 magick "$here/src/emblem-a.png" -trim +repage -resize 180x180 PNG32:"$out/emblem.png"
-txt "$FB" 32 "$MAGENTA" '// syna'            "$out/title.png"
-txt "$FB" 32 "$MAGENTA" '// syna going dark'  "$out/title-dark.png"
+txt "$FB" 32 "$MAGENTA" 'syna coming online' "$out/title.png"
+txt "$FB" 32 "$MAGENTA" 'syna going dark'    "$out/title-dark.png"
 txt "$F"  22 "$FAINT"   'waking syna'         "$out/status-1.png"
 txt "$F"  22 "$FAINT"   'loading shards'      "$out/status-2.png"
 txt "$F"  22 "$FAINT"   'mounting relays'     "$out/status-3.png"

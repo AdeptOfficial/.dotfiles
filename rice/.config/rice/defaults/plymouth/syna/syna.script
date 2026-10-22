@@ -2,74 +2,169 @@
 # Images come from build.sh; layout centres on the largest display (Plymouth centres smaller
 # displays inside it, so every screen is centred). Modes: boot/resume (status + progress,
 # disk-unlock prompt as a fallback when TPM unlock fails), shutdown/reboot ("going dark").
+#
+# The splash can start on the firmware framebuffer (simpledrm, often 1080p, one screen) and move to
+# nvidia-drm (native modes, both monitors) a second later. Sprites are created once; every position
+# is set in layout(), which the refresh callback re-runs whenever the display geometry changes.
 
 Window.SetBackgroundTopColor(0.039, 0.063, 0.078);     # --base #0a1014
 Window.SetBackgroundBottomColor(0.039, 0.063, 0.078);
 
-cx = Window.GetWidth() / 2;
-cy = Window.GetHeight() / 2;
-# Bottom elements must be visible on the smallest display too: Plymouth centres smaller displays
-# inside the largest, so measure from the centre with the smallest height.
-min_h = Window.GetHeight();
-for (i = 0; Window.GetHeight(i); i++)
-  if (Window.GetHeight(i) < min_h) min_h = Window.GetHeight(i);
-bottom = cy + min_h / 2;
 mode = Plymouth.GetMode();
 dark = (mode == "shutdown" || mode == "reboot");
 
-fun place(sprite, image, x, y, z)
+#----------------------------------------- Geometry --------------------------------
+
+geo.w = -1;
+geo.h = -1;
+geo.min_h = -1;
+
+# Returns 1 when the display set changed since the last call.
+fun measure()
   {
-    sprite.SetImage(image);
-    sprite.SetPosition(x, y, z);
+    w = Window.GetWidth();
+    h = Window.GetHeight();
+    # Bottom elements must be visible on the smallest display too: Plymouth centres smaller displays
+    # inside the largest, so measure from the centre with the smallest height.
+    min_h = h;
+    for (i = 0; Window.GetHeight(i); i++)
+      if (Window.GetHeight(i) < min_h) min_h = Window.GetHeight(i);
+    if (w == geo.w && h == geo.h && min_h == geo.min_h) return 0;
+    geo.w = w;
+    geo.h = h;
+    geo.min_h = min_h;
+    geo.cx = w / 2;
+    geo.cy = h / 2;
+    geo.bottom = geo.cy + min_h / 2;
+    return 1;
   }
 
-fun centred(image, y, z)
+fun centre(sprite, image, y, z)
   {
-    s = Sprite(image);
-    s.SetPosition(cx - image.GetWidth() / 2, y - image.GetHeight() / 2, z);
-    return s;
+    sprite.SetPosition(geo.cx - image.GetWidth() / 2, y - image.GetHeight() / 2, z);
   }
 
-#----------------------------------------- Static layout --------------------------------
+#----------------------------------------- Sprites --------------------------------
 
 emblem.image = Image("emblem.png");
-emblem.sprite = centred(emblem.image, cy - 230, 10);
+emblem.sprite = Sprite(emblem.image);
 
 if (dark)
   {
-    title.sprite = centred(Image("title-dark.png"), cy - 100, 10);
-    status.sprite = centred(Image("status-dark.png"), cy - 55, 10);
+    title.image = Image("title-dark.png");
+    status.image = Image("status-dark.png");
   }
 else
   {
-    title.sprite = centred(Image("title.png"), cy - 100, 10);
+    title.image = Image("title.png");
     status.images[0] = Image("status-1.png");
     status.images[1] = Image("status-2.png");
     status.images[2] = Image("status-3.png");
-    status.sprite = Sprite();
     status.index = 0;
-    place(status.sprite, status.images[0], cx - status.images[0].GetWidth() / 2, cy - 55 - status.images[0].GetHeight() / 2, 10);
+    status.image = status.images[0];
   }
+title.sprite = Sprite(title.image);
+status.sprite = Sprite(status.image);
 
 footer.image = Image("footer.png");   # full signature on boot and shutdown
-footer.sprite = centred(footer.image, bottom - 60, 10);
-
-#----------------------------------------- Progress --------------------------------
+footer.sprite = Sprite(footer.image);
 
 progress.box_image = Image("progress-box.png");
 progress.bar_image = Image("progress-bar.png");
-progress.x = cx - progress.box_image.GetWidth() / 2;
-progress.y = cy + 160;   # below the prompt's denied/caps-lock lines
 progress.box = Sprite(progress.box_image);
-progress.box.SetPosition(progress.x, progress.y, 10);
 progress.bar = Sprite();
-progress.bar.SetPosition(progress.x, progress.y, 11);
 progress.max = 0;
+progress.x = 0;
+progress.y = 0;
 if (dark)
   {
     progress.box.SetOpacity(0);
     progress.bar.SetOpacity(0);
   }
+
+live.sprite = Sprite();
+
+message.sprite = Sprite();
+
+box.image = Image("box.png");
+box.sprite = Sprite(box.image);
+box.x = 0;
+box.y = 0;
+prompt.image = Image("prompt.png");     # line 1: adept@syna:~$ cryptsetup open syna
+prompt.sprite = Sprite(prompt.image);
+prompt.x = 0;
+prompt2.image = Image("prompt2.png");   # line 2: Enter passphrase for syna:
+prompt2.sprite = Sprite(prompt2.image);
+prompt2.y = 0;
+input.x = 0;                            # bullets and cursor follow line 2
+
+bullet.image = Image("bullet.png");
+bullet.step = bullet.image.GetWidth() + 2;
+bullet.sprites = [];
+bullet.max = 0;
+
+cursor.image = Image("cursor.png");
+cursor.sprite = Sprite(cursor.image);
+
+denied.image = Image("denied.png");
+denied.sprite = Sprite(denied.image);
+capslock.image = Image("capslock.png");
+capslock.sprite = Sprite(capslock.image);
+
+prompt_state.visible = 0;
+prompt_state.typed = 0;       # bullets shown in the current attempt
+prompt_state.shown = 0;       # bullets drawn (capped at bullet.max)
+prompt_state.submitted = 0;   # an attempt was submitted (prompt closed with input)
+
+#----------------------------------------- Layout --------------------------------
+
+fun place_input()
+  {
+    for (i = 0; bullet.sprites[i]; i++)
+      bullet.sprites[i].SetPosition(input.x + i * bullet.step,
+                                    prompt2.y + (prompt2.image.GetHeight() - bullet.image.GetHeight()) / 2, 21);
+    cursor.sprite.SetPosition(input.x + prompt_state.shown * bullet.step,
+                              prompt2.y + (prompt2.image.GetHeight() - cursor.image.GetHeight()) / 2, 21);
+  }
+
+fun layout()
+  {
+    cx = geo.cx;
+    cy = geo.cy;
+    centre(emblem.sprite, emblem.image, cy - 230, 10);
+    centre(title.sprite, title.image, cy - 100, 10);
+    centre(status.sprite, status.image, cy - 55, 10);
+    centre(footer.sprite, footer.image, geo.bottom - 60, 10);
+
+    progress.x = cx - progress.box_image.GetWidth() / 2;
+    progress.y = cy + 160;   # below the prompt's denied/caps-lock lines
+    progress.box.SetPosition(progress.x, progress.y, 10);
+    progress.bar.SetPosition(progress.x, progress.y, 11);
+
+    if (live.image)
+      live.sprite.SetPosition(cx - live.image.GetWidth() / 2, geo.bottom - 110, 10);
+    if (message.image)
+      message.sprite.SetPosition(cx - message.image.GetWidth() / 2, geo.bottom - 150, 10);
+
+    box.x = cx - box.image.GetWidth() / 2;
+    box.y = cy - box.image.GetHeight() / 2 + 20;   # clear of the status line above
+    box.sprite.SetPosition(box.x, box.y, 20);
+    prompt.x = box.x + 24;
+    prompt.sprite.SetPosition(prompt.x, box.y + 14, 21);
+    prompt2.y = box.y + box.image.GetHeight() - 14 - prompt2.image.GetHeight();
+    prompt2.sprite.SetPosition(prompt.x, prompt2.y, 21);
+    input.x = prompt.x + prompt2.image.GetWidth();
+    bullet.max = Math.Int((box.x + box.image.GetWidth() - 40 - input.x) / bullet.step);
+    place_input();
+
+    centre(denied.sprite, denied.image, box.y + box.image.GetHeight() + 30, 21);
+    centre(capslock.sprite, capslock.image, box.y + box.image.GetHeight() + 60, 21);
+  }
+
+measure();
+layout();
+
+#----------------------------------------- Progress --------------------------------
 
 fun progress_callback(duration, value)
   {
@@ -85,53 +180,17 @@ Plymouth.SetBootProgressFunction(progress_callback);
 
 #----------------------------------------- Live boot status --------------------------------
 
-live.sprite = Sprite();
-live.sprite.SetPosition(0, 0, 10);
-
 fun update_status_callback(text)
   {
     if (dark) return;
     if (text == "") return;
-    line = "starting: " + text;
-    img = Image.Text(line, 0.494, 0.584, 0.627, 0.8);     # --faint #7e95a0
-    live.sprite.SetImage(img);
-    live.sprite.SetPosition(cx - img.GetWidth() / 2, bottom - 110, 10);
+    live.image = Image.Text("starting: " + text, 0.494, 0.584, 0.627, 0.8);     # --faint #7e95a0
+    live.sprite.SetImage(live.image);
+    live.sprite.SetPosition(geo.cx - live.image.GetWidth() / 2, geo.bottom - 110, 10);
   }
 Plymouth.SetUpdateStatusFunction(update_status_callback);
 
 #----------------------------------------- Disk-unlock prompt (fallback) --------------------------------
-
-box.image = Image("box.png");
-box.x = cx - box.image.GetWidth() / 2;
-box.y = cy - box.image.GetHeight() / 2 + 20;   # clear of the status line above
-box.sprite = Sprite(box.image);
-box.sprite.SetPosition(box.x, box.y, 20);
-
-prompt.image = Image("prompt.png");
-prompt.sprite = Sprite(prompt.image);
-prompt.x = box.x + 24;
-prompt.sprite.SetPosition(prompt.x, box.y + 14, 21);   # line 1: adept@syna:~$ cryptsetup open syna
-
-prompt2.image = Image("prompt2.png");                    # line 2: Enter passphrase for syna:
-prompt2.sprite = Sprite(prompt2.image);
-prompt2.y = box.y + box.image.GetHeight() - 14 - prompt2.image.GetHeight();
-prompt2.sprite.SetPosition(prompt.x, prompt2.y, 21);
-input.x = prompt.x + prompt2.image.GetWidth();           # bullets and cursor follow line 2
-
-bullet.image = Image("bullet.png");
-bullet.step = bullet.image.GetWidth() + 2;
-bullet.sprites = [];
-bullet.max = Math.Int((box.x + box.image.GetWidth() - 40 - input.x) / bullet.step);
-
-cursor.image = Image("cursor.png");
-cursor.sprite = Sprite(cursor.image);
-
-denied.sprite = centred(Image("denied.png"), box.y + box.image.GetHeight() + 30, 21);
-capslock.sprite = centred(Image("capslock.png"), box.y + box.image.GetHeight() + 60, 21);
-
-prompt_state.visible = 0;
-prompt_state.typed = 0;       # bullets shown in the current attempt
-prompt_state.submitted = 0;   # an attempt was submitted (prompt closed with input)
 
 fun show_prompt(on)
   {
@@ -166,16 +225,12 @@ fun display_password_callback(text, bullets)
     for (i = 0; bullet.sprites[i] || i < shown; i++)
       {
         if (!bullet.sprites[i])
-          {
-            bullet.sprites[i] = Sprite(bullet.image);
-            bullet.sprites[i].SetPosition(input.x + i * bullet.step,
-                                          prompt2.y + (prompt2.image.GetHeight() - bullet.image.GetHeight()) / 2, 21);
-          }
+          bullet.sprites[i] = Sprite(bullet.image);
         if (i < shown) bullet.sprites[i].SetOpacity(1); else bullet.sprites[i].SetOpacity(0);
       }
-    cursor.sprite.SetPosition(input.x + shown * bullet.step,
-                              prompt2.y + (prompt2.image.GetHeight() - cursor.image.GetHeight()) / 2, 21);
+    prompt_state.shown = shown;
     prompt_state.typed = bullets;
+    place_input();
   }
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
@@ -189,12 +244,11 @@ Plymouth.SetDisplayNormalFunction(display_normal_callback);
 
 #----------------------------------------- Messages --------------------------------
 
-message.sprite = Sprite();
 fun display_message_callback(text)
   {
-    img = Image.Text(text, 0.494, 0.584, 0.627, 1);
-    message.sprite.SetImage(img);
-    message.sprite.SetPosition(cx - img.GetWidth() / 2, bottom - 150, 10);
+    message.image = Image.Text(text, 0.494, 0.584, 0.627, 1);
+    message.sprite.SetImage(message.image);
+    message.sprite.SetPosition(geo.cx - message.image.GetWidth() / 2, geo.bottom - 150, 10);
     message.sprite.SetOpacity(1);
   }
 fun hide_message_callback(text)
@@ -210,12 +264,14 @@ global.frame = 0;
 fun refresh_callback()
   {
     global.frame++;
+    if (measure()) layout();   # firmware framebuffer -> nvidia-drm, monitor added/removed
     # Status line cycles every 1.6 s while booting (not while the prompt waits)
     if (!dark && !prompt_state.visible && global.frame % 80 == 0)
       {
         status.index = (status.index + 1) % 3;
-        img = status.images[status.index];
-        place(status.sprite, img, cx - img.GetWidth() / 2, cy - 55 - img.GetHeight() / 2, 10);
+        status.image = status.images[status.index];
+        status.sprite.SetImage(status.image);
+        centre(status.sprite, status.image, geo.cy - 55, 10);
       }
     if (prompt_state.visible)
       {
