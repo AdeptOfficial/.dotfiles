@@ -186,6 +186,15 @@ if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
   line "If the new kernel doesn't start: pick LTS in the boot menu (the note explains how to undo)."
 else
   line "No kernel change: no restart required."
+  # Running programs keep the old version in memory until restarted
+  tx=$(last_transaction)
+  if grep -qE '^upgraded (pipewire|libpipewire|wireplumber)' <<<"$tx"; then
+    line "Audio (PipeWire) was updated: log out and back in, or restart audio (a second of silence):"
+    line "  systemctl --user restart pipewire pipewire-pulse wireplumber"
+  fi
+  if grep -qE '^upgraded (hyprland|aquamarine|hyprutils|hyprlang|hyprgraphics) ' <<<"$tx"; then
+    line "Hyprland or its libraries were updated: log out and back in when convenient."
+  fi
 fi
 
 offer_aur
