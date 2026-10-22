@@ -41,7 +41,7 @@ monitor = desc:HKC OVERSEAS LIMITED 24E3,1920x1080@165,2560x0,1
 #xwayland {
 #    force_zero_scaling = true
 #}
-ini windowrule = immediate, class:^(gamescope)$ xwayland { force_zero_scaling = true }
+# (garbled paste removed 2026-10-22; it meant: tearing (immediate) for gamescope windows, plus xwayland force_zero_scaling (already commented out above))
 
 
 workspace = 1, monitor:desc:Acer Technologies XB271HU, default:true

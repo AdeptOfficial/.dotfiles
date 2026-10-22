@@ -1,22 +1,27 @@
 #!/bin/bash
 # Switch between desktop and laptop hardware profiles
-# Works with the local override pattern (.local.conf files)
+# Works with the local override pattern: *.local.conf (hyprlang) and *.local.lua (Lua config).
+# Both are kept in step until the hyprlang config is retired (Hyprland 0.57 drops it).
 #
 # Usage: syna-profile-switch [desktop|laptop|backup|restore|status]
 
 HYPR_CONFIG="$HOME/.config/hypr"
 TEMPLATES_DIR="$HOME/.dotfiles/hypr/.config/hypr/templates"
 CONFIGS=(monitors input autostart)
+# local-file suffix : template suffix
+FORMATS=("local.conf:example" "local.lua:lua.example")
 
 # Backup current .local.conf files
 backup_local_configs() {
   echo "Backing up current configs..."
   for f in "${CONFIGS[@]}"; do
-    local file="$HYPR_CONFIG/${f}.local.conf"
-    if [[ -f "$file" ]]; then
-      cp "$file" "${file}.backup"
-      echo "  ${f}.local.conf → ${f}.local.conf.backup"
-    fi
+    for fmt in "${FORMATS[@]}"; do
+      local file="$HYPR_CONFIG/${f}.${fmt%%:*}"
+      if [[ -f "$file" ]]; then
+        cp "$file" "${file}.backup"
+        echo "  ${f}.${fmt%%:*} → ${f}.${fmt%%:*}.backup"
+      fi
+    done
   done
 }
 
@@ -26,15 +31,17 @@ apply_profile() {
   backup_local_configs
   echo "Applying $profile profile..."
   for f in "${CONFIGS[@]}"; do
-    local template="$TEMPLATES_DIR/${f}.${profile}.example"
-    local target="$HYPR_CONFIG/${f}.local.conf"
-    if [[ -f "$template" ]]; then
-      cp "$template" "$target"
-      echo "  ${f}.local.conf ← ${f}.${profile}.example"
-    else
-      echo "  Warning: Template $template not found, creating empty file"
-      touch "$target"
-    fi
+    for fmt in "${FORMATS[@]}"; do
+      local template="$TEMPLATES_DIR/${f}.${profile}.${fmt#*:}"
+      local target="$HYPR_CONFIG/${f}.${fmt%%:*}"
+      if [[ -f "$template" ]]; then
+        cp "$template" "$target"
+        echo "  ${f}.${fmt%%:*} ← ${f}.${profile}.${fmt#*:}"
+      else
+        echo "  Warning: Template $template not found, creating empty file"
+        touch "$target"
+      fi
+    done
   done
 }
 
@@ -52,14 +59,16 @@ reload_if_running() {
 do_restore() {
   echo "Restoring from backups..."
   for f in "${CONFIGS[@]}"; do
-    local backup="$HYPR_CONFIG/${f}.local.conf.backup"
-    local target="$HYPR_CONFIG/${f}.local.conf"
-    if [[ -f "$backup" ]]; then
-      cp "$backup" "$target"
-      echo "  ${f}.local.conf ← ${f}.local.conf.backup"
-    else
-      echo "  Warning: No backup for ${f}.local.conf"
-    fi
+    for fmt in "${FORMATS[@]}"; do
+      local backup="$HYPR_CONFIG/${f}.${fmt%%:*}.backup"
+      local target="$HYPR_CONFIG/${f}.${fmt%%:*}"
+      if [[ -f "$backup" ]]; then
+        cp "$backup" "$target"
+        echo "  ${f}.${fmt%%:*} ← ${f}.${fmt%%:*}.backup"
+      else
+        echo "  Warning: No backup for ${f}.${fmt%%:*}"
+      fi
+    done
   done
   reload_if_running
   echo "Restore complete"
@@ -70,25 +79,29 @@ show_status() {
   echo "Local Override Pattern Status"
   echo "=============================="
   echo ""
-  echo "Current .local.conf files:"
+  echo "Current local files:"
   for f in "${CONFIGS[@]}"; do
-    local file="$HYPR_CONFIG/${f}.local.conf"
-    if [[ -f "$file" ]]; then
-      local size
-      size=$(stat -c%s "$file" 2>/dev/null || echo "?")
-      echo "  ${f}.local.conf ($size bytes)"
-    else
-      echo "  ${f}.local.conf (MISSING)"
-    fi
+    for fmt in "${FORMATS[@]}"; do
+      local file="$HYPR_CONFIG/${f}.${fmt%%:*}"
+      if [[ -f "$file" ]]; then
+        local size
+        size=$(stat -c%s "$file" 2>/dev/null || echo "?")
+        echo "  ${f}.${fmt%%:*} ($size bytes)"
+      else
+        echo "  ${f}.${fmt%%:*} (MISSING)"
+      fi
+    done
   done
   echo ""
   echo "Available templates:"
   for profile in desktop laptop default; do
     local count=0
     for f in "${CONFIGS[@]}"; do
-      [[ -f "$TEMPLATES_DIR/${f}.${profile}.example" ]] && ((count++))
+      for fmt in "${FORMATS[@]}"; do
+        [[ -f "$TEMPLATES_DIR/${f}.${profile}.${fmt#*:}" ]] && ((count++))
+      done
     done
-    echo "  $profile: $count/3 templates"
+    echo "  $profile: $count/6 templates (.conf + .lua)"
   done
   echo ""
   echo "Backups:"
