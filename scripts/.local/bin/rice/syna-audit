@@ -92,7 +92,10 @@ grep -qE 'mkinitcpio.conf.pacnew|limine-snapper-sync.conf.pacnew' <<<"$pacnew" &
 orph=$(pacman -Qdtq 2>/dev/null)
 add "- Orphans: $(grep -c . <<<"$orph")$( [[ -n $orph ]] && echo " ($(head -10 <<<"$orph" | tr '\n' ' '))")"
 add "- Foreign (AUR/local) packages: $(pacman -Qmq 2>/dev/null | grep -c .)"
+# Reviewed false positives, same list and reasons as syna-update-check
+REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2"
 rb=$(command -v checkrebuild >/dev/null && checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
+rb=$(grep -vxF -f <(tr ' ' '\n' <<<"$REBUILD_IGNORE") <<<"$rb")
 add "- Needing rebuild (linked against removed libraries): ${rb:-none}"
 [[ -n $rb ]] && flag "$(grep -c . <<<"$rb") AUR/foreign packages need a rebuild: $(tr '\n' ' ' <<<"$rb")(paru -S --rebuild <pkg>)"
 fw=$(timeout 60 fwupdmgr get-updates --no-unreported-check 2>/dev/null | grep -E '^[│├└ ]*[A-Za-z].*→|New version' | head -5)

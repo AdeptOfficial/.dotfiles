@@ -158,11 +158,17 @@ check_aur_pending() {
   info "paru shows each build-recipe (PKGBUILD) diff before building: read it, above all for packages marked root"
 }
 
+# Reviewed checkrebuild hits that are not real breakage (package: reason). Keep in sync with syna-audit.
+#   nexusmods-app-bin: bundles musl/jemalloc variants of rocksdb that glibc systems never load
+#   lib32-imlib2: only its optional id3 (MP3 tag) loader lacks lib32-libid3tag; images load fine
+REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2"
+
 # AUR/foreign programs linked against libraries the update replaced stop launching until rebuilt
 check_rebuilds() {
   section "AUR programs needing a rebuild"
   command -v checkrebuild >/dev/null || { warn "checkrebuild missing: sudo pacman -S rebuild-detector"; return; }
   local out; out=$(checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
+  out=$(grep -vxF -f <(tr ' ' '\n' <<<"$REBUILD_IGNORE") <<<"$out")
   if [[ -z $out ]]; then ok "no foreign packages linked against removed libraries"
   else
     warn "rebuild after the update (not a reboot blocker): $(tr '\n' ' ' <<<"$out")"
