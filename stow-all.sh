@@ -13,27 +13,13 @@ fi
 # 2. Proceed with stowing dotfiles using --adopt
 echo "🔄 Stowing all dotfiles with conflict resolution (--adopt)..."
 
-# Core configs
-stow --adopt hypr
-stow --adopt fish
-stow --adopt xdg
-stow --adopt waybar
-stow --adopt shell
-stow --adopt fastfetch
-
-# Rice configs
-stow --adopt themes
-stow --adopt rice
-stow --adopt scripts
-stow --adopt alacritty
-stow --adopt ghostty
-stow --adopt kitty
-stow --adopt swayosd
-stow --adopt walker
-stow --adopt mako
-stow --adopt btop
-stow --adopt eww
-stow --adopt satty
+# Package lists live in stow-packages.conf (shared with install.sh)
+source "$(dirname "$0")/stow-packages.conf"
+PACKAGES="$STOW_PACKAGES"
+[[ "${1:-}" == "desktop" ]] && PACKAGES="$PACKAGES $STOW_PACKAGES_DESKTOP"
+for pkg in $PACKAGES; do
+    stow --adopt "$pkg"
+done
 
 echo "✅ All dotfiles stowed! (Symlinks established.)"
 
@@ -41,7 +27,6 @@ echo "✅ All dotfiles stowed! (Symlinks established.)"
 echo ""
 echo "⚠️ Cleaning up adopted default config files in the Git repository..."
 
-PACKAGES="hypr fish xdg shell waybar fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww satty" 
 
 # This command checks out your saved content from the Git index, 
 # overwriting the temporary default files that Stow adopted.

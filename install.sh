@@ -115,7 +115,15 @@ if echo "$GPU_LINE" | grep -qi "amd\|radeon"; then
   GPU_PACKAGES="vulkan-radeon lib32-vulkan-radeon libva-mesa-driver lib32-libva-mesa-driver"
 elif echo "$GPU_LINE" | grep -qi "nvidia"; then
   GPU_TYPE="NVIDIA"
-  GPU_PACKAGES="nvidia-dkms nvidia-utils lib32-nvidia-utils"
+  # Open kernel modules: required for RTX 50 (Blackwell), recommended from Turing on.
+  # Prebuilt module package per installed CachyOS kernel; dkms only without one.
+  GPU_PACKAGES="nvidia-utils lib32-nvidia-utils"
+  NV_KERNELS=$(pacman -Qq 2>/dev/null | grep -E '^linux-cachyos(-lts)?$' || true)
+  if [[ -n "$NV_KERNELS" ]]; then
+    for k in $NV_KERNELS; do GPU_PACKAGES="$GPU_PACKAGES ${k}-nvidia-open"; done
+  else
+    GPU_PACKAGES="$GPU_PACKAGES nvidia-open-dkms"
+  fi
 elif echo "$GPU_LINE" | grep -qi "intel"; then
   GPU_TYPE="Intel"
   GPU_PACKAGES="vulkan-intel lib32-vulkan-intel intel-media-driver"
@@ -194,7 +202,15 @@ sudo pacman -S --needed --noconfirm \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
   zoxide lazygit neovim fwupd hyprland-guiutils tailscale \
-  gnome-calculator gamescope lazydocker signal-desktop obsidian
+  gnome-calculator gamescope lazydocker signal-desktop obsidian \
+  cava python-yaml lm_sensors pacman-contrib
+
+# Update safety net (syna-update-check): pacman snapshots + bootable snapshot entries.
+# Only where they apply: Btrfs root with snapper, and Limine as the bootloader.
+if [[ "$(findmnt -no FSTYPE /)" == "btrfs" ]]; then
+  sudo pacman -S --needed --noconfirm snapper snap-pac
+  pacman -Qq limine &>/dev/null && sudo pacman -S --needed --noconfirm limine-snapper-sync
+fi
 
 # ============================================
 # 3b. Install GPU drivers (auto-detected)
@@ -299,8 +315,9 @@ for dir in hypr waybar walker mako alacritty ghostty kitty fish; do
   fi
 done
 
-# Stow all packages
-STOW_PACKAGES="hypr fish xdg waybar shell fastfetch themes rice scripts alacritty ghostty kitty swayosd walker mako btop eww satty"
+# Stow all packages (lists live in stow-packages.conf)
+source ~/.dotfiles/stow-packages.conf
+[[ "$PROFILE" == "desktop" ]] && STOW_PACKAGES="$STOW_PACKAGES $STOW_PACKAGES_DESKTOP"
 for pkg in $STOW_PACKAGES; do
   if [[ -d "$pkg" ]]; then
     if ! stow "$pkg"; then
