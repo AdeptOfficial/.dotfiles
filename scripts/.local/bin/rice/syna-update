@@ -8,6 +8,7 @@
 #   syna-update --after-reboot  Run by syna-update-after-reboot.service at login after a kernel update
 #   syna-update --write-note    Write the update note for the last pacman transaction
 #   syna-update --test-lts      Arm a one-time check of the LTS fallback kernel for the next login
+#   syna-update --test-vfio     Arm a one-time check of the VFIO (GPU passthrough) boot entry
 #
 # Notes: ~/.syna/docs/updates/YYYY-MM-DD.md. Undo: syna-update-undo. Guide: ~/.syna/guides/system-update.md
 
@@ -15,6 +16,7 @@ STATE=~/.local/state/syna
 NOTES=~/.syna/docs/updates
 PENDING=$STATE/post-reboot-pending
 LTS_PENDING=$STATE/lts-test-pending
+VFIO_PENDING=$STATE/vfio-test-pending
 strip() { sed 's/\x1b\[[0-9;]*m//g'; }
 step() { printf '\n\e[1;36m%s\e[0m\n' "$*"; }
 good() { printf '  \e[32m%s\e[0m\n' "$*"; }
@@ -89,8 +91,43 @@ lts_test() {
   fi
 }
 
+# VFIO entry test: the passthrough boot settings took effect and the GTX 1080 can go to a VM
+vfio_test() {
+  [[ -f $VFIO_PENDING ]] || return 0
+  if ! grep -q pcie_acs_override /proc/cmdline; then
+    notify-send -a "Syna update" "VFIO test still armed" "This boot was not the VFIO entry. Next restart, pick linux-cachyos-vfio in the boot menu."
+    return 0
+  fi
+  local out rc fails=0 r="" f="$NOTES/vfio-test-$(date +%F).md" d grp iso
+  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}; (( rc )) && fails=$((fails + 1))
+  for d in 0000:10:00.0 0000:10:00.1; do
+    if [[ $(basename "$(readlink -f /sys/bus/pci/devices/$d/driver 2>/dev/null)") == vfio-pci ]]; then r+="ok    $d on vfio-pci"$'\n'
+    else r+="FAIL  $d not on vfio-pci"$'\n'; fails=$((fails + 1)); fi
+  done
+  # A VM takes a whole IOMMU group: it must hold only the GPU's own functions
+  grp=$(ls /sys/bus/pci/devices/0000:10:00.0/iommu_group/devices/ 2>/dev/null | tr '\n' ' ')
+  if [[ -n $grp && -z $(tr ' ' '\n' <<<"$grp" | grep -v '^$' | grep -v '^0000:10:00\.') ]]; then r+="ok    IOMMU group holds only the GPU: $grp"$'\n'
+  else r+="FAIL  IOMMU group shared with other devices: $grp"$'\n'; fails=$((fails + 1)); fi
+  iso=$(cat /sys/devices/system/cpu/isolated 2>/dev/null)
+  [[ -n $iso ]] && r+="ok    CPUs reserved for the VM: $iso"$'\n' || { r+="FAIL  no isolated CPUs"$'\n'; fails=$((fails + 1)); }
+  if virsh -c qemu:///system list --all >/dev/null 2>&1; then r+="ok    libvirt reachable (VMs: $(virsh -c qemu:///system list --all --name | grep -c .))"$'\n'
+  else r+="FAIL  libvirt not reachable"$'\n'; fails=$((fails + 1)); fi
+  mkdir -p "$NOTES"
+  { echo "# VFIO boot entry test $(date +%F)"; echo
+    echo "**Result:** $( ((fails == 0)) && echo passed || echo "FAILED ($fails)" ) on $(uname -r), $(date '+%F %H:%M')"
+    echo "Not covered: starting the passthrough VM itself (do that by hand: win11-gpu)."; echo
+    echo '```'; printf '%s' "$r"; echo; echo "$out"; echo '```'; } >"$f"
+  rm -f "$VFIO_PENDING"
+  if (( fails == 0 )); then
+    notify-send -a "Syna update" "VFIO entry verified" "GTX 1080 isolated and ready for passthrough. Start your VM to finish the test, then restart to the normal entry."
+  else
+    notify-send -u critical -a "Syna update" "VFIO entry has problems" "$fails check(s) failed; see ${f/#$HOME/\~}"
+  fi
+}
+
 after_reboot() {
   lts_test
+  vfio_test
   [[ -f $PENDING ]] || exit 0
   # On the LTS kernel the update check would test the wrong kernel: keep it armed for the normal one
   if [[ $(uname -r) == *lts* ]]; then
@@ -126,8 +163,13 @@ case ${1:-} in
     echo "LTS test armed. Restart, pick linux-cachyos-lts in the boot menu, and log in."
     echo "About a minute later a notification shows the result; then restart back to the normal kernel."
     exit 0 ;;
+  --test-vfio)
+    mkdir -p "$STATE"; date +%F >"$VFIO_PENDING"
+    echo "VFIO test armed. Restart, pick linux-cachyos-vfio in the boot menu, and log in."
+    echo "About a minute later a notification shows the result. Then start your passthrough VM to finish."
+    exit 0 ;;
   --write-note)   write_note "${2:-see syna-update-check post}"; exit 0 ;;
-  -h|--help)      sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help)      sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
 [[ -t 0 ]] || { echo "syna-update is interactive: run it in your own terminal."; exit 2; }

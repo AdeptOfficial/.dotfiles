@@ -1,8 +1,9 @@
 [Unit]
-Description=Syna: verify the system after a kernel update or an LTS fallback test (once, at login)
+Description=Syna: verify the system after a kernel update or a boot-entry test (LTS, VFIO) (once, at login)
 # Either trigger file (the "|" makes the conditions OR instead of AND)
 ConditionPathExists=|%h/.local/state/syna/post-reboot-pending
 ConditionPathExists=|%h/.local/state/syna/lts-test-pending
+ConditionPathExists=|%h/.local/state/syna/vfio-test-pending
 After=graphical-session.target
 
 [Service]
