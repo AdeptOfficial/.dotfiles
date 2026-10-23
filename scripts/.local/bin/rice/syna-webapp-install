@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Creates a launcher .desktop entry for a web app, downloading its icon (network)
+
 set -e
 
 if [ "$#" -lt 3 ]; then

@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# Returns the current release channel.
-# On standalone CachyOS setup, always returns "standalone".
-
-echo "standalone"

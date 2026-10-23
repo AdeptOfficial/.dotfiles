@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Prints the active theme's display name (override label, else title-cased theme ID)
+
 id=$(cat "$HOME/.config/themes/current.name" 2>/dev/null) || { echo Unknown; exit 0; }
 label="$HOME/.config/themes/.overrides/$id.name"
 if [[ -f "$label" ]]; then

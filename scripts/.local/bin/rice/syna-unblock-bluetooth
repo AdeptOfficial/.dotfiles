@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Unblock Bluetooth (rfkill) when the radio is soft-blocked, then show its state. Renamed from syna-restart-bluetooth
+
+echo -e "Unblocking bluetooth...\n"
+rfkill unblock bluetooth
+rfkill list bluetooth

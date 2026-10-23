@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installs libfido2/pam-u2f, registers a key and adds it to sudo/polkit PAM (sudo); --remove undoes it
+
 set -euo pipefail
 umask 077
 

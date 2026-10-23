@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Clears the terminal and prints the branding about.txt logo in green
+
 clear
 echo -e "\033[32m"
 cat ~/.config/rice/branding/about.txt

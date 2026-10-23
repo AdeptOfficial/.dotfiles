@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Sets (touch) or clears (deletes matching) flag files in ~/.local/state/rice
+
 STATE_DIR="$HOME/.local/state/rice"
 mkdir -p "$STATE_DIR"
 

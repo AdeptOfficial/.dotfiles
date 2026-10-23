@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installs fwupd if missing, refreshes metadata and applies firmware updates with sudo (network)
+
 set -e
 echo -e "\e[32mUpdate Firmware\e[0m"
 

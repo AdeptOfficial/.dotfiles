@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Toggles a screensaver-off state flag and sends a notification
+
 STATE_FILE=~/.local/state/rice/toggles/screensaver-off
 
 if [[ -f $STATE_FILE ]]; then

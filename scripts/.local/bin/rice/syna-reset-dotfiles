@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Reset ~/.dotfiles to the GitHub state (discards local changes) and ~/.config rice files to defaults; asks
+# first. Destructive. Packages are untouched (reinstall from install.sh; update with syna-update).
+# Renamed 2026-10-22 from syna-reinstall, which reinstalled nothing.
+
+set -e
+
+echo -e "This resets ~/.dotfiles to GitHub (local changes lost) and rice configs to defaults.\nPackages are not touched.\n"
+
+if gum confirm "Reset dotfiles and configs, losing local changes?"; then
+  syna-reset-dotfiles-git
+  syna-reset-configs
+
+  gum confirm "Reset done. Reboot?" && syna-cmd-reboot
+fi

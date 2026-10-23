@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Encrypted backups of this machine (Restic repository on the SharedData disk). You never type sudo:
+# this asks for your password once and runs the root-only engine /usr/local/sbin/syna-backup-engine.
+# Guide: ~/.syna/guides/backup.md
+#
+#   syna-backup              back up now (pauses the AI containers a few seconds each)
+#   syna-backup status       last successful backup, its age, all snapshots
+#   syna-backup check        read and verify the whole repository (slow)
+#   syna-backup prune        show what the retention policy would delete
+#   syna-backup prune --apply   delete it
+#   syna-backup init         first-time setup (password, repository)
+
+engine=/usr/local/sbin/syna-backup-engine
+
+case ${1:-backup} in
+  backup)        set -- backup ;;
+  status|check|init) ;;
+  prune)         [[ ${2:-} == --apply || -z ${2:-} ]] || { echo "Usage: syna-backup prune [--apply]" >&2; exit 2; } ;;
+  -h|--help|help) sed -n '3,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  *) echo "Unknown action '$1'. Try: syna-backup help" >&2; exit 2 ;;
+esac
+
+[[ -e $engine ]] || { echo "Backup engine not installed. See ~/.syna/guides/backup.md (install)." >&2; exit 1; }
+if [[ $EUID -eq 0 ]]; then exec "$engine" "$@"; fi
+exec sudo "$engine" "$@"

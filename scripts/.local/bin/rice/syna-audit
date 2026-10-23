@@ -162,11 +162,11 @@ if [[ -r $BACKUP_REPO/snapshots ]]; then
     bdate=$(date -r "$BACKUP_REPO/snapshots/$newest" +%F)
     bage=$(days_since "$bdate")
     add "- Newest restic snapshot: $bdate ($bage days ago)"
-    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS); backups are manual"
+    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS): run syna-backup (manual, no schedule)"
   fi
 elif mountpoint -q /mnt/SharedData 2>/dev/null; then add "- Restic repo not readable without root; check manually"
 else flag "Backup disk /mnt/SharedData not mounted"; fi
-add "- Off-machine copy: none configured (known gap, backup-recovery README)"
+add "- Off-machine copy: none configured (known gap, guides/backup.md)"
 
 # --- Records and docs drift ------------------------------------------------------
 sec "Records"

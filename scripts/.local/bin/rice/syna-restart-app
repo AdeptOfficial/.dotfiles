@@ -1,4 +1,6 @@
 #!/bin/bash
 
+# Kills a named process and relaunches it detached via uwsm-app; helper for the restart-* scripts
+
 pkill -x $1
 setsid uwsm-app -- $1 >/dev/null 2>&1 &

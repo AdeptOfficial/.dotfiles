@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Clones a theme from an HTTPS git URL (network), validates it and adds it to ~/.config/themes
+
 set -euo pipefail
 INPUT="${1:-}"
 [[ -n $INPUT ]] || INPUT=$(gum input --placeholder="https://host/owner/theme.git")

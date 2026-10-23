@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Stops voxtype service, removes its packages, units, config and data; no-op as voxtype is absent
+
 set -e
 
 # Remove voxtype and its configurations.

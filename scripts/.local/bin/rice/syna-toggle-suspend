@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Toggles a flag that shows or hides Suspend in the system menu and sends a notification
+
 STATE_FILE=~/.local/state/rice/toggles/suspend-on
 
 if [[ ! -f $STATE_FILE ]]; then

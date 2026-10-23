@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Waybar module streaming voxtype status JSON; prints empty JSON since voxtype is not installed
+
 if syna-cmd-present voxtype; then
   voxtype status --follow --extended --format json | while read -r line; do
     echo "$line" | jq -c '. + {alt: .class}'

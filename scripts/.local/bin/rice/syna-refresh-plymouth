@@ -10,6 +10,8 @@ src=~/.config/rice/defaults/plymouth/syna
 
 sudo install -d -m 755 /usr/share/plymouth/themes/syna
 sudo install -m 644 "$src"/syna.plymouth "$src"/syna.script "$src"/images/*.png /usr/share/plymouth/themes/syna/
+sudo install -Dm644 "$src"/plymouth-quit-hold.conf /etc/systemd/system/plymouth-quit.service.d/syna-hold.conf
+sudo systemctl daemon-reload   # 3 s hold: with TPM unlock the boot is too fast to see the splash
 sudo plymouth-set-default-theme -R syna
 [[ -x /usr/local/bin/limine-vfio-rebuild ]] && sudo /usr/local/bin/limine-vfio-rebuild
 

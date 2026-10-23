@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Restore from the encrypted backup without touching live files. Asks for your password once.
+# Guide: ~/.syna/guides/backup.md
+#
+#   syna-restore <path> [snapshot]   copy a file/folder out of the last (or given) backup:
+#                                    paths in your home land in ~/syna-restore/<time>/ (yours),
+#                                    system paths in /var/lib/syna-backup/restore-<time>/ (root only)
+#   syna-restore test                restore a probe file and verify its bytes
+#   syna-restore webui               isolated Open WebUI database restore + integrity check
+
+engine=/usr/local/sbin/syna-backup-engine
+as_root() {
+  [[ -e $1 ]] || { echo "Backup engine not installed. See ~/.syna/guides/backup.md (install)." >&2; exit 1; }
+  if [[ $EUID -eq 0 ]]; then exec "$@"; else exec sudo "$@"; fi
+}
+
+case ${1:-} in
+  ''|-h|--help|help) sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  test)  as_root "$engine" restore-test ;;
+  webui) as_root /usr/local/sbin/syna-validate-app-restore ;;
+  *)     (( $# <= 2 )) || { echo "Usage: syna-restore <path> [snapshot]" >&2; exit 2; }
+         as_root "$engine" restore "$(realpath -m -- "$1")" ${2:+"$2"} ;;
+esac
