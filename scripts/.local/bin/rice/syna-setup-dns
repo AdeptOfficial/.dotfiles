@@ -1,89 +1,71 @@
 #!/bin/bash
 
-# Overwrites resolved.conf (sudo), edits networkd files, restarts networkd; machine uses NetworkManager
+# Choose DNS for the NetworkManager uplinks (wired bridge br0, Wi-Fi): Automatic (from DHCP: router or LAN DNS
+# server), Cloudflare, Quad9 or custom. No sudo: NetworkManager lets the logged-in user change connections.
+# systemd-resolved stays in charge (resolved.conf is not touched); Tailscale's DNS and Docker/libvirt bridges
+# are left alone. Rewritten 2026-10-22: the Omarchy version targeted systemd-networkd, which this machine
+# does not use.
+#   syna-setup-dns [Automatic|Cloudflare|Quad9|Custom|Show]
 
-if [[ -z $1 ]]; then
-  dns=$(gum choose --height 5 --header "Select DNS provider" Cloudflare DHCP Custom)
-else
-  dns=$1
+set -euo pipefail
+
+# Active connections that carry normal traffic; bridge ports are skipped (their DNS lives on the bridge)
+uplinks() {
+  nmcli -t -f NAME,TYPE,DEVICE connection show --active | while IFS=: read -r name type dev; do
+    case $type in 802-11-wireless | 802-3-ethernet | bridge) ;; *) continue ;; esac
+    [[ $dev == docker* || $dev == br-* || $dev == virbr* ]] && continue
+    [[ -n $(nmcli -g connection.master connection show "$name") ]] && continue
+    printf '%s\t%s\n' "$name" "$dev"
+  done
+}
+
+show() {
+  echo "Current DNS per link (systemd-resolved):"
+  resolvectl dns | grep -v ':\s*$' | sed 's/^/  /'
+}
+
+# apply <ipv4 servers> <ipv6 servers> <ignore DHCP DNS: yes|no> <dns-over-tls: -1 default|1 opportunistic>
+apply() {
+  local name dev
+  while IFS=$'\t' read -r name dev; do
+    nmcli connection modify "$name" ipv4.dns "$1" ipv6.dns "$2" \
+      ipv4.ignore-auto-dns "$3" ipv6.ignore-auto-dns "$3" connection.dns-over-tls "$4"
+    nmcli device reapply "$dev" >/dev/null   # applies the change without taking the link down
+    echo "  $name ($dev): updated"
+  done < <(uplinks)
+}
+
+choice=${1:-}
+if [[ -z $choice ]]; then
+  show
+  echo
+  echo "Cloudflare/Quad9/Custom replace the DNS your network hands out (e.g. a LAN DNS server with ad"
+  echo "blocking or local names). Automatic restores it."
+  choice=$(gum choose --height 7 --header "Select DNS" Automatic Cloudflare Quad9 Custom Show)
 fi
 
-case "$dns" in
+case $choice in
+Automatic | DHCP)
+  apply "" "" no -1 ;;
 Cloudflare)
-  sudo tee /etc/systemd/resolved.conf >/dev/null <<'EOF'
-[Resolve]
-DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com
-FallbackDNS=9.9.9.9 149.112.112.112
-DNSOverTLS=opportunistic
-EOF
-  
-  # Ensure network interfaces don't override our DNS settings
-  for file in /etc/systemd/network/*.network; do
-    [[ -f "$file" ]] || continue
-    if ! grep -q "^\[DHCPv4\]" "$file"; then continue; fi
-    
-    # Add UseDNS=no to DHCPv4 section if not present
-    if ! sed -n '/^\[DHCPv4\]/,/^\[/p' "$file" | grep -q "^UseDNS="; then
-      sudo sed -i '/^\[DHCPv4\]/a UseDNS=no' "$file"
-    fi
-    
-    # Add UseDNS=no to IPv6AcceptRA section if present
-    if grep -q "^\[IPv6AcceptRA\]" "$file" && ! sed -n '/^\[IPv6AcceptRA\]/,/^\[/p' "$file" | grep -q "^UseDNS="; then
-      sudo sed -i '/^\[IPv6AcceptRA\]/a UseDNS=no' "$file"
-    fi
-  done
-  
-  sudo systemctl restart systemd-networkd systemd-resolved
-  ;;
-
-DHCP)
-  sudo tee /etc/systemd/resolved.conf >/dev/null <<'EOF'
-[Resolve]
-DNSOverTLS=no
-EOF
-  
-  # Allow network interfaces to use DHCP DNS
-  for file in /etc/systemd/network/*.network; do
-    [[ -f "$file" ]] || continue
-    sudo sed -i '/^UseDNS=no/d' "$file"
-  done
-  
-  sudo systemctl restart systemd-networkd systemd-resolved
-  ;;
-
+  apply "1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com" \
+    "2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com" yes 1 ;;
+Quad9)
+  apply "9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net" \
+    "2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net" yes 1 ;;
 Custom)
-  echo "Enter your DNS servers (space-separated, e.g. '192.168.1.1 1.1.1.1'):"
-  read -r dns_servers
-
-  if [[ -z "$dns_servers" ]]; then
-    echo "Error: No DNS servers provided."
-    exit 1
-  fi
-
-  sudo tee /etc/systemd/resolved.conf >/dev/null <<EOF
-[Resolve]
-DNS=$dns_servers
-FallbackDNS=9.9.9.9 149.112.112.112
-EOF
-  
-  # Ensure network interfaces don't override our DNS settings
-  for file in /etc/systemd/network/*.network; do
-    [[ -f "$file" ]] || continue
-    if ! grep -q "^\[DHCPv4\]" "$file"; then continue; fi
-    
-    # Add UseDNS=no to DHCPv4 section if not present
-    if ! sed -n '/^\[DHCPv4\]/,/^\[/p' "$file" | grep -q "^UseDNS="; then
-      sudo sed -i '/^\[DHCPv4\]/a UseDNS=no' "$file"
-    fi
-    
-    # Add UseDNS=no to IPv6AcceptRA section if present
-    if grep -q "^\[IPv6AcceptRA\]" "$file" && ! sed -n '/^\[IPv6AcceptRA\]/,/^\[/p' "$file" | grep -q "^UseDNS="; then
-      sudo sed -i '/^\[IPv6AcceptRA\]/a UseDNS=no' "$file"
-    fi
+  read -rp "DNS servers (space-separated, IPv4 and/or IPv6): " servers
+  [[ -n ${servers// /} ]] || { echo "No servers given; nothing changed."; exit 1; }
+  v4="" v6=""
+  for s in $servers; do
+    if [[ $s == *:* ]]; then v6+="$s "; else v4+="$s "; fi
   done
-  
-  sudo systemctl restart systemd-networkd systemd-resolved
-
-  ;;
+  apply "${v4% }" "${v6% }" yes -1 ;;
+Show)
+  show; exit 0 ;;
+*)
+  echo "Usage: syna-setup-dns [Automatic|Cloudflare|Quad9|Custom|Show]" >&2; exit 2 ;;
 esac
 
+echo
+show

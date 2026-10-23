@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Unblock Wi-Fi (rfkill) when the radio is soft-blocked, then show its state. Renamed from syna-restart-wifi
+
+echo -e "Unblocking wifi...\n"
+rfkill unblock wifi
+rfkill list wifi

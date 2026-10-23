@@ -72,6 +72,31 @@ check_nvidia_modules() {
   done
 }
 
+# Out-of-tree (DKMS) drivers must be built for every installed kernel. r8125 drives the wired 2.5 GbE port
+# (in-kernel r8169 is blacklisted in /etc/modprobe.d/r8169.conf): without it a kernel boots with no br0.
+check_dkms_modules() {
+  command -v dkms >/dev/null || return 0
+  section "DKMS modules (out-of-tree drivers)"
+  local status mods mod pkg dir kver
+  status=$(dkms status 2>/dev/null)
+  mods=$(awk -F/ 'NF > 1 {print $1}' <<<"$status" | sort -u)
+  [[ -z $mods ]] && { info "none installed"; return 0; }
+  for mod in $mods; do
+    for pkg in "${KERNEL_PKGS[@]}"; do
+      dir=$(modules_dir_for "$pkg")
+      [[ -z $dir ]] && continue
+      kver=$(basename "$dir")
+      if grep -qE "^$mod/[^,]*, $kver, [^:]*: installed" <<<"$status"; then
+        ok "$mod built for $kver"
+      elif [[ $mod == r8125 ]]; then
+        fail "r8125 not built for $kver: no wired network (br0, VMs, LAN DNS) on that kernel"
+      else
+        fail "$mod not built for $kver"
+      fi
+    done
+  done
+}
+
 check_esp() {
   [[ $MODE == __esp ]] || section "ESP: UKIs and Limine entries"
   if ! have_root; then
@@ -221,6 +246,7 @@ pre() {
   fi
 
   check_nvidia_modules
+  check_dkms_modules
   check_esp
   check_rebuilds   # baseline: what is already broken before this update
 
@@ -246,6 +272,7 @@ post() {
     | grep -iE 'error|failed|warning: .*(mkinitcpio|limine)' | grep -v 'pacnew' )
   [[ -z $errs ]] && ok "no errors in the last upgrade log" || while read -r l; do [[ -n $l ]] && warn "${l:0:160}"; done <<<"$errs"
   check_nvidia_modules
+  check_dkms_modules
   check_esp
   check_hyprland_config
   check_rebuilds

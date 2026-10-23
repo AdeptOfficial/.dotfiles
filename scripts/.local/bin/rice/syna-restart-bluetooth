@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# Unblocks Bluetooth with rfkill and lists its state; does not restart any service
-
-echo -e "Unblocking bluetooth...\n"
-rfkill unblock bluetooth
-rfkill list bluetooth

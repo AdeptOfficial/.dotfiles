@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# Kills and relaunches fcitx5 (name is misleading: no XCompose involved)
+# Apply ~/.XCompose changes: restarts fcitx5, the input method that reads the compose sequences
 
 syna-restart-app fcitx5

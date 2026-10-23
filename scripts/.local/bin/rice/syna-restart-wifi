@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# Unblocks Wi-Fi with rfkill and lists its state; does not restart any service
-
-echo -e "Unblocking wifi...\n"
-rfkill unblock wifi
-rfkill list wifi
