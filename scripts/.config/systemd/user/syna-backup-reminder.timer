@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily check that the Syna backup is recent
+
+[Timer]
+OnCalendar=daily
+OnStartupSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

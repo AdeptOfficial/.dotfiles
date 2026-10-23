@@ -454,7 +454,7 @@ fi
 
 # Syna user units (stowed in step 6): monthly audit, and the one-shot check after a kernel update
 systemctl --user daemon-reload
-systemctl --user enable syna-audit.timer syna-update-after-reboot.service 2>/dev/null || true
+systemctl --user enable syna-audit.timer syna-update-after-reboot.service syna-backup-reminder.timer 2>/dev/null || true
 
 # ============================================
 # Done!
