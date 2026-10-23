@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# Theme the Limine boot menu: replaces only the theme block at the top of /boot/limine.conf (global options that
+# limine-entry-tool leaves alone) and installs the background on the ESP. Boot entries, kernels and command lines are
+# never touched: the new file must equal the current one outside the theme block, or nothing is written.
+#   syna-limine-theme preview    boot the real Limine in QEMU with this theme (no /boot access)
+#   syna-limine-theme diff       show what apply would change (reads /boot/limine.conf with sudo)
+#   syna-limine-theme apply      show the diff, ask, write, verify
+#   syna-limine-theme restore    put the original theme block back (CachyOS theme), same checks
+# Run without sudo (it asks per step). Source: ~/.config/rice/defaults/limine/ (build.sh, theme.conf, preview.sh).
+# Guide: ~/.syna/guides/boot.md (Limine menu theme). No hash on the wallpaper on purpose: unhashed wallpapers are
+# skipped (not a panic) if config enrolment is ever enabled, and a hashed one would panic after any image change.
+
+set -euo pipefail
+src=~/.config/rice/defaults/limine
+conf=/boot/limine.conf
+keep=/boot/syna/limine-theme-original.conf   # the block apply replaced first; restore puts it back
+wall=/boot/syna/limine-wallpaper.jpg
+t=$(mktemp -d)
+trap 'rm -rf "$t"' EXIT
+
+# render CURRENT BLOCK OUT: CURRENT with its theme block replaced by BLOCK. The theme block is ours (between the
+# markers) or the stock CachyOS one (from its "# … Limine theme" comment through the following comment/theme lines).
+# Refuses if the block is missing, holds any non-theme option, or reaches the entries; asserts the rest is unchanged.
+render() {
+  python3 - "$1" "$2" "$3" "$t/old-block" <<'PY'
+import re, sys
+cur = open(sys.argv[1]).read().split('\n')
+block = open(sys.argv[2]).read().rstrip('\n').split('\n')
+theme = re.compile(r'^(term_[a-z_]+|interface_[a-z_]+|wallpaper(_style)?|backdrop):')
+start = end = None
+for i, line in enumerate(cur):
+    if line.startswith('# >>> SynaOS Limine theme'):
+        start = i
+        end = next((j for j in range(i, len(cur)) if cur[j].startswith('# <<< SynaOS Limine theme')), None)
+        if end is None:
+            sys.exit('SynaOS theme start marker without end marker; nothing changed.')
+        end += 1
+        break
+if start is None:
+    for i, line in enumerate(cur):
+        if re.match(r'^# .*Limine theme', line):
+            start = end = i
+            while end < len(cur) and (cur[end].startswith('#') or theme.match(cur[end])):
+                end += 1
+            break
+if start is None:
+    sys.exit('No theme block found ("# … Limine theme" or the SynaOS markers); nothing changed.')
+first_entry = next(i for i, line in enumerate(cur) if line.startswith('/'))
+if end > first_entry:
+    sys.exit('Theme block reaches the boot entries; nothing changed.')
+if any(not (l.startswith('#') or theme.match(l)) for l in cur[start:end] + block):
+    sys.exit('A theme block holds a non-theme line; nothing changed.')
+new = cur[:start] + block + cur[end:]
+assert new[:start] == cur[:start] and new[start + len(block):] == cur[end:]
+open(sys.argv[3], 'w').write('\n'.join(new))
+open(sys.argv[4], 'w').write('\n'.join(cur[start:end]) + '\n')
+PY
+}
+
+show() {   # print the change; returns 1 when there is none
+  if cmp -s "$t/cur.conf" "$t/new.conf"; then
+    echo "limine.conf already has this theme block."
+    return 1
+  fi
+  diff -u --label "$conf (now)" --label "$conf (new)" "$t/cur.conf" "$t/new.conf" || true
+}
+
+confirm() {
+  read -rp "Write this to $conf? [y/N] " answer
+  [[ $answer == [yY]* ]] || { echo "Nothing written."; exit 0; }
+}
+
+write() {   # write $t/new.conf, verify it byte for byte, re-enrol if enrolment is enabled
+  sudo cp "$conf" "$conf.pre-syna-theme"   # emergency copy only: restore swaps the block, never this whole file
+  sudo cp "$t/new.conf" "$conf"
+  sync
+  sudo cmp -s "$t/new.conf" "$conf" || { echo "Verify FAILED: $conf differs from what was written." >&2; exit 1; }
+  if grep -Eq '^[[:space:]]*ENABLE_ENROLL_LIMINE_CONFIG[[:space:]]*=[[:space:]]*"?yes' /etc/default/limine 2>/dev/null; then
+    sudo limine-enroll-config
+  fi
+  echo "Written and verified. Next: syna-update-check post, then reboot (LTS entry or 'syna-limine-theme restore' if needed)."
+}
+
+case ${1:-} in
+  preview)
+    exec "$src/preview.sh"
+    ;;
+  diff | apply)
+    sudo cat "$conf" > "$t/cur.conf"
+    render "$t/cur.conf" "$src/theme.conf" "$t/new.conf"
+    changed=yes
+    show || changed=no
+    [[ $1 == diff ]] && exit 0
+    if [[ $changed == yes ]]; then
+      confirm
+      if ! sudo test -f "$keep"; then   # first apply: keep the block being replaced, for restore
+        sudo install -D -m 644 "$t/old-block" "$keep"
+      fi
+    fi
+    sudo install -D -m 644 "$src/limine-wallpaper.jpg" "$wall"   # also refreshes a rebuilt background
+    [[ $changed == yes ]] && write
+    ;;
+  restore)
+    sudo test -f "$keep" || { echo "No saved original block ($keep); nothing to restore." >&2; exit 1; }
+    sudo cat "$conf" > "$t/cur.conf"
+    sudo cat "$keep" > "$t/block"
+    render "$t/cur.conf" "$t/block" "$t/new.conf"
+    show || exit 0
+    confirm
+    write
+    ;;
+  *)
+    sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'
+    exit 2
+    ;;
+esac
