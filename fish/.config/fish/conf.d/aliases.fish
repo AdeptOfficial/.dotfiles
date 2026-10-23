@@ -16,7 +16,7 @@ alias ollama-logs="docker logs -f ollama"
 alias ollama-restart="docker restart ollama"
 
 # === System ===
-alias update="sudo pacman -Syu"
+alias update="syna-update"        # guided update: pre-checks, research, install, post-check
 alias clean="sudo pacman -Sc"
 alias afk="syna-dream"           # AFK screensaver: syna is dreaming
 
