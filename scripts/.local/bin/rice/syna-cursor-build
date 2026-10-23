@@ -112,8 +112,13 @@ def rings(text, line=16, band=28, edge=32):
     return re.sub(r'<path[^>]*/>', repl, text)
 
 
-BADGE, SPINNER, IBEAM = 0.65, 0.65, 0.75   # scale of status badges, the busy arrow's spinner, the text cursor
+BADGE, IBEAM = 0.65, 0.75   # scale of status badges, the text cursor
 BADGE_LEFT = 12     # badges move this far left (256 canvas), over the arrow's wing / the hand
+BADGE_DOWN = 12     # top-right badges (on arrows) also move this far down
+# Bibata's top-right badge: rect 107.5,15.5 113x113, stroke 17 -> 130 across, centre (164, 72), corner (220.5, 15.5).
+# Where it ends up after BADGE/LEFT/DOWN; the busy arrow's spinner (circle at 118,162, 158 across) goes to the same
+# centre at the same size, so it reads as one more status badge.
+BADGE_CENTRE = (220.5 + (164 - 220.5) * BADGE - BADGE_LEFT, 15.5 + (72 - 15.5) * BADGE + BADGE_DOWN)
 IBEAM_WIDTH = 0.85  # the text cursor is also narrowed to this (same height)
 
 
@@ -136,9 +141,9 @@ def shrink(content, factor, ax, ay):
 
 
 def secondary(text, name, hotspot):
-    """Shrink what sits beside the arrow, toward its outer corner, so the arrow stays the main shape: status badges
-    (Bibata draws them as one filter group: top-right on arrows, bottom-right on the dnd hands), the spinner of the
-    busy arrow, and the text cursor (around its hotspot, strokes kept at full width to match the set)."""
+    """Shrink what sits beside the arrow so the arrow stays the main shape: status badges (Bibata draws them as one
+    filter group: top-right on arrows, bottom-right on the dnd hands), the busy arrow's spinner (moved into the
+    top-right badge spot), and the text cursor (around its hotspot, strokes kept at full width to match the set)."""
     if name == 'xterm':
         head = re.match(r'(?s).*?<svg[^>]*>', text).group(0)
         body = text[len(head):text.rindex('</svg>')]
@@ -147,14 +152,16 @@ def secondary(text, name, hotspot):
         return head + shrink(body, IBEAM, *hotspot) + '</svg>'
     if name.startswith('left_ptr_watch'):
         i = text.find('<circle')
-        spinner = shrink(text[i:text.rindex('</svg>')], SPINNER, 248, 244)   # toward the corner, clear of the arrow's tail
+        cx, cy = BADGE_CENTRE
+        spinner = (f'<g transform="translate({cx:.1f} {cy:.1f}) scale({130 * BADGE / 158:.4f}) translate(-118 -162)">'
+                   f'{text[i:text.rindex("</svg>")]}</g>')
         return text[:i] + spinner + '</svg>' if i > 0 else text
     m = re.search(r'(?s)<g filter="[^"]*">.*?</g>', text)
     if not m or not (name.startswith(('dnd-', 'dnd_')) or 'class="syna"' in text):   # badges only beside an arrow or a hand
         return text
     r = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)"', m.group(0))
     ax, ay = (float(r[1]) + float(r[3]), float(r[2])) if r else (241.0, 241.0)
-    badge = f'<g transform="translate({-BADGE_LEFT} 0)">{shrink(m.group(0), BADGE, ax, ay)}</g>'
+    badge = f'<g transform="translate({-BADGE_LEFT} {BADGE_DOWN if r else 0})">{shrink(m.group(0), BADGE, ax, ay)}</g>'
     return text[:m.start()] + badge + text[m.end():]
 
 
