@@ -68,7 +68,7 @@ def blade_group(hx, hy, scale):
             f'{inner}</g>')
 
 
-def rings(text, outer=22, inner=36):   # visible: cyan outer/2 outside, magenta inner/2 inside
+def rings(text, outer=36, inner=36):   # visible: cyan outer/2 outside, magenta inner/2 inside; outer <= inner
     """Outline colour as a wide outer edge, accent as an inner ring (stroke clipped to the shape's inside)."""
     n = [0]
     def ring(d, rule):
