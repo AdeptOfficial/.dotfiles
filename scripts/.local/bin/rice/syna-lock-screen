@@ -10,8 +10,8 @@ if [[ ${1:-} == --preview ]]; then
   exec hyprlock --quiet --grace "${2:-30}"
 fi
 
-# Lock the screen
-pidof hyprlock || hyprlock &
+# Lock the screen (detached and quiet: run from a terminal it must not print over the prompt)
+pidof hyprlock >/dev/null || setsid hyprlock --quiet >/dev/null 2>&1 &
 
 # Set keyboard layout to default (first layout)
 hyprctl switchxkblayout all 0 > /dev/null 2>&1
