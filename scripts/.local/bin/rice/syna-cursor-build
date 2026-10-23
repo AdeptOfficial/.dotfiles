@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Build the SynaOS cursor theme (XCursor): Bibata Original shapes with slim outlines, recoloured to the AdepT
-palette, plus the SynaOS shard arrow and link pointer (~/.config/rice/branding/cursor/*.svg).
+"""Build the SynaOS cursor theme (XCursor): Bibata Modern shapes with slim outlines, recoloured to the AdepT
+palette, plus the SynaOS blade arrow and link pointer (~/.config/rice/branding/cursor/blade*.svg).
 
 Bibata (GPL-3.0, github.com/ful1e5/Bibata_Cursor) is fetched at a pinned tag into ~/.cache/syna/bibata; only its
 SVGs and configs/normal/x.build.toml (hotspots, sizes, aliases) are read, none of its code runs. Colours replace
@@ -21,9 +21,9 @@ p.add_argument('--name', default='SynaOS-Cursor')
 p.add_argument('--fill', default='#0a1014')
 p.add_argument('--outline', default='#3fd4e6')
 p.add_argument('--accent', default='#e359c9')
-p.add_argument('--style', default='original', choices=['original', 'modern'], help='Bibata shape set')
+p.add_argument('--style', default='modern', choices=['original', 'modern'], help='Bibata shape set')
 p.add_argument('--stroke', type=float, default=9, help='outline width (Bibata default 17, on a 256 canvas)')
-p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow and hand')
+p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow and hand (no SynaOS blade)')
 p.add_argument('--preview', action='store_true', help='render a labelled sheet of all cursors and open it')
 args = p.parse_args()
 for c in (args.fill, args.outline, args.accent):
@@ -45,7 +45,7 @@ sizes, delay = fallback['x11_sizes'], fallback.get('x11_delay', 40)
 svgdir = CACHE / 'svg' / args.style
 SHARD = Path.home() / '.config/rice/branding/cursor'
 # key: (svg, hotspot x, y) on the 256 canvas; replaces Bibata's shape for that cursor
-CUSTOM = {} if args.no_shard else {'left_ptr': (SHARD / 'shard.svg', 64, 32), 'hand2': (SHARD / 'shard-link.svg', 64, 32)}
+CUSTOM = {} if args.no_shard else {'left_ptr': (SHARD / 'blade.svg', 40, 24), 'hand2': (SHARD / 'blade-link.svg', 40, 24)}
 out = Path.home() / '.local/share/icons' / args.name
 work = Path(tempfile.mkdtemp(prefix='syna-cursor-'))
 colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent}
@@ -53,7 +53,7 @@ colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent
 
 def render(svg, size, dest):
     text = svg.read_text()
-    if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); shard files set their own
+    if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); the blade files set their own
         text = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) * args.stroke / 17:g}"', text)
     for a, b in colours.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
@@ -117,7 +117,7 @@ try:
                 os.symlink(name, target)
         built += 1
     (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata {args.style.title()} {TAG} '
-                                     f'(GPL-3.0), outline {args.stroke:g}, shard arrow, recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
+                                     f'(GPL-3.0), outline {args.stroke:g}, SynaOS blade arrow, recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
     print(f'Built {out} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
 finally:
     shutil.rmtree(work, ignore_errors=True)
