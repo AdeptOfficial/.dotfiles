@@ -41,4 +41,6 @@ fi
 cursor=Adwaita
 [[ -f ~/.config/themes/current/cursor.theme ]] && cursor=$(<~/.config/themes/current/cursor.theme)
 gsettings set org.gnome.desktop.interface cursor-theme "$cursor"
+# Switch away and back: Hyprland caches cursor images by name, so a rebuilt theme with the same name would not reload
+hyprctl setcursor Adwaita "${XCURSOR_SIZE:-24}" >/dev/null 2>&1 || true
 hyprctl setcursor "$cursor" "${XCURSOR_SIZE:-24}" >/dev/null 2>&1 || true
