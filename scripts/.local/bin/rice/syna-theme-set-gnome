@@ -16,3 +16,22 @@ if [[ -f $GNOME_ICONS_THEME ]]; then
 else
   gsettings set org.gnome.desktop.interface icon-theme "Yaru-blue"
 fi
+
+# Accent: exact theme colour for GTK4/libadwaita apps (gtk.css from the theme's palette), plus the nearest
+# built-in GNOME accent preset by hue for apps that ignore the CSS. Running apps pick it up after a restart.
+mkdir -p ~/.config/gtk-4.0
+if [[ -f ~/.config/themes/current/gtk4.css ]]; then
+  ln -sfn ~/.config/themes/current/gtk4.css ~/.config/gtk-4.0/gtk.css
+fi
+accent=$(sed -n 's/^accent *= *"\(#[0-9a-fA-F]\{6\}\)".*/\1/p' ~/.config/themes/current/colors.toml)
+if [[ -n $accent ]]; then
+  preset=$(python3 -c '
+import colorsys, sys
+def hue(h): return colorsys.rgb_to_hls(*(int(h[i:i+2], 16) / 255 for i in (1, 3, 5)))
+presets = {"blue": "#3584e4", "teal": "#2190a4", "green": "#3a944a", "yellow": "#c88800", "orange": "#ed5b00",
+           "red": "#e62d42", "pink": "#d56199", "purple": "#9141ac", "slate": "#6f8396"}
+h, l, s = hue(sys.argv[1])
+if s < 0.15: print("slate"); raise SystemExit
+print(min(presets, key=lambda k: min(abs(hue(presets[k])[0] - h), 1 - abs(hue(presets[k])[0] - h))))' "$accent")
+  gsettings set org.gnome.desktop.interface accent-color "$preset"
+fi

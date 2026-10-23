@@ -111,6 +111,37 @@ def window_config(settings):
     return f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
 
 
+ICON_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._+-]{0,63}')
+DEFAULT_ICONS = 'Yaru-blue'
+
+
+def icon_themes():
+    """Installed icon themes (not cursor-only themes): directories with an index.theme listing icon Directories."""
+    found = set()
+    for base in (Path('/usr/share/icons'), Path.home() / '.local/share/icons', Path.home() / '.icons'):
+        for index in base.glob('*/index.theme') if base.is_dir() else []:
+            try:
+                text = index.read_text(errors='replace')
+            except OSError:
+                continue
+            if re.search(r'^Directories\s*=\s*\S', text, re.M) and ICON_NAME.fullmatch(index.parent.name):
+                found.add(index.parent.name)
+    return sorted(found, key=str.casefold)
+
+
+def theme_icons(name, use_override=True):
+    """Icon theme for a theme: the user's override (.overrides/<name>.icons), else the theme's own icons.theme."""
+    candidates = [ROOT / '.overrides' / (name + '.icons')] if use_override else []
+    candidates.append(ROOT / name / 'icons.theme')
+    for path in candidates:
+        if path.is_file() and not path.is_symlink():
+            value = path.read_text().strip()
+            if not ICON_NAME.fullmatch(value):
+                raise ValueError(f'Invalid icon theme name in {path.name}')
+            return value
+    return None
+
+
 def render(template, colors):
     colors = dict(colors)
     for key, source in PROMPT_DEFAULTS.items():
@@ -167,6 +198,9 @@ def build(name, stage):
     for required in ('hyprland.conf', 'eww-colors.scss', 'fastfetch.jsonc'):
         if not (stage / required).is_file():
             raise ValueError(f'Missing generated file: {required}')
+    icons = theme_icons(name)
+    if icons:
+        (stage / 'icons.theme').write_text(icons + '\n')
     (stage / '.theme-name').write_text(name + '\n')
     # Explicit personal wallpaper selection survives switching away and back.
     preference = ROOT / '.overrides' / (name + '.wallpaper')
