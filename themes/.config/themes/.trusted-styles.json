@@ -124,6 +124,7 @@
   },
   "synaos": {
     "hyprlock.conf": "277520dc04d780537e8157bba6ae5df7f76f99933ac02db5da993ecf498d19bd",
-    "lock-emblem.png": "07f388eb4a3d03327a5cc07f1cc07210f17a8da31036d4ce33212019c53dac0f"
+    "lock-emblem.png": "07f388eb4a3d03327a5cc07f1cc07210f17a8da31036d4ce33212019c53dac0f",
+    "fastfetch.jsonc": "8d7721a5f74e223d493ce8ae0a3e5c364f6b8e88ddb3f60ff0a9333d431849a6"
   }
 }
