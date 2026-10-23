@@ -18,6 +18,7 @@ alias ollama-restart="docker restart ollama"
 # === System ===
 alias update="sudo pacman -Syu"
 alias clean="sudo pacman -Sc"
+alias afk="syna-dream"           # AFK screensaver: syna is dreaming
 
 # === Navigation ===
 alias ..="cd .."

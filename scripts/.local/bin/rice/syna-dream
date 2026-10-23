@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Put Syna to sleep now: start the AFK screensaver ("syna is dreaming") on every monitor, even when the
+# idle screensaver is toggled off. Any key, or focus leaving the screensaver, wakes her. Fish alias: afk
+exec syna-launch-screensaver force

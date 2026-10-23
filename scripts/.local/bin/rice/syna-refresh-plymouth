@@ -3,7 +3,7 @@
 # Reinstall the Syna boot splash from dotfiles and rebuild the boot images (main + LTS via the Limine
 # hooks, VFIO via its own rebuild script). Theme source and preview: ~/.config/rice/defaults/plymouth/syna/
 # Never bare `mkinitcpio -P`: plymouth-set-default-theme -R goes through limine-mkinitcpio, which
-# re-signs the UKIs and updates Limine's hashes. Rollback: sudo plymouth-set-default-theme -R omarchy
+# re-signs the UKIs and updates Limine's hashes. Emergency fallback: sudo plymouth-set-default-theme -R bgrt (stock theme)
 
 set -e
 src=~/.config/rice/defaults/plymouth/syna
