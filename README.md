@@ -2,6 +2,9 @@
 
 Custom dotfiles for CachyOS (Arch-based) with Hyprland using GNU Stow.
 
+These dotfiles are the desktop layer of **[SynaOS](https://github.com/AdeptOfficial/synaos)**, a CachyOS-based OS in
+progress (goal, roadmap and planning live there).
+
 ## Documentation
 
 Operating guides and maintenance history live in the private [syna-docs](https://github.com/AdeptOfficial/syna-docs) repository. Start at its [guide index](https://github.com/AdeptOfficial/syna-docs/blob/main/guides/README.md). Deployable files stay in this repository; the optional [deej package and client build](maintenance/deej/README.md) are documented separately.
