@@ -19,6 +19,7 @@ alias ollama-restart="docker restart ollama"
 alias update="syna-update"        # guided update: pre-checks, research, install, post-check
 alias clean="sudo paccache -r"     # trim package cache, keep 3 versions (syna-update-undo needs them)
 alias afk="syna-dream"           # AFK screensaver: syna is dreaming
+alias lock="syna-lock-screen"     # lock now; lock --preview = look at the lock screen (any input unlocks for 30 s)
 
 # === Navigation ===
 alias ..="cd .."
