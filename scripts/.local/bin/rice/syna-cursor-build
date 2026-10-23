@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Build the SynaOS cursor theme (XCursor) from Bibata Modern's SVGs, recoloured to the AdepT palette.
+"""Build the SynaOS cursor theme (XCursor): Bibata Original shapes with slim outlines, recoloured to the AdepT
+palette, plus the SynaOS shard arrow and link pointer (~/.config/rice/branding/cursor/*.svg).
 
 Bibata (GPL-3.0, github.com/ful1e5/Bibata_Cursor) is fetched at a pinned tag into ~/.cache/syna/bibata; only its
 SVGs and configs/normal/x.build.toml (hotspots, sizes, aliases) are read, none of its code runs. Colours replace
 Bibata's placeholders: #00FF00 fill, #0000FF outline, #FF0000 accent. Needs rsvg-convert, xcursorgen, git.
     syna-cursor-build                 build SynaOS-Cursor into ~/.local/share/icons (dark fill, cyan outline)
     syna-cursor-build --name N --fill #rrggbb --outline #rrggbb --accent #rrggbb
+    syna-cursor-build --preview [colour options]   labelled sheet of every cursor, opened in imv (builds nothing)
 """
 import argparse, glob, os, re, shutil, subprocess, sys, tempfile, tomllib
 from pathlib import Path
@@ -19,6 +21,10 @@ p.add_argument('--name', default='SynaOS-Cursor')
 p.add_argument('--fill', default='#0a1014')
 p.add_argument('--outline', default='#3fd4e6')
 p.add_argument('--accent', default='#e359c9')
+p.add_argument('--style', default='original', choices=['original', 'modern'], help='Bibata shape set')
+p.add_argument('--stroke', type=float, default=9, help='outline width (Bibata default 17, on a 256 canvas)')
+p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow and hand')
+p.add_argument('--preview', action='store_true', help='render a labelled sheet of all cursors and open it')
 args = p.parse_args()
 for c in (args.fill, args.outline, args.accent):
     if not re.fullmatch(r'#[0-9a-fA-F]{6}', c):
@@ -36,7 +42,10 @@ if not (CACHE / 'svg/modern').is_dir():
 cfg = tomllib.loads((CACHE / 'configs/normal/x.build.toml').read_text())['cursors']
 fallback = cfg.pop('fallback_settings')
 sizes, delay = fallback['x11_sizes'], fallback.get('x11_delay', 40)
-svgdir = CACHE / 'svg/modern'
+svgdir = CACHE / 'svg' / args.style
+SHARD = Path.home() / '.config/rice/branding/cursor'
+# key: (svg, hotspot x, y) on the 256 canvas; replaces Bibata's shape for that cursor
+CUSTOM = {} if args.no_shard else {'left_ptr': (SHARD / 'shard.svg', 64, 32), 'hand2': (SHARD / 'shard-link.svg', 64, 32)}
 out = Path.home() / '.local/share/icons' / args.name
 work = Path(tempfile.mkdtemp(prefix='syna-cursor-'))
 colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent}
@@ -44,10 +53,38 @@ colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent
 
 def render(svg, size, dest):
     text = svg.read_text()
+    if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); shard files set their own
+        text = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) * args.stroke / 17:g}"', text)
     for a, b in colours.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
     subprocess.run(['rsvg-convert', '-w', str(size), '-h', str(size), '-o', str(dest)], input=text.encode(), check=True)
 
+
+if args.preview:
+    if not shutil.which('magick'):
+        sys.exit('Missing magick (imagemagick) for --preview')
+    tiles = []
+    for key, c in cfg.items():
+        pattern = c['png'].removesuffix('.png')
+        frames = sorted(svgdir.glob(pattern + '.svg')) or sorted(svgdir.glob(f"{pattern.split('-*')[0]}/{pattern}.svg"))
+        if key in CUSTOM:
+            frames = [CUSTOM[key][0]]
+        for i, svg in enumerate(frames[::max(1, len(frames) // 4)][:4] if len(frames) > 1 else frames):
+            png = work / f'{key}-{i}.png'
+            render(svg, 72, png)
+            tiles.append((png, c.get('x11_name', key) + (f' {i + 1}' if len(frames) > 1 else '')))
+    sheet = Path.home() / '.cache/syna' / f'cursor-preview-{args.name}.png'
+    cmd = ['magick', 'montage']
+    for png, label in tiles:
+        cmd += ['-label', label, str(png)]
+    cmd += ['-tile', '10x', '-geometry', '96x96+10+18', '-background', '#2a3640', '-fill', '#eff8fa',
+            '-font', 'JetBrainsMono-NF-Regular', '-pointsize', '11', str(sheet)]
+    subprocess.run(cmd, check=True)
+    shutil.rmtree(work, ignore_errors=True)
+    print('Preview:', sheet)
+    if shutil.which('imv'):
+        subprocess.Popen(['imv', str(sheet)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    sys.exit(0)
 
 try:
     (out / 'cursors').mkdir(parents=True, exist_ok=False) if not out.exists() else None
@@ -56,9 +93,13 @@ try:
     for key, c in cfg.items():
         pattern = c['png'].removesuffix('.png')
         frames = sorted(svgdir.glob(pattern + '.svg')) or sorted(svgdir.glob(f"{pattern.split('-*')[0]}/{pattern}.svg"))
+        if key in CUSTOM:
+            frames = [CUSTOM[key][0]]
         if not frames:
             print(f'skip {key}: no SVG', file=sys.stderr); continue
         xh, yh = c.get('x_hotspot', fallback['x_hotspot']), c.get('y_hotspot', fallback['y_hotspot'])
+        if key in CUSTOM:
+            xh, yh = CUSTOM[key][1], CUSTOM[key][2]
         lines = []
         for size in sizes:
             for i, svg in enumerate(frames):
@@ -75,8 +116,8 @@ try:
             if not target.exists():
                 os.symlink(name, target)
         built += 1
-    (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata Modern {TAG} '
-                                     f'(GPL-3.0) recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
+    (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata {args.style.title()} {TAG} '
+                                     f'(GPL-3.0), outline {args.stroke:g}, shard arrow, recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
     print(f'Built {out} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
 finally:
     shutil.rmtree(work, ignore_errors=True)
