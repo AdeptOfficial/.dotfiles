@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Build the SynaOS cursor theme (XCursor): Bibata Modern shapes with slim outlines, recoloured to the AdepT
-palette, plus the SynaOS blade arrow and link pointer (~/.config/rice/branding/cursor/blade*.svg).
+"""Build the SynaOS cursor theme (XCursor): Bibata Modern shapes layered like the AdepT emblem (black edge, magenta
+line, cyan band, black fill), with the SynaOS arrow (~/.config/rice/branding/cursor/arrow.svg) as the pointer and
+inside every Bibata cursor that carries an arrow (link, busy, badges).
 
 Bibata (GPL-3.0, github.com/ful1e5/Bibata_Cursor) is fetched at a pinned tag into ~/.cache/syna/bibata; only its
 SVGs and configs/normal/x.build.toml (hotspots, sizes, aliases) are read, none of its code runs. Colours replace
 Bibata's placeholders: #00FF00 fill, #0000FF outline, #FF0000 accent. Needs rsvg-convert, xcursorgen, git.
-    syna-cursor-build                 build SynaOS-Cursor into ~/.local/share/icons (dark fill, cyan outline)
+    syna-cursor-build                 build SynaOS-Cursor into ~/.local/share/icons
+    syna-cursor-build --flat          Bibata shapes with one slim outline instead of the emblem layers
     syna-cursor-build --name N --fill #rrggbb --outline #rrggbb --accent #rrggbb
     syna-cursor-build --preview [colour options]   labelled sheet of every cursor, opened in imv (builds nothing)
 """
@@ -22,9 +24,9 @@ p.add_argument('--fill', default='#0a1014')
 p.add_argument('--outline', default='#3fd4e6')
 p.add_argument('--accent', default='#e359c9')
 p.add_argument('--style', default='modern', choices=['original', 'modern'], help='Bibata shape set')
-p.add_argument('--stroke', type=float, default=9, help='outline width (Bibata default 17, on a 256 canvas)')
-p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow and hand (no SynaOS blade)')
-p.add_argument('--rings', action='store_true', help='double edge: outline colour outside, accent colour inside')
+p.add_argument('--stroke', type=float, default=9, help='outline width with --flat (Bibata default 17, on a 256 canvas)')
+p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow (no SynaOS arrow)')
+p.add_argument('--flat', action='store_true', help='one slim outline instead of the emblem layers')
 p.add_argument('--preview', action='store_true', help='render a labelled sheet of all cursors and open it')
 args = p.parse_args()
 for c in (args.fill, args.outline, args.accent):
@@ -45,8 +47,27 @@ fallback = cfg.pop('fallback_settings')
 sizes, delay = fallback['x11_sizes'], fallback.get('x11_delay', 40)
 svgdir = CACHE / 'svg' / args.style
 SHARD = Path.home() / '.config/rice/branding/cursor'
-# key: (svg, hotspot x, y) on the 256 canvas; replaces Bibata's shape for that cursor
-CUSTOM = {} if args.no_shard else {'left_ptr': (SHARD / 'blade.svg', 40, 24), 'hand2': (SHARD / 'blade-link.svg', 40, 24)}
+ARROW_TIP = (40, 24)   # arrow.svg's tip, its hotspot
+ARROW_LEAN = 38.7      # degrees the arrow leans left of straight up (bisector of its leg and wing)
+
+
+def arrow_group(hx, hy, scale=1, turn=0, mirror=False):
+    """arrow.svg's layers as a group with the tip moved to (hx, hy): scaled, turned clockwise, or mirrored about it."""
+    inner = re.sub(r'(?s)^.*?<svg[^>]*>|</svg>\s*$', '', (SHARD / 'arrow.svg').read_text())
+    inner = re.sub(r'(?s)<!--.*?-->', '', inner)
+    return (f'<g transform="translate({hx} {hy}) rotate({turn}) scale({-scale if mirror else scale} {scale}) '
+            f'translate({-ARROW_TIP[0]} {-ARROW_TIP[1]})">{inner}</g>')
+
+
+def arrow_svg(hx, hy, **kw):
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">{arrow_group(hx, hy, **kw)}</svg>'
+
+
+# key: (svg file or text, hotspot x, y) on the 256 canvas; replaces Bibata's shape for that cursor. hand2 (clickable)
+# shows the link cursor: the arrow with Bibata's chain badge. center_ptr points straight up, right_ptr up-right.
+CUSTOM = {} if args.no_shard else {
+    'left_ptr': (SHARD / 'arrow.svg', *ARROW_TIP), 'hand2': (svgdir / 'link.svg', 55, 17),
+    'center_ptr': (arrow_svg(127, 17, turn=ARROW_LEAN), 127, 17), 'right_ptr': (arrow_svg(204, 17, mirror=True), 204, 17)}
 out = Path.home() / '.local/share/icons' / args.name
 work = Path(tempfile.mkdtemp(prefix='syna-cursor-'))
 colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent}
@@ -55,45 +76,35 @@ colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent
 EXTRA = {'#FCB813': args.accent, '#F05024': args.outline, '#7EBA41': args.accent, '#32A0DA': args.outline,
          '#FDBE2A': args.accent, '#4FADDF': args.accent, '#96C865': args.accent, '#F1613A': args.accent,
          '#FE0000': '#f0597f', '#06B231': '#3fe0a8', '#F27400': '#dfa35c', '#5F3BE4': args.accent,
-         '#179DD8': args.outline, '#0A6857': '#3fe0a8'}
-# Bibata's arrow paths (by their start point) -> replaced by the SynaOS blade at this scale, tip on the hotspot
+         '#179DD8': args.outline, '#0A6857': '#3fe0a8', '#606060': args.fill}   # link badge: dark, its chain gets the band
+# Bibata's arrow paths (by their start point) -> replaced by the SynaOS arrow at this scale, tip on the hotspot
 ARROWS = {'M201.163 133.54': 1.0, 'M141.269 109.497': 0.62}
-BLADE_TIP = (40, 24)
-
-
-def blade_group(hx, hy, scale):
-    inner = re.sub(r'(?s)^.*?<svg[^>]*>|</svg>\s*$', '', (SHARD / 'blade.svg').read_text())
-    inner = re.sub(r'(?s)<!--.*?-->', '', inner)
-    return (f'<g transform="translate({hx} {hy}) scale({scale}) translate({-BLADE_TIP[0]} {-BLADE_TIP[1]})">'
-            f'{inner}</g>')
-
-
-def rings(text, outer=28, inner=24, edge=44):
-    """Fill-colour edge outside, outline colour as a band, accent as an inner ring (strokes clipped to the shape's
-    inside). Visible widths on the 256 canvas: edge (edge-outer)/2, cyan outer/2 outside, magenta inner/2 inside."""
+def rings(text, line=16, band=28, edge=32):
+    """Emblem layers on Bibata's shapes: fill-colour edge, accent line (outside the shape), outline-colour band
+    (inside, clipped), shape fill. Visible widths on the 256 canvas: edge (edge-line)/2, line/2, band/2; these match
+    arrow.svg (8, 8, 14). Colours are written as real values so the placeholder passes leave them alone."""
     n = [0]
     def ring(d, rule):
         n[0] += 1; cid = f'ring{n[0]}'
-        stroke = lambda colour, w: (f'<path {rule}d="{d}" fill="none" stroke="{colour}" stroke-width="{w}" '
-                                    f'clip-path="url(#{cid})"/>')
         return (f'<clipPath id="{cid}"><path {rule}d="{d}"/></clipPath>'
-                + (stroke('#00FF00', outer) if outer > inner else '')   # hide the band's inner half
-                + stroke('#FF0000', inner))
+                f'<path {rule}d="{d}" fill="none" stroke="{args.outline}" stroke-width="{band}" clip-path="url(#{cid})"/>')
     def repl(m):
         tag = m.group(0)
         dm = re.search(r' d="([^"]+)"', tag)
-        if not dm:
+        if not dm or 'class="syna"' in tag:   # the SynaOS arrow has its own layers
             return tag
         d, rule = dm.group(1), ('fill-rule="evenodd" ' if 'evenodd' in tag else '')
-        if re.search(r'stroke="#0000FF"', tag, re.I):          # stroked outline: widen it, add the inner ring
-            tag = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{outer}"', tag)
+        if re.search(r'stroke="#0000FF"', tag, re.I):          # stroked outline: accent line, edge under it, band inside
+            tag = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{line}"', tag)
+            tag = re.sub(r'stroke="#0000FF"', f'stroke="{args.accent}"', tag, flags=re.I)
             if 'stroke-linejoin' not in tag:
                 tag = tag.replace('/>', ' stroke-linejoin="round"/>')
-            dark = re.sub(r'stroke="#0000FF"', 'stroke="#00FF00"', tag, flags=re.I)   # dark edge under the band
+            dark = re.sub(r'stroke="[^"]+"', f'stroke="{args.fill}"', tag)
             dark = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{edge}"', dark)
             return dark + tag + ring(d, rule)
         if re.search(r'fill="#0000FF"', tag, re.I) and 'stroke=' not in tag:   # outline drawn as a filled shape
-            dark = tag.replace('/>', f' stroke="#00FF00" stroke-width="{edge - outer}" stroke-linejoin="round"/>')
+            tag = re.sub(r'fill="#0000FF"', f'fill="{args.accent}"', tag, flags=re.I)
+            dark = tag.replace('/>', f' stroke="{args.fill}" stroke-width="{edge - line}" stroke-linejoin="round"/>')
             return dark + tag   # under the shape, so only its outer half shows
         if re.search(r'fill="#00FF00"', tag, re.I) and 'stroke=' not in tag:   # body drawn on an outline-filled shape
             return tag + ring(d, rule)
@@ -102,17 +113,17 @@ def rings(text, outer=28, inner=24, edge=44):
 
 
 def render(svg, size, dest, hotspot=None):
-    text = svg.read_text()
-    if hotspot and svg.parent != SHARD and not args.no_shard:
+    own = isinstance(svg, str) or svg.parent == SHARD   # SynaOS artwork (text or file), not a Bibata SVG
+    text = svg if isinstance(svg, str) else svg.read_text()
+    if hotspot and not own and not args.no_shard:
         for start, scale in ARROWS.items():
             text = re.sub(r'<path[^>]*d="' + re.escape(start) + r'[^"]*"[^>]*/>',
-                          lambda m: blade_group(hotspot[0], hotspot[1], scale), text, count=1)
-    if args.rings:
-        text = re.sub(r'<path[^>]*fill="#FF0000"[^>]*/>', '', text) if svg.parent == SHARD else text   # rings replace the streak
+                          lambda m: arrow_group(hotspot[0], hotspot[1], scale), text, count=1)
+    if not args.flat:
         text = rings(text)
     for a, b in EXTRA.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
-    if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); the blade files set their own
+    if args.flat and not own:   # slim Bibata's outlines (most are 17 wide)
         text = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) * args.stroke / 17:g}"', text)
     for a, b in colours.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
@@ -130,7 +141,8 @@ if args.preview:
             frames = [CUSTOM[key][0]]
         for i, svg in enumerate(frames[::max(1, len(frames) // 4)][:4] if len(frames) > 1 else frames):
             png = work / f'{key}-{i}.png'
-            render(svg, 72, png, (c.get('x_hotspot', fallback['x_hotspot']), c.get('y_hotspot', fallback['y_hotspot'])))
+            hot = CUSTOM[key][1:] if key in CUSTOM else (c.get('x_hotspot', fallback['x_hotspot']), c.get('y_hotspot', fallback['y_hotspot']))
+            render(svg, 72, png, hot)
             tiles.append((png, c.get('x11_name', key) + (f' {i + 1}' if len(frames) > 1 else '')))
     sheet = Path.home() / '.cache/syna' / f'cursor-preview-{args.name}.png'
     cmd = ['magick', 'montage']
@@ -176,7 +188,7 @@ try:
                 os.symlink(name, target)
         built += 1
     (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata {args.style.title()} {TAG} '
-                                     f'(GPL-3.0), outline {args.stroke:g}, SynaOS blade arrow, recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
+                                     f'(GPL-3.0), ' + (f'flat outline {args.stroke:g}' if args.flat else 'emblem layers') + f', SynaOS arrow, colours {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
     print(f'Built {out} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
 finally:
     shutil.rmtree(work, ignore_errors=True)

@@ -1,7 +1,0 @@
-<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-  <!-- SynaOS blade (links, hand2: a second streak along the top edge, so clickable things light up): swept arrowhead, black inner, one cyan edge, magenta edge-light streak(s). Hotspot = tip 40,24.
-       Placeholders recoloured by syna-cursor-build: #00FF00 fill, #0000FF outline, #FF0000 streak. -->
-  <path d="M40 24 L212 118 L128 132 L92 214 Z" fill="#00FF00" stroke="#0000FF" stroke-width="8" stroke-linejoin="miter" stroke-miterlimit="12"/>
-  <path d="M54 52 L90 184 L97 152 Z" fill="#FF0000"/>
-  <path d="M64 42 L190 112 L158 112 Z" fill="#FF0000"/>
-</svg>
