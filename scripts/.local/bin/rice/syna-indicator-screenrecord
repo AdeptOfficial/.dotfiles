@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Waybar module: prints a stop-recording icon JSON while gpu-screen-recorder runs, else empty text
+
 if pgrep -f "^gpu-screen-recorder" >/dev/null; then
   echo '{"text": "󰻂", "tooltip": "Stop recording", "class": "active"}'
 else

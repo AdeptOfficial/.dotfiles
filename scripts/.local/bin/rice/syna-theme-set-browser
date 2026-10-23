@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Sets Chromium/Brave theme color; neither is installed and Helium is skipped, so effectively a no-op
+
 CHROMIUM_THEME=~/.config/themes/current/chromium.theme
 
 if syna-cmd-present chromium || syna-cmd-present helium-browser || syna-cmd-present brave; then

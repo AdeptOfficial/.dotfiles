@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Asks, installs voxtype-bin and wtype, downloads a model (network), enables its service, restarts waybar
+
 set -e
 
 # Install voxtype and configure it for use.

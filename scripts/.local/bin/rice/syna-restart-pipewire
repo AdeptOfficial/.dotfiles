@@ -1,4 +1,6 @@
 #!/bin/bash
 
+# Restarts the user pipewire.service with systemctl --user
+
 echo -e "Restarting pipewire audio service...\n"
 systemctl --user restart pipewire.service

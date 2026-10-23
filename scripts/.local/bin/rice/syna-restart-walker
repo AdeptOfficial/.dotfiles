@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Restarts the elephant user service and relaunches walker as a gapplication service
+
 restart_services() {
   # Restart elephant if running as systemd service
   if systemctl --user is-enabled elephant.service &>/dev/null; then

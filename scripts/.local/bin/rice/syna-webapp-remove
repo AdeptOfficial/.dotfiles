@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Lists or takes web-app launcher entries and deletes their .desktop files and icons
+
 set -e
 
 ICON_DIR="$HOME/.local/share/applications/icons"

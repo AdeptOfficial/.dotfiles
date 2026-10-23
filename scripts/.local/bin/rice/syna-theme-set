@@ -1,2 +1,5 @@
 #!/bin/bash
+
+# Wrapper that runs syna-theme-engine.py with its arguments to apply a theme
+
 exec python3 "$(dirname "$(readlink -f "$0")")/syna-theme-engine.py" "$@"

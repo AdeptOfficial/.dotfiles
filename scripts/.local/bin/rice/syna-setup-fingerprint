@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installs fprintd, enrolls a finger, edits sudo/polkit PAM (sudo) and hyprlock.conf; --remove undoes it
+
 set -e
 
 GREEN='\033[0;32m'

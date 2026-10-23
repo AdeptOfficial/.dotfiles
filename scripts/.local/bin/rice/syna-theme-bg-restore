@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Repairs the current background symlink from saved state or first image, then restarts swaybg
+
 STATE_DIR="$HOME/.local/state/rice"
 STATE_FILE="$STATE_DIR/background"
 CURRENT_BACKGROUND_LINK="$HOME/.config/themes/current/background"

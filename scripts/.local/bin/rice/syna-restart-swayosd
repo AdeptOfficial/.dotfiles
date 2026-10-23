@@ -1,3 +1,5 @@
 #!/bin/bash
 
+# Kills and relaunches swayosd-server via syna-restart-app
+
 syna-restart-app swayosd-server

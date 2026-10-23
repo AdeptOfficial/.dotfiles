@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Creates a launcher .desktop entry for a terminal app, downloading its icon (network)
+
 set -e
 
 if [ "$#" -ne 4 ]; then

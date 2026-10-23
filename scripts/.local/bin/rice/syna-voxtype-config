@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Opens ~/.config/voxtype/config.toml in the editor; voxtype is not installed
+
 set -e
 
 # Used by Voxtype waybar module to open config on right click

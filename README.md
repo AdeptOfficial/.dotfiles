@@ -148,7 +148,8 @@ Located in `fish/.config/fish/conf.d/aliases.fish`:
 
 ## Rice Scripts
 
-The `scripts/` package includes 100+ utilities prefixed with `syna-`:
+The `scripts/` package includes 160+ utilities prefixed with `syna-` (full list with callers and test status:
+`guides/commands.md` in the private docs repo):
 
 ```bash
 # System
@@ -163,12 +164,19 @@ syna-theme-install     # Install theme
 
 # Launchers
 syna-launch-browser    # Open browser
-syna-launch-terminal   # Open terminal
+syna-cmd-terminal-cwd  # Dir of the focused terminal (SUPER+RETURN opens a terminal there)
 syna-launch-walker     # Application launcher
 
 # Screenshots
 syna-cmd-screenshot    # Take screenshot
 syna-cmd-screenrecord  # Screen recording
+
+# Backup (encrypted, sudo asked once)
+syna-backup            # Back up now; status | check | prune
+syna-restore           # Restore a path into ~/syna-restore/ (never over live files)
+
+# AFK
+syna-dream             # Screensaver now (fish alias: afk)
 
 # Toggles
 syna-toggle-waybar     # Toggle status bar

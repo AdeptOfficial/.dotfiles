@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Omarchy leftover: opens HEY mail (mailto links) as a web app; HEY is not used here
+
 url="$1"
 web_url="https://app.hey.com"
 

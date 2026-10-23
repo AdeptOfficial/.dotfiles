@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Toggles idle lock: kills or relaunches hypridle, keeps a state flag and sends a notification
+
 STATE_FILE=~/.local/state/rice/toggles/idle-off
 
 if [[ -f $STATE_FILE ]]; then

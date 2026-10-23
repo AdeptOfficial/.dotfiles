@@ -1,3 +1,5 @@
 #!/bin/bash
 
+# Kills and relaunches fcitx5 (name is misleading: no XCompose involved)
+
 syna-restart-app fcitx5

@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Omarchy leftover: Docker Windows 11 VM with RDP; install/launch/stop/remove, remove deletes VM data
+
 COMPOSE_FILE="$HOME/.config/windows/docker-compose.yml"
 
 check_prerequisites() {
