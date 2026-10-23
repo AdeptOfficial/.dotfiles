@@ -4,7 +4,9 @@
 .syna-stage-*/
 .current.name.tmp
 previous/
-current/.theme-name
+# The active theme is per machine (syna-theme-set regenerates it; install.sh sets one after stowing)
+current/
+current.name
 
 # Trash from the theme/wallpaper remover; not versioned
 .removed-themes/
