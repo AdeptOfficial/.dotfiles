@@ -1,0 +1,6 @@
+prompt_user = "#3fd4e6"
+prompt_host = "#e359c9"
+prompt_directory = "#7e95a0"
+prompt_success = "#3fd4e6"
+prompt_error = "#f0597f"
+prompt_at = "#7e95a0"

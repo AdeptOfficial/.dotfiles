@@ -49,13 +49,14 @@ def palette(path, override=None):
     return data
 
 
-PROMPT_DEFAULTS = {'prompt_user': 'color4', 'prompt_host': 'color2',
+PROMPT_DEFAULTS = {'prompt_user': 'color4', 'prompt_host': 'color2', 'prompt_at': 'color2',
                    'prompt_directory': 'color6', 'prompt_success': 'color2',
                    'prompt_error': 'color1'}
 
 
 def prompt_colors(name, colors, use_override=True):
     result = {key: colors[value] for key, value in PROMPT_DEFAULTS.items()}
+    result['prompt_at'] = result['prompt_host']   # the @ follows the host colour unless a theme sets it
     path = ROOT / '.overrides' / (name + '.prompt.toml')
     if use_override and path.exists():
         if path.is_symlink(): raise ValueError('Prompt colors must not be a symlink')
@@ -64,6 +65,8 @@ def prompt_colors(name, colors, use_override=True):
         if any(not re.fullmatch(r'#[0-9a-fA-F]{6}', str(v)) for v in override.values()):
             raise ValueError('Prompt colors must be six-digit hex colors')
         result.update(override)
+        if 'prompt_at' not in override:
+            result['prompt_at'] = result['prompt_host']
     return result
 
 

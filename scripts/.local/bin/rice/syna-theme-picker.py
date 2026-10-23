@@ -716,8 +716,8 @@ class Picker(Gtk.Application):
             return result
         def preview_prompt(*_):
             c=get_prompt()
-            prompt_preview.set_markup(f"<span background='{colors['background']}'>\n <span foreground='{c['prompt_user']}'>adept</span><span foreground='{c['prompt_host']}'>@syna</span> : <span foreground='{c['prompt_directory']}'>~/projects</span>\n <span foreground='{c['prompt_success']}'>❯ Success</span>   <span foreground='{c['prompt_error']}'>❯ Error</span> \n</span>")
-        for key,label in [('prompt_user','Username'),('prompt_host','Hostname'),('prompt_directory','Directory'),('prompt_success','Success prompt symbol'),('prompt_error','Error prompt symbol / root username')]:
+            prompt_preview.set_markup(f"<span background='{colors['background']}'>\n <span foreground='{c['prompt_user']}'>adept</span><span foreground='{c['prompt_at']}'>@</span><span foreground='{c['prompt_host']}'>syna</span> : <span foreground='{c['prompt_directory']}'>~/projects</span>\n <span foreground='{c['prompt_success']}'>❯ Success</span>   <span foreground='{c['prompt_error']}'>❯ Error</span> \n</span>")
+        for key,label in [('prompt_user','Username'),('prompt_at','@ separator'),('prompt_host','Hostname'),('prompt_directory','Directory'),('prompt_success','Success prompt symbol'),('prompt_error','Error prompt symbol / root username')]:
             row=Gtk.Box(spacing=10);row.pack_start(Gtk.Label(label=label,xalign=0),True,True,0)
             rgba=Gdk.RGBA();rgba.parse(prompt_values[key]);control=Gtk.ColorButton(rgba=rgba,use_alpha=False,title=label)
             prompt_controls[key]=control;control.connect('color-set',preview_prompt);row.pack_start(control,False,False,0)

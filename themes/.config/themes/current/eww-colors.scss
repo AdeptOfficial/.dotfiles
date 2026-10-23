@@ -1,11 +1,11 @@
 // Generated from the selected Syna palette.
-$theme-background: #0A1428;
-$theme-foreground: #F0F8FF;
-$theme-accent: #1c71d8;
-$theme-success: #00ff88;
-$theme-warning: #f1fa8c;
-$theme-error: #ff5555;
-$theme-secondary: #ff79c6;
+$theme-background: #0a1014;
+$theme-foreground: #eff8fa;
+$theme-accent: #3fd4e6;
+$theme-success: #3fe0a8;
+$theme-warning: #dfa35c;
+$theme-error: #f0597f;
+$theme-secondary: #e359c9;
 $theme-muted: mix($theme-foreground, $theme-background, 50%);
 $theme-surface: mix($theme-foreground, $theme-background, 5%);
 $theme-surface-raised: mix($theme-foreground, $theme-background, 10%);
