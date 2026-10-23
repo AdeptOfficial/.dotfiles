@@ -68,8 +68,9 @@ def blade_group(hx, hy, scale):
             f'{inner}</g>')
 
 
-def rings(text, outer=36, inner=36):   # visible: cyan outer/2 outside, magenta inner/2 inside; outer <= inner
-    """Outline colour as a wide outer edge, accent as an inner ring (stroke clipped to the shape's inside)."""
+def rings(text, outer=36, inner=36, edge=56):
+    """Fill-colour edge outside, outline colour as a wide band, accent as an inner ring (stroke clipped to the
+    shape's inside). Visible widths: edge (edge-outer)/2, cyan outer/2 outside, magenta inner/2 inside; outer <= inner."""
     n = [0]
     def ring(d, rule):
         n[0] += 1; cid = f'ring{n[0]}'
@@ -85,7 +86,12 @@ def rings(text, outer=36, inner=36):   # visible: cyan outer/2 outside, magenta 
             tag = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{outer}"', tag)
             if 'stroke-linejoin' not in tag:
                 tag = tag.replace('/>', ' stroke-linejoin="round"/>')
-            return tag + ring(d, rule)
+            dark = re.sub(r'stroke="#0000FF"', 'stroke="#00FF00"', tag, flags=re.I)   # dark edge under the band
+            dark = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{edge}"', dark)
+            return dark + tag + ring(d, rule)
+        if re.search(r'fill="#0000FF"', tag, re.I) and 'stroke=' not in tag:   # outline drawn as a filled shape
+            dark = tag.replace('/>', f' stroke="#00FF00" stroke-width="{edge - outer}" stroke-linejoin="round"/>')
+            return dark + tag   # under the shape, so only its outer half shows
         if re.search(r'fill="#00FF00"', tag, re.I) and 'stroke=' not in tag:   # body drawn on an outline-filled shape
             return tag + ring(d, rule)
         return tag
