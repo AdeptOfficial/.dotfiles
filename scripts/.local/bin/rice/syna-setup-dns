@@ -5,7 +5,7 @@
 # systemd-resolved stays in charge (resolved.conf is not touched); Tailscale's DNS and Docker/libvirt bridges
 # are left alone. Rewritten 2026-10-22: the Omarchy version targeted systemd-networkd, which this machine
 # does not use.
-#   syna-setup-dns [Automatic|Cloudflare|Quad9|Custom|Show]
+#   syna-setup-dns [automatic|cloudflare|quad9|custom|show]   (any capitalisation)
 
 set -euo pipefail
 
@@ -44,16 +44,16 @@ if [[ -z $choice ]]; then
   choice=$(gum choose --height 7 --header "Select DNS" Automatic Cloudflare Quad9 Custom Show)
 fi
 
-case $choice in
-Automatic | DHCP)
+case ${choice,,} in
+automatic | dhcp)
   apply "" "" no -1 ;;
-Cloudflare)
+cloudflare)
   apply "1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com" \
     "2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com" yes 1 ;;
-Quad9)
+quad9)
   apply "9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net" \
     "2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net" yes 1 ;;
-Custom)
+custom)
   read -rp "DNS servers (space-separated, IPv4 and/or IPv6): " servers
   [[ -n ${servers// /} ]] || { echo "No servers given; nothing changed."; exit 1; }
   v4="" v6=""
@@ -61,7 +61,7 @@ Custom)
     if [[ $s == *:* ]]; then v6+="$s "; else v4+="$s "; fi
   done
   apply "${v4% }" "${v6% }" yes -1 ;;
-Show)
+show)
   show; exit 0 ;;
 *)
   echo "Usage: syna-setup-dns [Automatic|Cloudflare|Quad9|Custom|Show]" >&2; exit 2 ;;
