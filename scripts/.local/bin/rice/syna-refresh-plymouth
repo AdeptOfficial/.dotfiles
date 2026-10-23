@@ -1,12 +1,17 @@
 #!/bin/bash
 
-# Overwrite the user config for the Plymouth drive decryption and boot sequence with the Omarchy default and rebuild it.
+# Reinstall the Syna boot splash from dotfiles and rebuild the boot images (main + LTS via the Limine
+# hooks, VFIO via its own rebuild script). Theme source and preview: ~/.config/rice/defaults/plymouth/syna/
+# Never bare `mkinitcpio -P`: plymouth-set-default-theme -R goes through limine-mkinitcpio, which
+# re-signs the UKIs and updates Limine's hashes. Emergency fallback: sudo plymouth-set-default-theme -R bgrt (stock theme)
 
-sudo cp ~/.config/rice/defaults/plymouth/* /usr/share/plymouth/themes/omarchy/
-sudo plymouth-set-default-theme omarchy
+set -e
+src=~/.config/rice/defaults/plymouth/syna
 
-if command -v limine-mkinitcpio &>/dev/null; then
-  sudo limine-mkinitcpio
-else
-  sudo mkinitcpio -P
-fi
+sudo install -d -m 755 /usr/share/plymouth/themes/syna
+sudo install -m 644 "$src"/syna.plymouth "$src"/syna.script "$src"/images/*.png /usr/share/plymouth/themes/syna/
+sudo plymouth-set-default-theme -R syna
+[[ -x /usr/local/bin/limine-vfio-rebuild ]] && sudo /usr/local/bin/limine-vfio-rebuild
+
+echo
+echo "Done. Check with: syna-update-check post"

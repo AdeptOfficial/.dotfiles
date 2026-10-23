@@ -133,7 +133,12 @@ check_hyprland_config() {
   local cfg="$USER_HOME/.config/hypr/hyprland.lua" out
   [[ -f $cfg ]] || cfg="$USER_HOME/.config/hypr/hyprland.conf"
   section "Hyprland config ($(basename "$cfg")) vs installed Hyprland $(pkg_ver hyprland)"
-  out=$(timeout 30 Hyprland --verify-config -c "$cfg" 2>&1)
+  # Hyprland aborts without XDG_RUNTIME_DIR, which sudo strips: under sudo, verify as the real user
+  local as_user=()
+  if have_root && [[ -n ${SUDO_USER:-} ]]; then
+    as_user=(sudo -u "$SUDO_USER" env XDG_RUNTIME_DIR="/run/user/$(id -u "$SUDO_USER")")
+  fi
+  out=$("${as_user[@]}" timeout 30 Hyprland --verify-config -c "$cfg" 2>&1)
   if grep -q '^config ok' <<<"$out"; then
     ok "config parses cleanly"
   else

@@ -9,7 +9,7 @@ if [[ ! -f /sys/power/image_size ]]; then
 fi
 
 
-MKINITCPIO_CONF="/etc/mkinitcpio.conf.d/omarchy_resume.conf"
+MKINITCPIO_CONF="/etc/mkinitcpio.conf.d/syna_resume.conf"
 
 # Check if hibernation is already configured
 if [ -f "$MKINITCPIO_CONF" ] && grep -q "^HOOKS+=(resume)$" "$MKINITCPIO_CONF"; then
