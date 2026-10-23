@@ -17,10 +17,10 @@ txt "$F"  22 "$FAINT"   'loading shards'      "$out/status-2.png"
 txt "$F"  22 "$FAINT"   'mounting relays'     "$out/status-3.png"
 txt "$F"  22 "$FAINT"   'see you soon, AdepT' "$out/status-dark.png"
 # prompt, two lines like a real terminal: the command, then cryptsetup's passphrase prompt
-# line 1: adept (cyan, AdepT) @ (faint) syna (magenta, Syna) :~$ (faint) cryptsetup open syna (ink, typed)
+# line 1: adept (cyan, AdepT) @ (faint) syna (magenta, Syna) :~ (faint) ❯ (cyan, like the shell) cryptsetup open syna (ink, typed)
 pango() { printf '<span font="JetBrains Mono 13.5" foreground="%s">%s</span>' "$FAINT" "$1" > "$t/markup"; magick -background none -define pango:wrap=none pango:@"$t/markup" PNG32:"$2"; }
 pango26() { printf '<span font="JetBrains Mono 19.5" foreground="%s">%s</span>' "$FAINT" "$1" > "$t/markup"; magick -background none -define pango:wrap=none pango:@"$t/markup" PNG32:"$2"; }
-pango26 "<span foreground=\"$SIGNAL\">adept</span>@<span foreground=\"$MAGENTA\">syna</span>:~\$ <span foreground=\"$INK\">cryptsetup open syna</span>" "$out/prompt.png"
+pango26 "<span foreground=\"$SIGNAL\">adept</span>@<span foreground=\"$MAGENTA\">syna</span>:~ <span foreground=\"$SIGNAL\">❯</span> <span foreground=\"$INK\">cryptsetup open syna</span>" "$out/prompt.png"
 pango26 "Enter passphrase for syna: " "$out/prompt2.png"
 txt "$F" 26 "$SIGNAL" '•' "$out/bullet.png"
 txt "$F" 26 "$SIGNAL" '▋' "$out/cursor.png"

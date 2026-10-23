@@ -121,5 +121,9 @@
     "preview.png": "578a52a090db0f562a6f572135ad54f79cedda789f20084495a27a20de8c015e",
     "vscode.json": "f43ac216ea4bfbb673231b0d4251c70d452af504f402359e7c445eb15d041c8f",
     "colors.toml": "930f639eac3dbb69c12e5a17562ff04990a7a920840b351e35d2eaa0e63dedef"
+  },
+  "synaos": {
+    "hyprlock.conf": "277520dc04d780537e8157bba6ae5df7f76f99933ac02db5da993ecf498d19bd",
+    "lock-emblem.png": "07f388eb4a3d03327a5cc07f1cc07210f17a8da31036d4ce33212019c53dac0f"
   }
 }
