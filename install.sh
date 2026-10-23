@@ -234,7 +234,8 @@ paru -S --needed --noconfirm \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
   wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
   spotify visual-studio-code-bin wayfreeze-git \
-  typora 1password voxtype-bin
+  typora 1password voxtype-bin \
+  python-terminaltexteffects   # tte: the AFK screensaver (syna-dream / afk, idle)
 
 # ASUS G14 specific packages (laptop only)
 if [[ "$PROFILE" == "laptop" ]]; then
@@ -451,6 +452,10 @@ if [[ -x ~/.local/bin/rice/syna-theme-set ]]; then
   ~/.local/bin/rice/syna-theme-set futurism 2>/dev/null || true
 fi
 
+# Syna user units (stowed in step 6): monthly audit, and the one-shot check after a kernel update
+systemctl --user daemon-reload
+systemctl --user enable syna-audit.timer syna-update-after-reboot.service 2>/dev/null || true
+
 # ============================================
 # Done!
 # ============================================
@@ -462,6 +467,8 @@ echo ""
 echo "Next steps:"
 echo "  1. Reboot: sudo reboot"
 echo "  2. SDDM will auto-login and start Hyprland"
+echo "  3. Optional, after a good first boot: Syna boot splash with  syna-refresh-plymouth"
+echo "     (rebuilds and re-signs the boot images; preview first: ~/.config/rice/defaults/plymouth/syna/preview.sh)"
 echo ""
 if [[ "$PROFILE" == "laptop" ]]; then
   echo "G14 Controls:"
