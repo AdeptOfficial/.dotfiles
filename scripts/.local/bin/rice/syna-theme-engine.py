@@ -142,6 +142,32 @@ def theme_icons(name, use_override=True):
     return None
 
 
+DEFAULT_CURSOR = 'Adwaita'
+
+
+def cursor_themes():
+    """Installed cursor themes: icon-theme directories that contain a cursors/ folder."""
+    found = set()
+    for base in (Path('/usr/share/icons'), Path.home() / '.local/share/icons', Path.home() / '.icons'):
+        for cursors in base.glob('*/cursors') if base.is_dir() else []:
+            if cursors.is_dir() and ICON_NAME.fullmatch(cursors.parent.name):
+                found.add(cursors.parent.name)
+    return sorted(found, key=str.casefold)
+
+
+def theme_cursor(name, use_override=True):
+    """Cursor theme for a theme: the user's override (.overrides/<name>.cursor), else the theme's cursor.theme."""
+    candidates = [ROOT / '.overrides' / (name + '.cursor')] if use_override else []
+    candidates.append(ROOT / name / 'cursor.theme')
+    for path in candidates:
+        if path.is_file() and not path.is_symlink():
+            value = path.read_text().strip()
+            if not ICON_NAME.fullmatch(value):
+                raise ValueError(f'Invalid cursor theme name in {path.name}')
+            return value
+    return None
+
+
 def render(template, colors):
     colors = dict(colors)
     for key, source in PROMPT_DEFAULTS.items():
@@ -201,6 +227,9 @@ def build(name, stage):
     icons = theme_icons(name)
     if icons:
         (stage / 'icons.theme').write_text(icons + '\n')
+    cursor = theme_cursor(name)
+    if cursor:
+        (stage / 'cursor.theme').write_text(cursor + '\n')
     (stage / '.theme-name').write_text(name + '\n')
     # Explicit personal wallpaper selection survives switching away and back.
     preference = ROOT / '.overrides' / (name + '.wallpaper')

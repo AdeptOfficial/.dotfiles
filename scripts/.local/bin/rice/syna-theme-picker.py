@@ -755,8 +755,19 @@ class Picker(Gtk.Application):
             icon_choice.append(icon_name, icon_name + ('  (theme default)' if icon_name == icon_default else ''))
         icon_choice.set_active_id(icon_current)
         icon_page.pack_start(icon_choice, False, False, 0)
+        icon_page.pack_start(Gtk.Label(label='Mouse cursor while this theme is active.', xalign=0, wrap=True), False, False, 0)
+        cursor_default = engine.theme_cursor(name, use_override=False) or engine.DEFAULT_CURSOR
+        cursor_current = engine.theme_cursor(name) or engine.DEFAULT_CURSOR
+        cursor_choice = Gtk.ComboBoxText()
+        cursor_names = engine.cursor_themes()
+        if cursor_current not in cursor_names: cursor_names.append(cursor_current)
+        for cursor_name in cursor_names:
+            cursor_choice.append(cursor_name, cursor_name + ('  (theme default)' if cursor_name == cursor_default else ''))
+        cursor_choice.set_active_id(cursor_current)
+        icon_page.pack_start(cursor_choice, False, False, 0)
         def reset_icons(*_):
-            icon_choice.set_active_id(icon_default); status.set_text('Theme default icons selected. Save to apply.')
+            icon_choice.set_active_id(icon_default); cursor_choice.set_active_id(cursor_default)
+            status.set_text('Theme default icons and cursor selected. Save to apply.')
         def save_icons(*_):
             chosen = icon_choice.get_active_id()
             path = ROOT / '.overrides' / (name + '.icons')
@@ -764,14 +775,19 @@ class Picker(Gtk.Application):
                 if chosen and chosen != icon_default: custom.atomic(path, chosen + '\n')
                 else: path.unlink(missing_ok=True)
                 engine.theme_icons(name)
+                cursor_chosen = cursor_choice.get_active_id()
+                cursor_path = ROOT / '.overrides' / (name + '.cursor')
+                if cursor_chosen and cursor_chosen != cursor_default: custom.atomic(cursor_path, cursor_chosen + '\n')
+                else: cursor_path.unlink(missing_ok=True)
+                engine.theme_cursor(name)
             except (OSError, ValueError) as error: status.set_text(str(error)); return
             dialog.destroy(); self.apply(name)
         icon_actions = Gtk.Box(spacing=8)
-        for label, callback in [('Reset icons', reset_icons), ('Save and apply icons', save_icons)]:
+        for label, callback in [('Reset icons and cursor', reset_icons), ('Save and apply', save_icons)]:
             button = Gtk.Button(label=label); button.connect('clicked', callback); icon_actions.pack_start(button, False, False, 0)
         icon_page.pack_start(icon_actions, False, False, 0)
         icon_page.pack_start(Gtk.Label(label='Accent colour for GTK apps follows this theme\'s accent (Terminal & colors tab). Apps pick up changes after a restart.', xalign=0, wrap=True), False, False, 0)
-        tabs.append_page(icon_page, Gtk.Label(label='Icons'))
+        tabs.append_page(icon_page, Gtk.Label(label='Icons & cursor'))
         wallpage = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin=12)
         wallpage.pack_start(Gtk.Label(label='Import copies images into this theme. Remove archives them with Undo.', wrap=True, xalign=0), False, False, 0)
         scroll = Gtk.ScrolledWindow()

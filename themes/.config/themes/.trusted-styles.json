@@ -128,6 +128,7 @@
     "fastfetch.jsonc": "4bdcea75d4f82cd0d85bc5eb6f84feca128ec9ddd1dabdce5e8da719be83fb76",
     "fastfetch-emblem.png": "41fe9b38d5c67b048e0a213e82f03ecdc18f67c8c3e0e84affd4fa3c6520ad12",
     "fastfetch-logo.txt": "b27196cf5f8592cff315639a779e4449c32b7bf13fa1b7c707fe1fc1a106aee1",
-    "icons.theme": "d78f4be508a0647d0e672736eae2744c25ce9bb0eee1281f5fb50e68bfa2ad93"
+    "icons.theme": "d78f4be508a0647d0e672736eae2744c25ce9bb0eee1281f5fb50e68bfa2ad93",
+    "cursor.theme": "dfd99ac99b019fb1dd5ec3ecc9b6d83c263b7c824f99ed74bc7d459f7a7ee0ce"
   }
 }

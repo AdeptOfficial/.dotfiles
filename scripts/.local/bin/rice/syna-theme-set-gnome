@@ -35,3 +35,10 @@ if s < 0.15: print("slate"); raise SystemExit
 print(min(presets, key=lambda k: min(abs(hue(presets[k])[0] - h), 1 - abs(hue(presets[k])[0] - h))))' "$accent")
   gsettings set org.gnome.desktop.interface accent-color "$preset"
 fi
+
+# Cursor: the theme's cursor.theme (or picker override), default Adwaita. GTK via gsettings, Hyprland live via
+# hyprctl (also exported to apps started afterwards); hypr autostart re-applies it at login.
+cursor=Adwaita
+[[ -f ~/.config/themes/current/cursor.theme ]] && cursor=$(<~/.config/themes/current/cursor.theme)
+gsettings set org.gnome.desktop.interface cursor-theme "$cursor"
+hyprctl setcursor "$cursor" "${XCURSOR_SIZE:-24}" >/dev/null 2>&1 || true

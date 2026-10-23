@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Build the SynaOS cursor theme (XCursor) from Bibata Modern's SVGs, recoloured to the AdepT palette.
+
+Bibata (GPL-3.0, github.com/ful1e5/Bibata_Cursor) is fetched at a pinned tag into ~/.cache/syna/bibata; only its
+SVGs and configs/normal/x.build.toml (hotspots, sizes, aliases) are read, none of its code runs. Colours replace
+Bibata's placeholders: #00FF00 fill, #0000FF outline, #FF0000 accent. Needs rsvg-convert, xcursorgen, git.
+    syna-cursor-build                 build SynaOS-Cursor into ~/.local/share/icons (dark fill, cyan outline)
+    syna-cursor-build --name N --fill #rrggbb --outline #rrggbb --accent #rrggbb
+"""
+import argparse, glob, os, re, shutil, subprocess, sys, tempfile, tomllib
+from pathlib import Path
+
+TAG = 'v2.0.7'
+REPO = 'https://github.com/ful1e5/Bibata_Cursor.git'
+CACHE = Path.home() / '.cache/syna/bibata' / TAG
+
+p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+p.add_argument('--name', default='SynaOS-Cursor')
+p.add_argument('--fill', default='#0a1014')
+p.add_argument('--outline', default='#3fd4e6')
+p.add_argument('--accent', default='#e359c9')
+args = p.parse_args()
+for c in (args.fill, args.outline, args.accent):
+    if not re.fullmatch(r'#[0-9a-fA-F]{6}', c):
+        sys.exit(f'Not a #rrggbb colour: {c}')
+if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,40}', args.name):
+    sys.exit('Theme name: letters, digits, . _ - only')
+for tool in ('rsvg-convert', 'xcursorgen', 'git'):
+    if not shutil.which(tool):
+        sys.exit(f'Missing {tool}' + (': sudo pacman -S --needed xorg-xcursorgen' if tool == 'xcursorgen' else ''))
+
+if not (CACHE / 'svg/modern').is_dir():
+    CACHE.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(['git', '-c', 'advice.detachedHead=false', 'clone', '-q', '--depth', '1', '--branch', TAG, REPO, str(CACHE)], check=True)
+
+cfg = tomllib.loads((CACHE / 'configs/normal/x.build.toml').read_text())['cursors']
+fallback = cfg.pop('fallback_settings')
+sizes, delay = fallback['x11_sizes'], fallback.get('x11_delay', 40)
+svgdir = CACHE / 'svg/modern'
+out = Path.home() / '.local/share/icons' / args.name
+work = Path(tempfile.mkdtemp(prefix='syna-cursor-'))
+colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent}
+
+
+def render(svg, size, dest):
+    text = svg.read_text()
+    for a, b in colours.items():
+        text = re.sub(re.escape(a), b, text, flags=re.I)
+    subprocess.run(['rsvg-convert', '-w', str(size), '-h', str(size), '-o', str(dest)], input=text.encode(), check=True)
+
+
+try:
+    (out / 'cursors').mkdir(parents=True, exist_ok=False) if not out.exists() else None
+    shutil.rmtree(out); (out / 'cursors').mkdir(parents=True)
+    built = 0
+    for key, c in cfg.items():
+        pattern = c['png'].removesuffix('.png')
+        frames = sorted(svgdir.glob(pattern + '.svg')) or sorted(svgdir.glob(f"{pattern.split('-*')[0]}/{pattern}.svg"))
+        if not frames:
+            print(f'skip {key}: no SVG', file=sys.stderr); continue
+        xh, yh = c.get('x_hotspot', fallback['x_hotspot']), c.get('y_hotspot', fallback['y_hotspot'])
+        lines = []
+        for size in sizes:
+            for i, svg in enumerate(frames):
+                png = work / f'{key}-{size}-{i}.png'
+                render(svg, size, png)
+                hx, hy = round(xh * size / 256), round(yh * size / 256)
+                lines.append(f'{size} {hx} {hy} {png}' + (f' {delay}' if len(frames) > 1 else ''))
+        conf = work / f'{key}.conf'
+        conf.write_text('\n'.join(lines) + '\n')
+        name = c.get('x11_name', key)
+        subprocess.run(['xcursorgen', str(conf), str(out / 'cursors' / name)], check=True)
+        for link in c.get('x11_symlinks', []):
+            target = out / 'cursors' / link
+            if not target.exists():
+                os.symlink(name, target)
+        built += 1
+    (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata Modern {TAG} '
+                                     f'(GPL-3.0) recoloured {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
+    print(f'Built {out} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
+finally:
+    shutil.rmtree(work, ignore_errors=True)

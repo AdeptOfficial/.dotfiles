@@ -201,7 +201,7 @@ sudo pacman -S --needed --noconfirm \
   yq jq gum stow git uwsm github-cli \
   libnotify xdg-utils xdg-user-dirs \
   fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool \
-  papirus-icon-theme \
+  papirus-icon-theme xorg-xcursorgen \
   pamixer hyprpicker hyprsunset imv mpv evince \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
@@ -455,6 +455,9 @@ fi
 
 # Per-user Papirus variant with cyan folders (the SynaOS theme's icon set)
 ~/.local/bin/rice/syna-icons-papirus cyan >/dev/null 2>&1 || true
+
+# SynaOS cursor (Bibata recoloured; fetched at a pinned tag)
+~/.local/bin/rice/syna-cursor-build >/dev/null 2>&1 || true
 
 # Syna user units (stowed in step 6): monthly audit, and the one-shot check after a kernel update
 systemctl --user daemon-reload
