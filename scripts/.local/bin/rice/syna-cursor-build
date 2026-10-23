@@ -113,6 +113,22 @@ def rings(text, line=16, band=28, edge=32):
 
 
 BADGE, SPINNER, IBEAM = 0.65, 0.65, 0.75   # scale of status badges, the busy arrow's spinner, the text cursor
+BADGE_LEFT = 12     # badges move this far left (256 canvas), over the arrow's wing / the hand
+IBEAM_WIDTH = 0.85  # the text cursor is also narrowed to this (same height)
+
+
+def squeeze_x(d, sx, cx):
+    """Scale a path's x coordinates around cx (absolute M/L/C/H/V/Z only, as Bibata writes them); strokes keep
+    their width, unlike a scale transform."""
+    out, cmd, i = [], '', 0
+    for tok in re.findall(r'[A-Za-z]|-?[0-9]*\.?[0-9]+', d):
+        if tok.isalpha():
+            cmd, i = tok, 0; out.append(tok); continue
+        v = float(tok)
+        if cmd == 'H' or (cmd in 'MLC' and i % 2 == 0):
+            v = cx + (v - cx) * sx
+        i += 1; out.append(f'{v:g}')
+    return ' '.join(out)
 
 
 def shrink(content, factor, ax, ay):
@@ -127,6 +143,7 @@ def secondary(text, name, hotspot):
         head = re.match(r'(?s).*?<svg[^>]*>', text).group(0)
         body = text[len(head):text.rindex('</svg>')]
         body = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) / IBEAM:g}"', body)
+        body = re.sub(r' d="([^"]+)"', lambda m: f' d="{squeeze_x(m[1], IBEAM_WIDTH, hotspot[0])}"', body)
         return head + shrink(body, IBEAM, *hotspot) + '</svg>'
     if name.startswith('left_ptr_watch'):
         i = text.find('<circle')
@@ -137,7 +154,8 @@ def secondary(text, name, hotspot):
         return text
     r = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)"', m.group(0))
     ax, ay = (float(r[1]) + float(r[3]), float(r[2])) if r else (241.0, 241.0)
-    return text[:m.start()] + shrink(m.group(0), BADGE, ax, ay) + text[m.end():]
+    badge = f'<g transform="translate({-BADGE_LEFT} 0)">{shrink(m.group(0), BADGE, ax, ay)}</g>'
+    return text[:m.start()] + badge + text[m.end():]
 
 
 def render(svg, size, dest, hotspot=None):
