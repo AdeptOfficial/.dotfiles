@@ -125,8 +125,8 @@
   "synaos": {
     "hyprlock.conf": "277520dc04d780537e8157bba6ae5df7f76f99933ac02db5da993ecf498d19bd",
     "lock-emblem.png": "07f388eb4a3d03327a5cc07f1cc07210f17a8da31036d4ce33212019c53dac0f",
-    "fastfetch.jsonc": "ff6f8040061dae2720b5668864bf6704b49ac9b8a7607e6a720577afc26b84f0",
+    "fastfetch.jsonc": "288aa45f5bed181a7931c22e6a684d134c0274ab2bcd8813c2c25abca05208b9",
     "fastfetch-emblem.png": "41fe9b38d5c67b048e0a213e82f03ecdc18f67c8c3e0e84affd4fa3c6520ad12",
-    "fastfetch-logo.txt": "347f576d2c012f451f348e0bbf9ba44c001e7ecb2c45f25da9804b9883a83d3f"
+    "fastfetch-logo.txt": "b27196cf5f8592cff315639a779e4449c32b7bf13fa1b7c707fe1fc1a106aee1"
   }
 }
