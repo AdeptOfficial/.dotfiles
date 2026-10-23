@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Build the SynaOS cursor theme (XCursor): Bibata Modern shapes layered like the AdepT emblem (black edge, magenta
-line, cyan band, black fill), with the SynaOS arrow (~/.config/rice/branding/cursor/arrow.svg) as the pointer and
-inside every Bibata cursor that carries an arrow (link, busy, badges).
+"""Build the SynaOS cursor theme (XCursor) from Bibata Modern shapes and the SynaOS arrow.
+Bibata's shapes are layered like the AdepT emblem (black edge, magenta line, cyan band, black fill); the SynaOS
+arrow (~/.config/rice/branding/cursor/arrow.svg) is the pointer and replaces the arrow inside every Bibata cursor
+that carries one (link, busy, badges).
 
 Bibata (GPL-3.0, github.com/ful1e5/Bibata_Cursor) is fetched at a pinned tag into ~/.cache/syna/bibata; only its
 SVGs and configs/normal/x.build.toml (hotspots, sizes, aliases) are read, none of its code runs. Colours replace
 Bibata's placeholders: #00FF00 fill, #0000FF outline, #FF0000 accent. Needs rsvg-convert, xcursorgen, git.
+Design spec, every tuning knob and pitfalls: ~/.syna/guides/cursor.md (keep it in step when changing this).
     syna-cursor-build                 build SynaOS-Cursor into ~/.local/share/icons
     syna-cursor-build --flat          Bibata shapes with one slim outline instead of the emblem layers
     syna-cursor-build --name N --fill #rrggbb --outline #rrggbb --accent #rrggbb
@@ -79,6 +81,8 @@ EXTRA = {'#FCB813': args.accent, '#F05024': args.outline, '#7EBA41': args.accent
          '#179DD8': args.outline, '#0A6857': '#3fe0a8', '#606060': args.fill}   # link badge: dark, its chain gets the band
 # Bibata's arrow paths (by their start point) -> replaced by the SynaOS arrow at this scale, tip on the hotspot
 ARROWS = {'M201.163 133.54': 1.0, 'M141.269 109.497': 1.0}   # busy arrow full size: its spinner is shrunk instead
+
+
 def rings(text, line=16, band=28, edge=32):
     """Emblem layers on Bibata's shapes: fill-colour edge, accent line (outside the shape), outline-colour band
     (inside, clipped), shape fill. Visible widths on the 256 canvas: edge (edge-line)/2, line/2, band/2; these match

@@ -456,7 +456,7 @@ fi
 # Per-user Papirus variant with cyan folders (the SynaOS theme's icon set)
 ~/.local/bin/rice/syna-icons-papirus cyan >/dev/null 2>&1 || true
 
-# SynaOS cursor (Bibata recoloured; fetched at a pinned tag)
+# SynaOS cursor (Bibata shapes + SynaOS arrow, fetched at a pinned tag; ~/.syna/guides/cursor.md)
 ~/.local/bin/rice/syna-cursor-build >/dev/null 2>&1 || true
 
 # Syna user units (stowed in step 6): monthly audit, and the one-shot check after a kernel update
