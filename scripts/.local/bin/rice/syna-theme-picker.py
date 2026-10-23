@@ -629,7 +629,9 @@ class Picker(Gtk.Application):
             control.connect('color-set', preview_border)
             row.pack_start(control, False, False, 0)
             border_page.pack_start(row, False, False, 0)
-        for key, label, maximum in [('border_size', 'Border thickness (px)', 10), ('rounding', 'Corner rounding (px)', 40)]:
+        for key, label in [('border_size', 'Border thickness (px)'), ('rounding', 'Corner rounding (px)'),
+                           ('border_motion', 'Border motion (seconds per turn, 0 = still)')]:
+            maximum = engine.WINDOW_MAXIMUM[key]
             row = Gtk.Box(spacing=12)
             row.pack_start(Gtk.Label(label=label, xalign=0), True, True, 0)
             control = Gtk.SpinButton.new_with_range(0, maximum, 1)
@@ -642,8 +644,9 @@ class Picker(Gtk.Application):
             for key, control in border_controls.items():
                 rgba = Gdk.RGBA(); rgba.parse(original[key]); control.set_rgba(rgba)
             preview_border()
-            for key, control in shape_controls.items(): control.set_value(engine.WINDOW_DEFAULTS[key])
-            status.set_text('Original border colors and default shape previewed. Save to apply.')
+            theme_shape = engine.window_settings(name, use_override=False)
+            for key, control in shape_controls.items(): control.set_value(theme_shape[key])
+            status.set_text("This theme's original border colors, shape and motion previewed. Save to apply.")
         def save_border(*_):
             path = ROOT / '.overrides' / (name + '.toml')
             try:
@@ -663,7 +666,7 @@ class Picker(Gtk.Application):
             button = Gtk.Button(label=label); button.connect('clicked', callback)
             border_actions.pack_start(button, False, False, 0)
         border_page.pack_start(border_actions, False, False, 0)
-        border_page.pack_start(Gtk.Label(label='Choose the same color twice for a solid border.\nZero thickness hides borders; zero rounding gives square corners. Inactive border colors stay unchanged.\nSave applies this theme. Close discards border edits.', xalign=0, wrap=True), False, False, 0)
+        border_page.pack_start(Gtk.Label(label='Choose the same color twice for a solid border.\nZero thickness hides borders; zero rounding gives square corners. Inactive border colors stay unchanged.\nMotion turns the two-color gradient around the window (the preview shows it still); a turning border keeps the\ncompositor drawing every frame, so set 0 if games or battery matter.\nSave applies this theme. Close discards border edits.', xalign=0, wrap=True), False, False, 0)
         tabs.append_page(border_page, Gtk.Label(label='Window borders'))
         nvim_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin=12)
         nvim_preview = Gtk.Label(xalign=0)

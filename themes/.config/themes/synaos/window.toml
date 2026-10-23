@@ -1,0 +1,3 @@
+# Window shape and border motion for SynaOS (theme default; the picker's override wins).
+# border_motion: seconds per turn of the cyan->magenta border gradient, 0 = still.
+border_motion = 12

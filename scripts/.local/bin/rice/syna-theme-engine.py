@@ -91,24 +91,33 @@ def nvim_colors(name, colors, use_override=True):
     return result
 
 
-WINDOW_DEFAULTS = {'border_size': 2, 'rounding': 8}
+# border_motion: seconds per turn of the active border's gradient (0 = still). A turning border makes Hyprland render
+# every frame at the refresh rate, also when borders are hidden; measured 2026-10-22 on the RTX desktop: within noise.
+WINDOW_DEFAULTS = {'border_size': 2, 'rounding': 8, 'border_motion': 0}
+WINDOW_MAXIMUM = {'border_size': 10, 'rounding': 40, 'border_motion': 60}
 
 def window_settings(name, use_override=True):
+    """Window shape and border motion: defaults, then the theme's own window.toml, then the user's override."""
     result = dict(WINDOW_DEFAULTS)
-    path = ROOT / '.overrides' / (name + '.window.toml')
-    if use_override and path.exists():
+    paths = [ROOT / name / 'window.toml'] + ([ROOT / '.overrides' / (name + '.window.toml')] if use_override else [])
+    for path in paths:
+        if not path.exists():
+            continue
         if path.is_symlink(): raise ValueError('Window settings must not be a symlink')
         data = tomllib.loads(path.read_text())
         if set(data) - set(result): raise ValueError('Unknown window setting')
         for key, value in data.items():
-            maximum = 10 if key == 'border_size' else 40
+            maximum = WINDOW_MAXIMUM[key]
             if type(value) is not int or not 0 <= value <= maximum:
                 raise ValueError(f'{key} must be an integer from 0 to {maximum}')
         result.update(data)
     return result
 
 def window_config(settings):
-    return f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
+    text = f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
+    if settings['border_motion']:   # speed is in tenths of a second
+        text += f"animations {{\n    animation = borderangle, 1, {settings['border_motion'] * 10}, linear, loop\n}}\n"
+    return text
 
 
 ICON_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._+-]{0,63}')
