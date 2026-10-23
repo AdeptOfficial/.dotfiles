@@ -68,14 +68,17 @@ def blade_group(hx, hy, scale):
             f'{inner}</g>')
 
 
-def rings(text, outer=36, inner=36, edge=56):
-    """Fill-colour edge outside, outline colour as a wide band, accent as an inner ring (stroke clipped to the
-    shape's inside). Visible widths: edge (edge-outer)/2, cyan outer/2 outside, magenta inner/2 inside; outer <= inner."""
+def rings(text, outer=28, inner=24, edge=44):
+    """Fill-colour edge outside, outline colour as a band, accent as an inner ring (strokes clipped to the shape's
+    inside). Visible widths on the 256 canvas: edge (edge-outer)/2, cyan outer/2 outside, magenta inner/2 inside."""
     n = [0]
     def ring(d, rule):
         n[0] += 1; cid = f'ring{n[0]}'
+        stroke = lambda colour, w: (f'<path {rule}d="{d}" fill="none" stroke="{colour}" stroke-width="{w}" '
+                                    f'clip-path="url(#{cid})"/>')
         return (f'<clipPath id="{cid}"><path {rule}d="{d}"/></clipPath>'
-                f'<path {rule}d="{d}" fill="none" stroke="#FF0000" stroke-width="{inner}" clip-path="url(#{cid})"/>')
+                + (stroke('#00FF00', outer) if outer > inner else '')   # hide the band's inner half
+                + stroke('#FF0000', inner))
     def repl(m):
         tag = m.group(0)
         dm = re.search(r' d="([^"]+)"', tag)
