@@ -201,6 +201,7 @@ sudo pacman -S --needed --noconfirm \
   yq jq gum stow git uwsm github-cli \
   libnotify xdg-utils xdg-user-dirs \
   fcitx5 fcitx5-gtk fcitx5-qt fcitx5-configtool \
+  papirus-icon-theme \
   pamixer hyprpicker hyprsunset imv mpv evince \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
@@ -451,6 +452,9 @@ export PATH="$HOME/.local/bin/rice:$PATH"
 if [[ -x ~/.local/bin/rice/syna-theme-set ]]; then
   ~/.local/bin/rice/syna-theme-set futurism 2>/dev/null || true
 fi
+
+# Per-user Papirus variant with cyan folders (the SynaOS theme's icon set)
+~/.local/bin/rice/syna-icons-papirus cyan >/dev/null 2>&1 || true
 
 # Syna user units (stowed in step 6): monthly audit, and the one-shot check after a kernel update
 systemctl --user daemon-reload
