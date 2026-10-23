@@ -2,7 +2,7 @@
 # Boot the real Limine (same version as the system) in QEMU/OVMF with a theme block + mock entries; screenshot the menu.
 # Usage: preview.sh [out.png]   (this folder's theme.conf + limine-wallpaper.jpg; nothing on /boot is read or written)
 set -euo pipefail
-here=$(dirname "$(readlink -f "$0")"); theme=$here/theme.conf wall=$here/limine-wallpaper.jpg out=${1:-$HOME/.cache/syna/limine-preview.png}; mkdir -p "$(dirname "$out")"
+here=$(dirname "$(readlink -f "$0")"); theme=$here/theme.conf wall=$here/limine-wallpaper.png out=${1:-$HOME/.cache/syna/limine-preview.png}; mkdir -p "$(dirname "$out")"
 t=$(mktemp -d); trap 'kill $(cat "$t/pid" 2>/dev/null) 2>/dev/null; rm -rf "$t"' EXIT
 { printf 'timeout: no\ndefault_entry: 2\nremember_last_entry: yes\n\n'; cat "$theme"; cat <<'ENT'
 
@@ -37,12 +37,12 @@ truncate -s 64M "$img" && mkfs.fat -F 32 "$img" >/dev/null
 mmd -i "$img" ::/EFI ::/EFI/BOOT ::/syna
 mcopy -i "$img" /usr/share/limine/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
 mcopy -i "$img" "$t/limine.conf" ::/limine.conf
-mcopy -i "$img" "$wall" ::/syna/limine-wallpaper.jpg
+mcopy -i "$img" "$wall" ::/syna/limine-wallpaper.png
 cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$t/vars.fd"
 qemu-system-x86_64 -machine q35 -m 512 -display none -daemonize -pidfile "$t/pid" \
   -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd \
   -drive if=pflash,format=raw,file="$t/vars.fd" \
-  -drive format=raw,file="$img" -device VGA,xres=2560,yres=1440 \
+  -drive format=raw,file="$img" -device VGA,xres=1920,yres=1080 \
   -monitor unix:"$t/mon",server,nowait
 sleep "${WAIT:-9}"
 printf 'screendump %s\n' "$t/s.ppm" | python3 -c "

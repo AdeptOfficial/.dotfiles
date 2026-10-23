@@ -15,7 +15,7 @@ set -euo pipefail
 src=~/.config/rice/defaults/limine
 conf=/boot/limine.conf
 keep=/boot/syna/limine-theme-original.conf   # the block apply replaced first; restore puts it back
-wall=/boot/syna/limine-wallpaper.jpg
+wall=/boot/syna/limine-wallpaper.png
 t=$(mktemp -d)
 trap 'rm -rf "$t"' EXIT
 
@@ -98,7 +98,8 @@ case ${1:-} in
         sudo install -D -m 644 "$t/old-block" "$keep"
       fi
     fi
-    sudo install -D -m 644 "$src/limine-wallpaper.jpg" "$wall"   # also refreshes a rebuilt background
+    sudo install -D -m 644 "$src/limine-wallpaper.png" "$wall"   # also refreshes a rebuilt background
+    sudo rm -f /boot/syna/limine-wallpaper.jpg   # first version's JPEG (blurred: stretched to the 1080p boot mode)
     [[ $changed == yes ]] && write
     ;;
   restore)

@@ -1,7 +1,9 @@
 #!/bin/bash
 # SynaOS Limine background = the theme wallpaper's aurora + constellation, centre left empty for the menu,
-# small emblem bottom-left, signature bottom. Rendered 2x, written as a small JPEG.
-# Output stays under ~90 KB on purpose (limine-entry-tool author: firmware framebuffers draw big PNGs slowly).
+# small emblem bottom-left, signature bottom. Rendered 2x, written as an exact 1920x1080 lossless PNG (~170 KB):
+# with both monitors on, the firmware (GOP) runs the boot screen at 1920x1080 (observed 2026-10-22: the kernel's first
+# framebuffer is 1080p). A 2560x1440 JPEG was stretched down by Limine and blurred thin lines and text; theme.conf
+# shows this image `centered` (1:1, never resampled) with the base colour as backdrop.
 # Run ./build.sh, then ./preview.sh, then syna-limine-theme apply. Guide: ~/.syna/guides/boot.md (Limine menu theme).
 set -euo pipefail
 W=5120 H=2880
@@ -27,4 +29,4 @@ magick -size ${W}x${H} xc:'#0a1014' \
   \( -size ${W}x${H} xc:none -fill '#3fd4e6' -draw "@$t/nodes.draw" -channel A -evaluate multiply 0.40 +channel \) -composite \
   \( "$E" -filter Lanczos -resize 300x300 \) -gravity southwest -geometry +150+150 -composite \
   "$t/sig.png" -gravity south -geometry +0+96 -composite \
-  -filter Lanczos -resize 2560x1440 -strip -sampling-factor 4:2:0 -quality 90 "$(dirname "$0")/limine-wallpaper.jpg"
+  -filter Lanczos -resize 1920x1080 -strip -define png:compression-level=9 PNG24:"$(dirname "$0")/limine-wallpaper.png"
