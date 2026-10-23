@@ -24,6 +24,7 @@ p.add_argument('--accent', default='#e359c9')
 p.add_argument('--style', default='modern', choices=['original', 'modern'], help='Bibata shape set')
 p.add_argument('--stroke', type=float, default=9, help='outline width (Bibata default 17, on a 256 canvas)')
 p.add_argument('--no-shard', action='store_true', help='plain Bibata arrow and hand (no SynaOS blade)')
+p.add_argument('--rings', action='store_true', help='double edge: outline colour outside, accent colour inside')
 p.add_argument('--preview', action='store_true', help='render a labelled sheet of all cursors and open it')
 args = p.parse_args()
 for c in (args.fill, args.outline, args.accent):
@@ -67,12 +68,39 @@ def blade_group(hx, hy, scale):
             f'{inner}</g>')
 
 
+def rings(text, outer=22, inner=18):
+    """Outline colour as a wide outer edge, accent as an inner ring (stroke clipped to the shape's inside)."""
+    n = [0]
+    def ring(d, rule):
+        n[0] += 1; cid = f'ring{n[0]}'
+        return (f'<clipPath id="{cid}"><path {rule}d="{d}"/></clipPath>'
+                f'<path {rule}d="{d}" fill="none" stroke="#FF0000" stroke-width="{inner}" clip-path="url(#{cid})"/>')
+    def repl(m):
+        tag = m.group(0)
+        dm = re.search(r' d="([^"]+)"', tag)
+        if not dm:
+            return tag
+        d, rule = dm.group(1), ('fill-rule="evenodd" ' if 'evenodd' in tag else '')
+        if re.search(r'stroke="#0000FF"', tag, re.I):          # stroked outline: widen it, add the inner ring
+            tag = re.sub(r'stroke-width="[0-9.]+"', f'stroke-width="{outer}"', tag)
+            if 'stroke-linejoin' not in tag:
+                tag = tag.replace('/>', ' stroke-linejoin="round"/>')
+            return tag + ring(d, rule)
+        if re.search(r'fill="#00FF00"', tag, re.I) and 'stroke=' not in tag:   # body drawn on an outline-filled shape
+            return tag + ring(d, rule)
+        return tag
+    return re.sub(r'<path[^>]*/>', repl, text)
+
+
 def render(svg, size, dest, hotspot=None):
     text = svg.read_text()
     if hotspot and svg.parent != SHARD and not args.no_shard:
         for start, scale in ARROWS.items():
             text = re.sub(r'<path[^>]*d="' + re.escape(start) + r'[^"]*"[^>]*/>',
                           lambda m: blade_group(hotspot[0], hotspot[1], scale), text, count=1)
+    if args.rings:
+        text = re.sub(r'<path[^>]*fill="#FF0000"[^>]*/>', '', text) if svg.parent == SHARD else text   # rings replace the streak
+        text = rings(text)
     for a, b in EXTRA.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
     if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); the blade files set their own
