@@ -78,7 +78,7 @@ EXTRA = {'#FCB813': args.accent, '#F05024': args.outline, '#7EBA41': args.accent
          '#FE0000': '#f0597f', '#06B231': '#3fe0a8', '#F27400': '#dfa35c', '#5F3BE4': args.accent,
          '#179DD8': args.outline, '#0A6857': '#3fe0a8', '#606060': args.fill}   # link badge: dark, its chain gets the band
 # Bibata's arrow paths (by their start point) -> replaced by the SynaOS arrow at this scale, tip on the hotspot
-ARROWS = {'M201.163 133.54': 1.0, 'M141.269 109.497': 0.62}
+ARROWS = {'M201.163 133.54': 1.0, 'M141.269 109.497': 1.0}   # busy arrow full size: its spinner is shrunk instead
 def rings(text, line=16, band=28, edge=32):
     """Emblem layers on Bibata's shapes: fill-colour edge, accent line (outside the shape), outline-colour band
     (inside, clipped), shape fill. Visible widths on the 256 canvas: edge (edge-line)/2, line/2, band/2; these match
@@ -112,6 +112,34 @@ def rings(text, line=16, band=28, edge=32):
     return re.sub(r'<path[^>]*/>', repl, text)
 
 
+BADGE, SPINNER, IBEAM = 0.65, 0.65, 0.75   # scale of status badges, the busy arrow's spinner, the text cursor
+
+
+def shrink(content, factor, ax, ay):
+    return f'<g transform="translate({ax} {ay}) scale({factor}) translate({-ax} {-ay})">{content}</g>'
+
+
+def secondary(text, name, hotspot):
+    """Shrink what sits beside the arrow, toward its outer corner, so the arrow stays the main shape: status badges
+    (Bibata draws them as one filter group: top-right on arrows, bottom-right on the dnd hands), the spinner of the
+    busy arrow, and the text cursor (around its hotspot, strokes kept at full width to match the set)."""
+    if name == 'xterm':
+        head = re.match(r'(?s).*?<svg[^>]*>', text).group(0)
+        body = text[len(head):text.rindex('</svg>')]
+        body = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) / IBEAM:g}"', body)
+        return head + shrink(body, IBEAM, *hotspot) + '</svg>'
+    if name.startswith('left_ptr_watch'):
+        i = text.find('<circle')
+        spinner = shrink(text[i:text.rindex('</svg>')], SPINNER, 248, 244)   # toward the corner, clear of the arrow's tail
+        return text[:i] + spinner + '</svg>' if i > 0 else text
+    m = re.search(r'(?s)<g filter="[^"]*">.*?</g>', text)
+    if not m or not (name.startswith(('dnd-', 'dnd_')) or 'class="syna"' in text):   # badges only beside an arrow or a hand
+        return text
+    r = re.search(r'<rect x="([0-9.]+)" y="([0-9.]+)" width="([0-9.]+)"', m.group(0))
+    ax, ay = (float(r[1]) + float(r[3]), float(r[2])) if r else (241.0, 241.0)
+    return text[:m.start()] + shrink(m.group(0), BADGE, ax, ay) + text[m.end():]
+
+
 def render(svg, size, dest, hotspot=None):
     own = isinstance(svg, str) or svg.parent == SHARD   # SynaOS artwork (text or file), not a Bibata SVG
     text = svg if isinstance(svg, str) else svg.read_text()
@@ -121,6 +149,8 @@ def render(svg, size, dest, hotspot=None):
                           lambda m: arrow_group(hotspot[0], hotspot[1], scale), text, count=1)
     if not args.flat:
         text = rings(text)
+    if not own:
+        text = secondary(text, svg.stem, hotspot or (128, 128))
     for a, b in EXTRA.items():
         text = re.sub(re.escape(a), b, text, flags=re.I)
     if args.flat and not own:   # slim Bibata's outlines (most are 17 wide)
