@@ -49,10 +49,32 @@ CUSTOM = {} if args.no_shard else {'left_ptr': (SHARD / 'blade.svg', 40, 24), 'h
 out = Path.home() / '.local/share/icons' / args.name
 work = Path(tempfile.mkdtemp(prefix='syna-cursor-'))
 colours = {'#00FF00': args.fill, '#0000FF': args.outline, '#FF0000': args.accent}
+# Bibata's hard-coded extras, mapped to the palette: spinner slices alternate accent/outline, corner wedges and other
+# decoration take the accent (the magenta streak), status badges keep their meaning in brand colours.
+EXTRA = {'#FCB813': args.accent, '#F05024': args.outline, '#7EBA41': args.accent, '#32A0DA': args.outline,
+         '#FDBE2A': args.accent, '#4FADDF': args.accent, '#96C865': args.accent, '#F1613A': args.accent,
+         '#FE0000': '#f0597f', '#06B231': '#3fe0a8', '#F27400': '#dfa35c', '#5F3BE4': args.accent,
+         '#179DD8': args.outline, '#0A6857': '#3fe0a8'}
+# Bibata's arrow paths (by their start point) -> replaced by the SynaOS blade at this scale, tip on the hotspot
+ARROWS = {'M201.163 133.54': 1.0, 'M141.269 109.497': 0.62}
+BLADE_TIP = (40, 24)
 
 
-def render(svg, size, dest):
+def blade_group(hx, hy, scale):
+    inner = re.sub(r'(?s)^.*?<svg[^>]*>|</svg>\s*$', '', (SHARD / 'blade.svg').read_text())
+    inner = re.sub(r'(?s)<!--.*?-->', '', inner)
+    return (f'<g transform="translate({hx} {hy}) scale({scale}) translate({-BLADE_TIP[0]} {-BLADE_TIP[1]})">'
+            f'{inner}</g>')
+
+
+def render(svg, size, dest, hotspot=None):
     text = svg.read_text()
+    if hotspot and svg.parent != SHARD and not args.no_shard:
+        for start, scale in ARROWS.items():
+            text = re.sub(r'<path[^>]*d="' + re.escape(start) + r'[^"]*"[^>]*/>',
+                          lambda m: blade_group(hotspot[0], hotspot[1], scale), text, count=1)
+    for a, b in EXTRA.items():
+        text = re.sub(re.escape(a), b, text, flags=re.I)
     if svg.parent != SHARD:   # slim Bibata's outlines (most are 17 wide); the blade files set their own
         text = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m[1]) * args.stroke / 17:g}"', text)
     for a, b in colours.items():
@@ -71,7 +93,7 @@ if args.preview:
             frames = [CUSTOM[key][0]]
         for i, svg in enumerate(frames[::max(1, len(frames) // 4)][:4] if len(frames) > 1 else frames):
             png = work / f'{key}-{i}.png'
-            render(svg, 72, png)
+            render(svg, 72, png, (c.get('x_hotspot', fallback['x_hotspot']), c.get('y_hotspot', fallback['y_hotspot'])))
             tiles.append((png, c.get('x11_name', key) + (f' {i + 1}' if len(frames) > 1 else '')))
     sheet = Path.home() / '.cache/syna' / f'cursor-preview-{args.name}.png'
     cmd = ['magick', 'montage']
@@ -104,7 +126,7 @@ try:
         for size in sizes:
             for i, svg in enumerate(frames):
                 png = work / f'{key}-{size}-{i}.png'
-                render(svg, size, png)
+                render(svg, size, png, (xh, yh))
                 hx, hy = round(xh * size / 256), round(yh * size / 256)
                 lines.append(f'{size} {hx} {hy} {png}' + (f' {delay}' if len(frames) > 1 else ''))
         conf = work / f'{key}.conf'
