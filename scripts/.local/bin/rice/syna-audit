@@ -57,6 +57,13 @@ else
 fi
 grep -q 'HOLD' <<<"$up" && flag "Upstream release reaches a ceiling: $(grep HOLD <<<"$up" | head -1 | sed 's/^ *//')"
 
+# --- Security: known vulnerabilities in installed packages, apps and containers --------
+sec "Security (syna-security-check)"
+raw=$(timeout 300 syna-security-check --quiet 2>&1 | strip)
+add "${raw:-  no problems found}"
+while IFS= read -r l; do flag "Security: ${l#FAIL  }"; done < <(grep '^FAIL' <<<"$raw")
+[[ -z $raw ]] || grep -qE '^(FAIL|WARN|==)' <<<"$raw" || flag "Security check did not run: $(head -1 <<<"$raw")"
+
 # --- Health ----------------------------------------------------------------------
 sec "Health"
 failed=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort)
