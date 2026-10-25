@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Move finished clips in ~/Videos into ~/Videos/<Steam game name>/.
+# gsr-ui's own game folders cannot see games inside Gamescope, so detect the game from Steam:
+# the running "SteamLaunch AppId=N" process, else a game that left Steam's running list in the last 2 min.
+# Runs as syna-clip-sort.service; "syna-clip-sort <file>" sorts one file by hand.
+
+[[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
+VIDEOS="${XDG_VIDEOS_DIR:-$HOME/Videos}"
+STEAM="$HOME/.local/share/Steam"
+GRACE=120
+
+game_appid() {
+  local id
+  for id in $(pgrep -af 'SteamLaunch AppId=[0-9]+' | grep -oE 'AppId=[0-9]+' | cut -d= -f2 | sort -u); do
+    is_game "$id" && { echo "$id"; return; }
+  done
+  # Clip saved just after quitting: last game removed from Steam's running list within GRACE seconds
+  local line ts
+  line=$(grep -E '\] Remove [0-9]+ from running list' "$STEAM/logs/gameprocess_log.txt" 2>/dev/null | tail -1)
+  [[ -z "$line" ]] && return
+  ts=$(date -d "$(echo "$line" | grep -oE '^\[[^]]+\]' | tr -d '[]')" +%s 2>/dev/null) || return
+  id=$(echo "$line" | grep -oE 'Remove [0-9]+' | cut -d' ' -f2)
+  (( $(date +%s) - ts <= GRACE )) && is_game "$id" && echo "$id"
+}
+
+manifest() {
+  local lib
+  for lib in $(grep -oE '"path"[[:space:]]+"[^"]+"' "$STEAM/steamapps/libraryfolders.vdf" | cut -d'"' -f4) "$STEAM"; do
+    [[ -f "$lib/steamapps/appmanifest_$1.acf" ]] && { echo "$lib/steamapps/appmanifest_$1.acf"; return; }
+  done
+}
+
+game_name() {
+  local m=$(manifest "$1")
+  [[ -n "$m" ]] && grep -m1 -E '^\s*"name"' "$m" | cut -d'"' -f4 | tr -d '/:*?"<>|\\'
+}
+
+# Proton and Steam Linux Runtime also run under SteamLaunch; skip them
+is_game() {
+  local n=$(game_name "$1")
+  [[ -n "$n" && ! "$n" =~ ^(Proton|Steam\ Linux\ Runtime|Steamworks) ]]
+}
+
+sort_clip() {
+  local file="$1" id name
+  [[ -f "$file" && "$(dirname "$file")" == "$VIDEOS" ]] || return
+  id=$(game_appid); [[ -z "$id" ]] && return
+  name=$(game_name "$id")
+  mkdir -p "$VIDEOS/$name" && mv -n "$file" "$VIDEOS/$name/" && echo "moved $(basename "$file") -> $name/"
+}
+
+if [[ -n "$1" ]]; then
+  sort_clip "$(realpath "$1")"
+  exit
+fi
+
+inotifywait -mq -e close_write -e moved_to --format '%w%f' "$VIDEOS" | while read -r file; do
+  [[ "$file" =~ \.(mp4|mkv|webm|mov|flv)$ ]] && sort_clip "$file"
+done
