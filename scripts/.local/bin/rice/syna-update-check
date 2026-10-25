@@ -6,7 +6,7 @@
 #   syna-update-check post   After pacman, BEFORE reboot: UKIs, NVIDIA modules, VFIO UKI, Limine entries
 #   syna-update-check boot   After reboot: running kernel, NVIDIA driver, failed units vs baseline
 #
-# ESP checks (/boot is root-only) run when invoked with sudo, otherwise they are skipped and reported.
+# ESP checks elevate only their root-only part; unavailable mandatory checks fail explicitly.
 # Upstream research (release notes, open regressions): syna-update-research
 # Guide: ~/.syna/guides/system-update.md
 
@@ -38,7 +38,11 @@ modules_dir_for() {
   done
 }
 
-failed_units() { systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort; }
+failed_units() {
+  local units
+  units=$(systemctl --failed --plain --no-legend 2>&1) || return 1
+  awk '{print $1}' <<<"$units" | sort
+}
 
 check_running_kernel() {
   section "Running kernel"
@@ -78,7 +82,7 @@ check_dkms_modules() {
   command -v dkms >/dev/null || return 0
   section "DKMS modules (out-of-tree drivers)"
   local status mods mod pkg dir kver
-  status=$(dkms status 2>/dev/null)
+  status=$(dkms status 2>/dev/null) || { fail "cannot query DKMS status (unverified)"; return; }
   mods=$(awk -F/ 'NF > 1 {print $1}' <<<"$status" | sort -u)
   [[ -z $mods ]] && { info "none installed"; return 0; }
   for mod in $mods; do
@@ -106,7 +110,7 @@ check_esp() {
     if [[ -t 0 ]] || sudo -n true 2>/dev/null; then
       sudo "$self" __esp || FAILS=$((FAILS + 1))
     else
-      warn "skipped: /boot is root-only and no terminal for a sudo prompt. Run syna-update-check $MODE yourself"
+      fail "unverified: /boot is root-only and no terminal for a sudo prompt. Run syna-update-check $MODE yourself"
     fi
     return
   fi
@@ -161,8 +165,9 @@ check_hyprland_config() {
   if have_root && [[ -n ${SUDO_USER:-} ]]; then
     as_user=(sudo -u "$SUDO_USER" env XDG_RUNTIME_DIR="/run/user/$(id -u "$SUDO_USER")")
   fi
-  out=$("${as_user[@]}" timeout 30 Hyprland --verify-config -c "$cfg" 2>&1)
-  if grep -q '^config ok' <<<"$out"; then
+  local rc
+  out=$("${as_user[@]}" timeout 30 Hyprland --verify-config -c "$cfg" 2>&1); rc=$?
+  if (( rc == 0 )) && grep -q '^config ok' <<<"$out"; then
     ok "config parses cleanly"
   else
     fail "config errors with this Hyprland version, fix before logging out:"
@@ -176,7 +181,7 @@ check_aur_pending() {
   section "AUR updates (install separately: paru -Sua)"
   command -v paru >/dev/null || { info "paru not installed"; return; }
   local list pkg old new mark f
-  list=$(paru -Qua 2>/dev/null)
+  list=$(paru -Qua 2>/dev/null) || { fail "cannot query AUR updates (unverified)"; return; }
   [[ -z $list ]] && { ok "no AUR updates"; return; }
   while read -r pkg old _ new; do
     mark=""
@@ -210,9 +215,12 @@ pre() {
   check_running_kernel
 
   section "Pending updates"
-  local list; list=$(checkupdates 2>/dev/null)
-  if [[ -z $list ]]; then
-    info "no repo updates (or checkupdates failed)"
+  local list rc
+  list=$(checkupdates 2>/dev/null); rc=$?
+  if (( rc != 0 && rc != 2 )); then
+    fail "cannot query repo updates (checkupdates exited $rc); inventory is unverified"
+  elif [[ -z $list ]]; then
+    info "no repo updates"
   else
     info "$(wc -l <<<"$list") repo packages"
     local risky
@@ -239,8 +247,13 @@ pre() {
 
   section "Arch news (read anything that says manual intervention)"
   if command -v paru >/dev/null; then
-    paru -Pw 2>/dev/null | sed 's/^/  /' | head -20
-    info "(empty = no unread news since last upgrade)"
+    local news
+    if news=$(paru -Pw 2>/dev/null); then
+      sed 's/^/  /' <<<"$news" | head -20
+      info "(empty = no unread news since last upgrade)"
+    else
+      fail "cannot query Arch news; unread intervention notices are unverified"
+    fi
   else
     info "check https://archlinux.org/news/ and https://cachyos.org/blog/"
   fi
@@ -259,10 +272,16 @@ pre() {
 
   section "Failed-unit baseline"
   mkdir -p "$STATE_DIR"
-  failed_units >"$BASELINE"
-  [[ -n $SUDO_USER ]] && chown -R "$SUDO_USER:" "$STATE_DIR"
-  info "saved $(wc -l <"$BASELINE") failed units to $BASELINE"
-  sed 's/^/        /' "$BASELINE"
+  local units
+  if units=$(failed_units); then
+    printf '%s' "$units" >"$BASELINE"
+    [[ -n $units ]] && printf '\n' >>"$BASELINE"
+    [[ -n ${SUDO_USER:-} ]] && chown "$SUDO_USER:" "$BASELINE"
+    info "saved $(wc -l <"$BASELINE") failed units to $BASELINE"
+    sed 's/^/        /' "$BASELINE"
+  else
+    fail "cannot query system services; existing failed-unit baseline preserved"
+  fi
 }
 
 post() {
@@ -301,12 +320,19 @@ boot() {
     || info "10:00.0 not on vfio-pci (expected only on the VFIO entry)"
 
   check_hyprland_config
-  local cerr; cerr=$(hyprctl configerrors 2>/dev/null | sed '/^\s*$/d')
-  [[ -z $cerr ]] && ok "hyprctl configerrors: none" || warn "hyprctl configerrors: $(head -3 <<<"$cerr" | tr '\n' ' ')"
+  local cerr
+  if cerr=$(hyprctl configerrors 2>&1); then
+    cerr=$(sed '/^\s*$/d' <<<"$cerr")
+    [[ -z $cerr ]] && ok "hyprctl configerrors: none" || fail "hyprctl configerrors: $(head -3 <<<"$cerr" | tr '\n' ' ')"
+  else
+    fail "cannot query running Hyprland; configerrors is unverified"
+  fi
 
   section "Failed units vs baseline"
-  local now; now=$(failed_units)
-  if [[ ! -f $BASELINE ]]; then
+  local now
+  if ! now=$(failed_units); then
+    fail "cannot query system services; failed-unit comparison is unverified"
+  elif [[ ! -f $BASELINE ]]; then
     warn "no baseline at $BASELINE (run 'pre' before updating)"
     while read -r u; do [[ -n $u ]] && info "failed: $u"; done <<<"$now"
   else
@@ -317,9 +343,14 @@ boot() {
   fi
 
   section "Kernel errors this boot"
-  local n; n=$(journalctl -k -b -p err --no-pager -q 2>/dev/null | wc -l)
-  info "$n kernel error lines (journalctl -k -b -p err), compare against the known ones in the guide"
-  journalctl -k -b -p err --no-pager -q 2>/dev/null | grep -iE 'btrfs|nvme|i/o error|panic|oops|BUG' | sed 's/^/  /' | head -10
+  local logs n
+  if logs=$(journalctl -k -b -p err --no-pager -q 2>/dev/null); then
+    n=$(printf '%s\n' "$logs" | sed '/^$/d' | wc -l)
+    info "$n kernel error lines (journalctl -k -b -p err), compare against the known ones in the guide"
+    grep -iE 'btrfs|nvme|i/o error|panic|oops|BUG' <<<"$logs" | sed 's/^/  /' | head -10
+  else
+    fail "cannot read the kernel journal; kernel errors are unverified"
+  fi
 }
 
 case $MODE in

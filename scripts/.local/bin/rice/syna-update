@@ -17,6 +17,8 @@ NOTES=~/.syna/docs/updates
 PENDING=$STATE/post-reboot-pending
 LTS_PENDING=$STATE/lts-test-pending
 VFIO_PENDING=$STATE/vfio-test-pending
+# Each checker pipeline uses pipefail INSIDE its command substitution; capture $? immediately.
+# PIPESTATUS in the parent shell cannot see the checker inside $(...).
 strip() { sed 's/\x1b\[[0-9;]*m//g'; }
 step() { printf '\n\e[1;36m%s\e[0m\n' "$*"; }
 good() { printf '  \e[32m%s\e[0m\n' "$*"; }
@@ -49,7 +51,11 @@ write_note() {   # $1 = post-check verdict
     local done_at; done_at=$(grep '\[ALPM\] transaction completed' /var/log/pacman.log | tail -1 | grep -oE '^\[[^]]+' | tr -d '[' | cut -c1-16 | tr T ' ')
     echo "**Status:** installed ${done_at:-$(date '+%F %H:%M')}; restart needed: $restart"
     echo "**Post-check (before restart):** $1"
-    echo "**After restart:** pending"
+    if [[ $restart == yes* ]]; then
+      echo "**After restart:** pending"
+    else
+      echo "**After restart:** not scheduled (no kernel change); restart affected apps/session as advised"
+    fi
     echo
     echo "## Important changes"
     echo
@@ -78,7 +84,7 @@ lts_test() {
     return 0
   fi
   local out rc f="$NOTES/lts-test-$(date +%F).md"
-  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}
+  out=$(set -o pipefail; syna-update-check boot 2>&1 </dev/null | strip); rc=$?
   mkdir -p "$NOTES"
   { echo "# LTS fallback test $(date +%F)"; echo
     echo "**Result:** $( ((rc == 0)) && echo passed || echo FAILED ) on $(uname -r), $(date '+%F %H:%M')"; echo
@@ -99,7 +105,7 @@ vfio_test() {
     return 0
   fi
   local out rc fails=0 r="" f="$NOTES/vfio-test-$(date +%F).md" d grp iso
-  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}; (( rc )) && fails=$((fails + 1))
+  out=$(set -o pipefail; syna-update-check boot 2>&1 </dev/null | strip); rc=$?; (( rc )) && fails=$((fails + 1))
   for d in 0000:10:00.0 0000:10:00.1; do
     if [[ $(basename "$(readlink -f /sys/bus/pci/devices/$d/driver 2>/dev/null)") == vfio-pci ]]; then r+="ok    $d on vfio-pci"$'\n'
     else r+="FAIL  $d not on vfio-pci"$'\n'; fails=$((fails + 1)); fi
@@ -135,7 +141,7 @@ after_reboot() {
     exit 0
   fi
   local out rc f verdict
-  out=$(syna-update-check boot 2>&1 </dev/null | strip); rc=${PIPESTATUS[0]}
+  out=$(set -o pipefail; syna-update-check boot 2>&1 </dev/null | strip); rc=$?
   f=$(<"$PENDING"); verdict=$(tail -1 <<<"$out" | sed 's/^ *//')
   [[ -f $f ]] && sed -i "s|^\*\*After restart:\*\* pending|**After restart:** $(date '+%F %H:%M') on $(uname -r): $verdict|" "$f"
   rm -f "$PENDING"
@@ -182,7 +188,7 @@ if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
 fi
 
 step "Step 1 of 4: checking the system (asks for your password once)"
-pre=$(syna-update-check pre 2>&1 | tee /dev/tty | strip); prerc=${PIPESTATUS[0]}
+pre=$(set -o pipefail; syna-update-check pre 2>&1 | tee /dev/tty | strip); prerc=$?
 if (( prerc != 0 )); then
   bad "The check found a problem (FAIL above). Nothing was changed. Ask an agent: \"update the system\"."
   exit 1
@@ -192,7 +198,12 @@ n=$(grep -oE '[0-9]+ repo packages' <<<"$pre" | grep -oE '^[0-9]+')
 needs_restart=no; grep -q 'boot/desktop-critical: linux-cachyos' <<<"$pre" && needs_restart=yes
 
 step "Step 2 of 4: looking for known problems with these updates"
-research=$(syna-update-research 2>&1 | strip)
+research=$(set -o pipefail; syna-update-research 2>&1 | strip); researchrc=$?
+if (( researchrc != 0 )); then
+  bad "Research could not be completed. Stopping before installation."
+  printf '%s\n' "$research"
+  exit 1
+fi
 holds=$(grep 'HOLD' <<<"$research")
 soak=$(grep 'NEW:' <<<"$research")
 leads=$(grep -c '^  ! open issues' <<<"$research")
@@ -213,7 +224,7 @@ step "Step 3 of 4: installing (pacman asks for confirmation)"
 sudo pacman -Syu || { bad "pacman stopped or failed. Read its message above; nothing else was run."; exit 1; }
 
 step "Step 4 of 4: checking the result before you restart"
-post=$(syna-update-check post 2>&1 | tee /dev/tty | strip); postrc=${PIPESTATUS[0]}
+post=$(set -o pipefail; syna-update-check post 2>&1 | tee /dev/tty | strip); postrc=$?
 f=$(write_note "$(tail -1 <<<"$post" | sed 's/^ *//')")
 echo
 if (( postrc != 0 )); then
