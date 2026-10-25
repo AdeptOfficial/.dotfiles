@@ -247,12 +247,16 @@ pre() {
 
   section "Arch news (read anything that says manual intervention)"
   if command -v paru >/dev/null; then
-    local news
-    if news=$(paru -Pw 2>/dev/null); then
+    local news rc
+    news=$(paru -Pw 2>&1); rc=$?
+    # paru exits 1 with "No new news" when nothing is unread: that is a pass, not a query failure.
+    if [[ $rc -eq 0 && -n $news ]]; then
       sed 's/^/  /' <<<"$news" | head -20
-      info "(empty = no unread news since last upgrade)"
+      warn "unread Arch news above: read it before updating (manual intervention?)"
+    elif grep -qi 'no new news' <<<"$news"; then
+      ok "no unread Arch news since the last upgrade"
     else
-      fail "cannot query Arch news; unread intervention notices are unverified"
+      fail "cannot query Arch news; unread intervention notices are unverified ($(head -1 <<<"$news"))"
     fi
   else
     info "check https://archlinux.org/news/ and https://cachyos.org/blog/"
