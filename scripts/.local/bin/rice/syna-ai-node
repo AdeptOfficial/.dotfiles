@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Pauses or resumes this PC's Ollama, the AI node the homeserver uses (Open WebUI, Vane).
-#   syna-ai-node pause     stop the ollama container: the GPU is free and the homeserver falls back to its own models
+#   syna-ai-node pause     stop the ollama container (after an answer being written finishes, max 15 s): the GPU is
+#                          free and the homeserver falls back to its own models
 #   syna-ai-node resume    start it again (models load on the next request); recreates it if Docker left it without ports
 #   syna-ai-node status    running or paused, and which models are loaded
 #
@@ -13,9 +14,24 @@ COMPOSE="$HOME/.config/syna/ai-stack/compose.yaml"
 
 notify() { notify-send -a "Syna AI node" "$1" "$2" 2>/dev/null; }
 
+# True while llama-server is generating: a "processing task" log line without its matching "release" line, counted
+# since the container's latest start and at most 10 min back. Unknown log format = not busy (pause stays instant).
+busy() {
+  local since started
+  started=$(docker inspect -f '{{.State.StartedAt}}' "$CONTAINER" 2>/dev/null) || return 1
+  since=$(date -u -d '-10 min' +%Y-%m-%dT%H:%M:%S)
+  [[ $started > $since ]] && since=$started
+  docker logs --since "$since" "$CONTAINER" 2>&1 | awk '
+    /processing task/ { if (match($0, /task [0-9]+/)) open[substr($0, RSTART + 5, RLENGTH - 5)] = 1 }
+    /release:.*stop processing/ { if (match($0, /task [0-9]+/)) delete open[substr($0, RSTART + 5, RLENGTH - 5)] }
+    END { for (t in open) exit 0; exit 1 }'
+}
+
 case "${1:-status}" in
   pause)
     if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
+      # Let an answer that is being written finish (max 15 s; GameMode allows 20 s), so it is not cut off mid-way
+      for _ in $(seq 15); do busy || break; sleep 1; done
       docker stop -t 10 "$CONTAINER" >/dev/null && notify "AI node paused" "Game started: the GPU is all yours."
     fi
     ;;
