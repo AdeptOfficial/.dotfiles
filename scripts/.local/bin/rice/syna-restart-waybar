@@ -1,5 +1,6 @@
 #!/bin/bash
 
-# Kills and relaunches waybar via syna-restart-app
+# Kills and relaunches waybar under syna-waybar-supervise (auto-restart after a crash)
 
-syna-restart-app waybar
+pkill -x waybar
+setsid uwsm-app -- syna-waybar-supervise >/dev/null 2>&1 &

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Runs waybar and restarts it after a crash; a deliberate stop ends the supervisor too.
+#   syna-waybar-supervise          started by autostart, syna-toggle-waybar and syna-restart-waybar (via uwsm-app)
+#
+# The bar process keeps the name `waybar`, so `pgrep -x waybar`, `pkill -x waybar` (toggle, restart) and
+# `pkill -RTMIN+8 waybar` (screen-record indicator) work unchanged. Restarts only when waybar dies from a crash
+# signal (ABRT, SEGV, BUS, FPE, ILL); a normal exit or SIGTERM/SIGINT/SIGKILL means "stopped on purpose".
+# At most 5 restarts in 10 minutes, so a broken config cannot loop forever. Added 2026-10-24 after a SIGABRT crash
+# (uncaught C++ exception, likely the tray module when an app's tray icon vanished).
+
+MAX_RESTARTS=5
+WINDOW=600
+restarts=()
+
+while true; do
+  waybar &
+  child=$!
+  wait "$child"
+  code=$?
+
+  case $code in
+    132|134|135|136|139) ;;                 # SIGILL, SIGABRT, SIGBUS, SIGFPE, SIGSEGV: crashed
+    *) exit 0 ;;                            # normal exit or stopped on purpose
+  esac
+
+  now=$(date +%s)
+  recent=()
+  for t in "${restarts[@]}"; do (( now - t < WINDOW )) && recent+=("$t"); done
+  restarts=("${recent[@]}" "$now")
+  if (( ${#restarts[@]} > MAX_RESTARTS )); then
+    notify-send -u critical "Waybar keeps crashing" "Stopped restarting after $MAX_RESTARTS crashes in 10 minutes. Check: syna-restart-waybar" 2>/dev/null
+    exit 1
+  fi
+  notify-send "Waybar crashed" "Restarted automatically (exit $code)." 2>/dev/null
+  sleep 2
+done
