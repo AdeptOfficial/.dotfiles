@@ -193,11 +193,14 @@ case ${1:-} in
       research_error "repo update inventory failed (checkupdates exited $pendingrc)"
     fi
     if command -v paru >/dev/null; then
-      if aur=$(paru -Qua 2>/dev/null); then
-        pending+=$'\n'"$aur"
-      else
+      # paru -Qua exits 1 with no output when nothing needs upgrading; only an error message means it failed
+      aurerr=$(mktemp); aur=$(paru -Qua 2>"$aurerr"); aurrc=$?
+      if (( aurrc != 0 )) && [[ -s $aurerr ]]; then
         research_error "AUR update inventory failed"
+      elif [[ -n $aur ]]; then
+        pending+=$'\n'"$aur"
       fi
+      rm -f "$aurerr"
     fi
     found=0
     while read -r pkg _ _ new; do

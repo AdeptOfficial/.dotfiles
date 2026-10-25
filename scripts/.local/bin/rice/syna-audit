@@ -114,7 +114,7 @@ if ! systemctl is-enabled paccache.timer >/dev/null 2>&1; then
   flag "Weekly package-cache cleanup is off ($(( ${cache:-0} / 1024 )) GB cached): sudo systemctl enable --now paccache.timer (one time)"
 fi
 # Reviewed false positives, same list and reasons as syna-update-check
-REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2"
+REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2 proton-rtsp-bin"
 rb=$(command -v checkrebuild >/dev/null && checkrebuild </dev/null 2>/dev/null | awk '{print $2}' | sort -u)
 rb=$(grep -vxF -f <(tr ' ' '\n' <<<"$REBUILD_IGNORE") <<<"$rb")
 add "- Needing rebuild (linked against removed libraries): ${rb:-none}"
