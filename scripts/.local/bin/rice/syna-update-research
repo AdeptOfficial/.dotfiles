@@ -72,7 +72,9 @@ releases() { gh release list -R "$1" --limit 30 --exclude-pre-releases --json ta
   -q '.[] | "\(.tagName)\t\(.publishedAt[:10])"' 2>/dev/null; }
 
 local_issues() {
-  grep -rliw -- "$1" "$SYNA"/issues/active "$SYNA"/projects/*/*/issues 2>/dev/null \
+  # Open records only: root and project bugs/ + issues/; archive/ is history, README.md is a generated index.
+  grep -rliw --exclude-dir=archive --exclude=README.md -- "$1" "$SYNA"/bugs "$SYNA"/issues \
+    "$SYNA"/projects/*/*/bugs "$SYNA"/projects/*/*/issues 2>/dev/null \
     | sed "s#^$SYNA/##"
 }
 
