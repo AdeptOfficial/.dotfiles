@@ -39,7 +39,7 @@ systemd                     systemd/systemd                  -     -
 coolercontrold-bin          gitlab:coolercontrol/coolercontrol -   cooler
 coolercontrol-bin           gitlab:coolercontrol/coolercontrol -   cooler
 vesktop                     Vencord/Vesktop                  -     -
-1password-beta              -                                -     -
+bitwarden                   bitwarden/clients                -     -
 EOF
 )
 # Separate words: gh quotes a single argument as one phrase, which silently matches nothing
