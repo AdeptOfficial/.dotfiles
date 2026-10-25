@@ -79,9 +79,9 @@ start_screenrecording() {
   toggle_screenrecording_indicator
 }
 
-# PIDs of recordings; the gsr-ui replay buffer ("-r <seconds>") is left running
+# PIDs of recordings (writing a file); the gsr-ui replay buffer ("-r <seconds>") and probes are left alone
 recording_pids() {
-  pgrep -af "^gpu-screen-recorder" | grep -v -- " -r [0-9]" | cut -d' ' -f1
+  pgrep -af "^gpu-screen-recorder" | grep -- " -o " | grep -v -- " -r [0-9]" | cut -d' ' -f1
 }
 
 stop_screenrecording() {

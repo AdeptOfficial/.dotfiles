@@ -102,6 +102,7 @@
   "custom/screenrecording-indicator": {
     "on-click": "syna-cmd-screenrecord",
     "exec": "$HOME/.local/bin/rice/syna-indicator-screenrecord",
+    "interval": 2,
     "signal": 8,
     "return-type": "json"
   },
