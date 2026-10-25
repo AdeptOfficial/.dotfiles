@@ -206,7 +206,7 @@ sudo pacman -S --needed --noconfirm \
   gnome-disk-utility gnome-themes-extra \
   qt5-wayland qt6-wayland \
   zoxide lazygit neovim fwupd hyprland-guiutils tailscale \
-  gnome-calculator gamescope lazydocker signal-desktop obsidian \
+  gnome-calculator gamescope lazydocker signal-desktop obsidian bitwarden \
   cava python-yaml lm_sensors pacman-contrib rebuild-detector sassc
 
 # Update safety net (syna-update-check): pacman snapshots + bootable snapshot entries.
@@ -235,7 +235,7 @@ paru -S --needed --noconfirm \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
   wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
   spotify visual-studio-code-bin wayfreeze-git \
-  typora 1password voxtype-bin \
+  typora voxtype-bin \
   python-terminaltexteffects   # tte: the AFK screensaver (syna-dream / afk, idle)
 
 # ASUS G14 specific packages (laptop only)
