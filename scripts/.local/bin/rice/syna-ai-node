@@ -2,13 +2,14 @@
 
 # Pauses or resumes this PC's Ollama, the AI node the homeserver uses (Open WebUI, Vane).
 #   syna-ai-node pause     stop the ollama container: the GPU is free and the homeserver falls back to its own models
-#   syna-ai-node resume    start it again (models load on the next request)
+#   syna-ai-node resume    start it again (models load on the next request); recreates it if Docker left it without ports
 #   syna-ai-node status    running or paused, and which models are loaded
 #
 # GameMode runs pause when a game starts and resume when the last game ends (~/.config/gamemode.ini), so a
 # homeserver request can never load a model into the GPU mid-match. Safe to repeat; never deletes anything.
 
 CONTAINER=ollama
+COMPOSE="$HOME/.config/syna/ai-stack/compose.yaml"
 
 notify() { notify-send -a "Syna AI node" "$1" "$2" 2>/dev/null; }
 
@@ -20,12 +21,21 @@ case "${1:-status}" in
     ;;
   resume)
     if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == false ]]; then
-      docker start "$CONTAINER" >/dev/null && notify "AI node back" "Game ended: the homeserver can use the 5090 again."
+      docker start "$CONTAINER" >/dev/null
+      # Docker sometimes starts it without its network, so no ports (seen 2026-10-25): recreate it from compose
+      if [[ -z $(docker port "$CONTAINER" 2>/dev/null) ]]; then
+        docker compose -f "$COMPOSE" up -d --no-deps --force-recreate --pull never "$CONTAINER" >/dev/null 2>&1
+      fi
+      if [[ -n $(docker port "$CONTAINER" 2>/dev/null) ]]; then
+        notify "AI node back" "Game ended: the homeserver can use the 5090 again."
+      else
+        notify "AI node failed to start" "Ollama has no ports. Check: syna-ai-node status"
+      fi
     fi
     ;;
   status)
     if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
-      echo "running"; docker exec "$CONTAINER" ollama ps
+      echo "running"; docker port "$CONTAINER" | sed 's/^/  port /'; docker exec "$CONTAINER" ollama ps
     else
       echo "paused"
     fi
