@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Pauses or resumes this PC's Ollama, the AI node the homeserver uses (Open WebUI, Vane).
+#   syna-ai-node pause     stop the ollama container: the GPU is free and the homeserver falls back to its own models
+#   syna-ai-node resume    start it again (models load on the next request)
+#   syna-ai-node status    running or paused, and which models are loaded
+#
+# GameMode runs pause when a game starts and resume when the last game ends (~/.config/gamemode.ini), so a
+# homeserver request can never load a model into the GPU mid-match. Safe to repeat; never deletes anything.
+
+CONTAINER=ollama
+
+notify() { notify-send -a "Syna AI node" "$1" "$2" 2>/dev/null; }
+
+case "${1:-status}" in
+  pause)
+    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
+      docker stop -t 10 "$CONTAINER" >/dev/null && notify "AI node paused" "Game started: the GPU is all yours."
+    fi
+    ;;
+  resume)
+    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == false ]]; then
+      docker start "$CONTAINER" >/dev/null && notify "AI node back" "Game ended: the homeserver can use the 5090 again."
+    fi
+    ;;
+  status)
+    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
+      echo "running"; docker exec "$CONTAINER" ollama ps
+    else
+      echo "paused"
+    fi
+    ;;
+  *) echo "usage: syna-ai-node pause|resume|status" >&2; exit 2 ;;
+esac
