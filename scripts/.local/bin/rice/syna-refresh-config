@@ -3,7 +3,8 @@
 # Copies the named config from ~/.config/rice/config/X/Y/Z -> ~/.config/X/Y/Z.
 # If the config already exists, a backup of the existing will be taken as .bak.TIMESTAMP.
 
-config_file=$1
+set -euo pipefail
+config_file=${1:-}
 
 if [[ -z "$config_file" ]]; then
   cat <<USAGE
@@ -17,26 +18,30 @@ USAGE
   exit 1
 fi
 
+[[ $config_file != /* && /$config_file/ != */../* && /$config_file/ != */./* && $config_file != *$'\n'* ]] || { echo 'Config path must stay inside ~/.config' >&2; exit 2; }
+
 # Backup the destination file (with timestamp) to avoid clobbering (Ex: hyprlock.conf.bak.1753817951)
 user_config_file="${HOME}/.config/$config_file"
 default_config_file="${HOME}/.config/rice/defaults/$config_file"
-backup_config_file="$user_config_file.bak.$(date +%s)"
+[[ -f $default_config_file ]] || { echo "Default missing: $default_config_file; nothing changed" >&2; exit 1; }
+mkdir -p -- "$(dirname -- "$user_config_file")"
 
 if [[ -f "$user_config_file" ]]; then
   # Create preliminary backup
-  cp -f "$user_config_file" "$backup_config_file" 2>/dev/null
+  backup_config_file=$(mktemp "$user_config_file.bak.XXXXXXXX")
+  cp -p -- "$user_config_file" "$backup_config_file"
 
   # Replace config with new default
-  cp -f "$default_config_file" "$user_config_file" 2>/dev/null
+  cp -- "$default_config_file" "$user_config_file"
 
   # Compare and delete/inform accordingly
   if cmp -s "$user_config_file" "$backup_config_file"; then
-    rm "$backup_config_file"
+    echo "Already matches defaults; backup retained: $backup_config_file"
   else
     echo -e "\e[31mReplaced $user_config_file with rice default.\nSaved backup as ${backup_config_file}.\n\n\e[32mChanges:\e[0m"
     diff "$user_config_file" "$backup_config_file" || true
   fi
 else
   # Config file did not exist already
-  cp -f "$default_config_file" "$user_config_file" 2>/dev/null
+  cp -- "$default_config_file" "$user_config_file"
 fi

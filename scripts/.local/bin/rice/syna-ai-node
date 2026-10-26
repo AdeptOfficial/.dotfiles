@@ -1,18 +1,54 @@
 #!/bin/bash
 
 # Pauses or resumes this PC's Ollama, the AI node the homeserver uses (Open WebUI, Vane).
-#   syna-ai-node pause     stop the ollama container (after an answer being written finishes, max 15 s): the GPU is
+#   syna-ai-node pause     stop the ollama container (up to 3 s for an answer to finish): the GPU is
 #                          free and the homeserver falls back to its own models
 #   syna-ai-node resume    start it again (models load on the next request); recreates it if Docker left it without ports
 #   syna-ai-node status    running or paused, and which models are loaded
 #
-# GameMode runs pause when a game starts and resume when the last game ends (~/.config/gamemode.ini), so a
-# homeserver request can never load a model into the GPU mid-match. Safe to repeat; never deletes anything.
+# GameMode runs pause when a game starts and resume when the last game ends (~/.config/gamemode.ini), so
+# homeserver requests fall back while Ollama is stopped. Resume may recreate the container from compose;
+# its bind-mounted model data is preserved. Explicit resume also starts a manually stopped Ollama.
+
+# GameMode allows 20 seconds for each hook. Bound the WHOLE operation, including Docker and notifications.
+# The worker is a separate process group under timeout; do not inherit a recursive timeout wrapper.
+if [[ ${1:-} != --worker ]]; then
+  (( $# )) || set -- status
+  timeout --kill-after=1 18 bash "$0" --worker "$@"
+  result=$?
+  if (( result != 0 )); then
+    echo "AI node operation failed (exit $result). Check Docker and syna-ai-node status." >&2
+  fi
+  exit "$result"
+fi
+shift
 
 CONTAINER=ollama
 COMPOSE="$HOME/.config/syna/ai-stack/compose.yaml"
 
-notify() { notify-send -a "Syna AI node" "$1" "$2" 2>/dev/null; }
+notify() { timeout 1 notify-send -a "Syna AI node" "$1" "$2" 2>/dev/null || :; }
+fail() { echo "$*" >&2; notify "AI node needs attention" "$*"; exit 1; }
+
+# Docker reports running before Ollama starts listening. Probe without loading a model.
+# Each attempt and the whole hook stay bounded; keep the successful model list for status.
+wait_ready() {
+  local deadline=$((SECONDS + 5))
+  while true; do
+    if models=$(timeout 1 docker exec "$CONTAINER" ollama ps 2>/dev/null); then
+      return 0
+    fi
+    (( SECONDS < deadline )) || return 1
+    sleep 0.2
+  done
+}
+
+case ${1:-status} in pause|resume|status) ;; *) echo 'usage: syna-ai-node pause|resume|status' >&2; exit 2 ;; esac
+(( $# <= 1 )) || { echo 'Too many arguments' >&2; exit 2; }
+[[ -d ${XDG_RUNTIME_DIR:-} && -O $XDG_RUNTIME_DIR ]] || fail 'Private runtime directory unavailable'
+exec 9>"$XDG_RUNTIME_DIR/syna-ai-node.lock" || exit 1
+flock -w 1 9 || fail 'Another AI node operation is running; retry shortly'
+running=$(docker inspect --type container -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) || fail 'Ollama is missing or Docker cannot be queried'
+[[ $running == true || $running == false ]] || fail 'Unexpected Ollama state'
 
 # True while llama-server is generating: a "processing task" log line without its matching "release" line, counted
 # since the container's latest start and at most 10 min back. Unknown log format = not busy (pause stays instant).
@@ -21,7 +57,7 @@ busy() {
   started=$(docker inspect -f '{{.State.StartedAt}}' "$CONTAINER" 2>/dev/null) || return 1
   since=$(date -u -d '-10 min' +%Y-%m-%dT%H:%M:%S)
   [[ $started > $since ]] && since=$started
-  docker logs --since "$since" "$CONTAINER" 2>&1 | awk '
+  timeout 1 docker logs --tail 1000 --since "$since" "$CONTAINER" 2>&1 | awk '
     /processing task/ { if (match($0, /task [0-9]+/)) open[substr($0, RSTART + 5, RLENGTH - 5)] = 1 }
     /release:.*stop processing/ { if (match($0, /task [0-9]+/)) delete open[substr($0, RSTART + 5, RLENGTH - 5)] }
     END { for (t in open) exit 0; exit 1 }'
@@ -29,29 +65,39 @@ busy() {
 
 case "${1:-status}" in
   pause)
-    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
-      # Let an answer that is being written finish (max 15 s; GameMode allows 20 s), so it is not cut off mid-way
-      for _ in $(seq 15); do busy || break; sleep 1; done
-      docker stop -t 10 "$CONTAINER" >/dev/null && notify "AI node paused" "Game started: the GPU is all yours."
+    if [[ $running == true ]]; then
+      # Reserve time for the stop itself. Log parsing is only a best-effort courtesy.
+      deadline=$((SECONDS + 3))
+      while (( SECONDS < deadline )); do busy || break; sleep 0.2; done
+      docker stop --timeout 10 "$CONTAINER" >/dev/null || fail 'Could not stop Ollama'
+      [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") == false ]] || fail 'Ollama is still running'
+      notify "AI node paused" "Ollama stopped for the game."
     fi
     ;;
   resume)
-    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == false ]]; then
-      docker start "$CONTAINER" >/dev/null
+    if [[ $running == false ]]; then
+      docker start "$CONTAINER" >/dev/null || fail 'Could not start Ollama'
+    fi
       # Docker sometimes starts it without its network, so no ports (seen 2026-10-25): recreate it from compose
-      if [[ -z $(docker port "$CONTAINER" 2>/dev/null) ]]; then
-        docker compose -f "$COMPOSE" up -d --no-deps --force-recreate --pull never "$CONTAINER" >/dev/null 2>&1
+      ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama port bindings'
+      if [[ $ports != *'11434/tcp -> '* ]]; then
+        [[ -r $COMPOSE ]] || fail 'Ollama compose file is missing'
+        docker compose -f "$COMPOSE" up -d --no-deps --force-recreate --pull never "$CONTAINER" >/dev/null || fail 'Ollama recreation failed'
       fi
-      if [[ -n $(docker port "$CONTAINER" 2>/dev/null) ]]; then
+      if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") == true && -n $(docker port "$CONTAINER" 11434/tcp 2>/dev/null) ]]; then
+        wait_ready || fail 'Ollama container started, but its server did not become ready. Check syna-ai-node status and docker logs ollama.'
         notify "AI node back" "Game ended: the homeserver can use the 5090 again."
       else
-        notify "AI node failed to start" "Ollama has no ports. Check: syna-ai-node status"
+        fail 'Ollama is not running with its expected port'
       fi
-    fi
     ;;
   status)
-    if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null) == true ]]; then
-      echo "running"; docker port "$CONTAINER" | sed 's/^/  port /'; docker exec "$CONTAINER" ollama ps
+    if [[ $running == true ]]; then
+      wait_ready || fail 'Ollama container is running, but its server is not ready. Check docker logs ollama.'
+      ports=$(docker port "$CONTAINER") || fail 'Cannot inspect Ollama port bindings'
+      echo "running"
+      printf '%s\n' "$ports" | sed 's/^/  port /'
+      printf '%s\n' "$models"
     else
       echo "paused"
     fi

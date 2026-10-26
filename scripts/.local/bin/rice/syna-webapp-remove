@@ -39,6 +39,9 @@ if [[ ${#APP_NAMES[@]} -eq 0 ]]; then
 fi
 
 for APP_NAME in "${APP_NAMES[@]}"; do
+  [[ -n $APP_NAME && $APP_NAME != */* && $APP_NAME != . && $APP_NAME != .. && $APP_NAME != *$'\n'* && $APP_NAME != *$'\r'* ]] || { echo 'Invalid app name; nothing removed' >&2; exit 2; }
+done
+for APP_NAME in "${APP_NAMES[@]}"; do
   rm -f "$DESKTOP_DIR/$APP_NAME.desktop"
   rm -f "$ICON_DIR/$APP_NAME.png"
   echo "Removed $APP_NAME"

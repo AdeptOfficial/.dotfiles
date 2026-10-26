@@ -4,6 +4,8 @@
 #
 # Usage: syna-profile-switch [desktop|laptop|backup|restore|status]
 
+set -e
+
 HYPR_CONFIG="$HOME/.config/hypr"
 TEMPLATES_DIR="$HOME/.dotfiles/hypr/.config/hypr/templates"
 CONFIGS=(monitors input autostart)
@@ -14,6 +16,10 @@ backup_local_configs() {
   for f in "${CONFIGS[@]}"; do
     local file="$HYPR_CONFIG/${f}.local.conf"
     if [[ -f "$file" ]]; then
+      if [[ -e ${file}.backup ]]; then
+        previous=$(mktemp "${file}.backup.previous.XXXXXXXX")
+        cp -- "${file}.backup" "$previous"
+      fi
       cp "$file" "${file}.backup"
       echo "  ${f}.local.conf → ${f}.local.conf.backup"
     fi
@@ -23,6 +29,9 @@ backup_local_configs() {
 # Apply profile templates to .local.conf
 apply_profile() {
   local profile="$1"
+  for f in "${CONFIGS[@]}"; do
+    [[ -f "$TEMPLATES_DIR/${f}.${profile}.example" ]] || { echo "Missing template for $f; nothing changed" >&2; return 1; }
+  done
   backup_local_configs
   echo "Applying $profile profile..."
   for f in "${CONFIGS[@]}"; do
@@ -86,7 +95,7 @@ show_status() {
   for profile in desktop laptop default; do
     local count=0
     for f in "${CONFIGS[@]}"; do
-      [[ -f "$TEMPLATES_DIR/${f}.${profile}.example" ]] && ((count++))
+      if [[ -f "$TEMPLATES_DIR/${f}.${profile}.example" ]]; then count=$((count + 1)); fi
     done
     echo "  $profile: $count/3 templates"
   done
@@ -94,7 +103,7 @@ show_status() {
   echo "Backups:"
   local backup_count=0
   for f in "${CONFIGS[@]}"; do
-    [[ -f "$HYPR_CONFIG/${f}.local.conf.backup" ]] && ((backup_count++))
+    if [[ -f "$HYPR_CONFIG/${f}.local.conf.backup" ]]; then backup_count=$((backup_count + 1)); fi
   done
   echo "  $backup_count/3 backup files present"
 }

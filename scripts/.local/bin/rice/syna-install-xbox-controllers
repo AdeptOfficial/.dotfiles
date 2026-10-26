@@ -16,4 +16,5 @@ echo hid_xpadneo | sudo tee /etc/modules-load.d/xpadneo.conf >/dev/null
 sudo usermod -a -G input $USER
 
 # Modules need to be loaded
-gum confirm "Install requires reboot. Ready?" && sudo reboot now
+syna-update-check post
+echo 'Post-check passed. Restart from your terminal when ready.'

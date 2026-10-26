@@ -3,6 +3,15 @@
 # Creates a swap file in the btrfs subvolume, adds the swap file to /etc/fstab,
 # adds a resume hook to mkinitcpio, and configures suspend-then-hibernate.
 
+set -euo pipefail
+
+# The installed systemd initramfs hook already provides hibernate-resume. This legacy
+# helper cannot establish the encrypted swap/resume configuration for that layout.
+if grep -Eq '^HOOKS=.*\b(systemd|sd-encrypt)\b' /etc/mkinitcpio.conf; then
+  echo 'This legacy hibernation setup does not support the systemd/encrypted initramfs. Nothing changed; use a machine-specific hibernation plan.' >&2
+  exit 1
+fi
+
 if [[ ! -f /sys/power/image_size ]]; then
   echo -e "\033[31mError: Hibernation is not supported on your system\033[0m" >&2
   exit 1
@@ -66,5 +75,6 @@ sudo cp "$HOME/.config/rice/defaults/systemd/hibernate.conf" /etc/systemd/sleep.
 # Regenerate initramfs
 echo "Regenerating initramfs..."
 sudo limine-mkinitcpio
+syna-update-check post
 
 echo "Hibernation enabled"

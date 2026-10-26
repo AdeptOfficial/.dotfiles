@@ -4,4 +4,15 @@
 # Used by actions such as Update System.
 
 cmd="$*"
-exec setsid uwsm-app -- xdg-terminal-exec --app-id=io.adept.rice.terminal --title=Rice -e bash -c "syna-show-logo; $cmd; if [ \$? -ne 130 ]; then syna-show-done; fi"
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=io.adept.rice.terminal --title=Rice -e bash -c '
+syna-show-logo
+bash -c "$1"
+result=$?
+if (( result == 0 )); then
+  syna-show-done
+elif (( result != 130 )); then
+  printf "Command failed (exit %s). Review the output above.\n" "$result" >&2
+  [[ -t 0 ]] && read -r -p "Press Enter to close…" answer
+fi
+exit "$result"
+' bash "$cmd"

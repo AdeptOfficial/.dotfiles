@@ -55,8 +55,11 @@ decide() {   # $1 = deny|ask, $2 = reason
 if [[ ! -f $STAMP ]]; then
   decide deny "System update blocked: no syna-update-check pre result. Follow $WORKFLOW: the user runs syna-update-check pre, then syna-update-research, before any update."
 fi
-read -r when _ fails <"$STAMP"
+read -r when phase fails extra <"$STAMP" || decide deny 'Invalid pre-check stamp: rerun syna-update-check pre.'
+[[ $when =~ ^[0-9]{1,12}$ && $phase == pre && $fails =~ ^[0-9]{1,6}$ && -z $extra ]] || decide deny 'Malformed pre-check stamp: rerun syna-update-check pre.'
+when=$((10#$when)); fails=$((10#$fails))
 age=$(( $(date +%s) - when ))
+(( age >= 0 )) || decide deny 'Pre-check timestamp is in the future: rerun syna-update-check pre.'
 if (( age > MAX_AGE )); then
   decide deny "System update blocked: the last syna-update-check pre is $((age / 60)) minutes old (limit 180). Rerun it and the research step per $WORKFLOW."
 fi

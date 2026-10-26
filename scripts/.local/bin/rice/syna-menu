@@ -43,7 +43,7 @@ terminal() {
 }
 
 present_terminal() {
-  syna-launch-floating-terminal-with-presentation $1
+  syna-launch-floating-terminal-with-presentation "$1"
 }
 
 open_in_editor() {

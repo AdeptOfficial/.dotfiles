@@ -2,6 +2,11 @@
 
 # Add the named packages to the system from the AUR if they're missing. Returns false if it couldn't be done.
 
+(( $# )) || { echo 'Provide package names' >&2; exit 2; }
+for pkg in "$@"; do
+  [[ $pkg =~ ^[a-zA-Z0-9@_+][a-zA-Z0-9@._+-]*$ ]] || { echo 'Invalid package name' >&2; exit 2; }
+done
+
 if syna-pkg-missing "$@"; then
   yay -S --noconfirm --needed "$@" || exit 1
 fi

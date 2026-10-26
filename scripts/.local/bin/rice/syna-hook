@@ -10,6 +10,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 HOOK=$1
+[[ $HOOK =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]] || { echo 'Invalid hook name' >&2; exit 2; }
 HOOK_PATH="$HOME/.config/rice/hooks/$1"
 shift
 

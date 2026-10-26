@@ -3,6 +3,8 @@
 # Removes hibernation setup: disables swap, removes swapfile, removes fstab entry,
 # removes resume hook, and removes suspend-then-hibernate configuration.
 
+set -euo pipefail
+
 MKINITCPIO_CONF="/etc/mkinitcpio.conf.d/syna_resume.conf"
 
 # Check if hibernation is configured
@@ -55,5 +57,6 @@ sudo rm "$MKINITCPIO_CONF"
 
 echo "Regenerating initramfs..."
 sudo limine-mkinitcpio
+syna-update-check post
 
 echo "Hibernation removed"

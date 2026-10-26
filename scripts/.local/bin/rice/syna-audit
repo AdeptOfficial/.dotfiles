@@ -32,7 +32,8 @@ if [[ -n $last ]]; then
   add "- Last full upgrade: ${last:0:10} ($age days ago)"
   (( age > LAST_UPDATE_MAX_DAYS )) && flag "Last full upgrade was $age days ago (> $LAST_UPDATE_MAX_DAYS): run workflows/update-system.md"
 fi
-pending=$(checkupdates 2>/dev/null)
+pending=$(checkupdates 2>/dev/null); pending_rc=$?
+(( pending_rc == 0 || pending_rc == 2 )) || flag 'Repo update query failed; pending updates unknown'
 add "- Pending repo updates: $(grep -c . <<<"$pending")"
 command -v paru >/dev/null && add "- Pending AUR updates: $(paru -Qua 2>/dev/null | grep -c .)"
 crit=$(grep -E '^(linux-cachyos|nvidia|systemd |mkinitcpio|limine|hyprland|aquamarine|hyprutils|walker|elephant|mesa|glibc)' <<<"$pending")
@@ -46,7 +47,8 @@ fi
 
 # --- Upstream: ceilings and releases not yet in repos ----------------------------
 sec "Upstream (syna-update-research --upcoming)"
-raw=$(timeout 180 syna-update-research --upcoming 2>&1 | strip)
+raw=$(set -o pipefail; timeout 180 syna-update-research --upcoming 2>&1 | strip); research_rc=$?
+(( research_rc == 0 )) || flag 'Upstream research failed or timed out; results incomplete'
 if grep -q 'Upstream releases' <<<"$raw"; then
   up=$(sed '1,/Upstream releases/d' <<<"$raw")
   add "${up:-  all tracked packages current}"
@@ -59,15 +61,16 @@ grep -q 'HOLD' <<<"$up" && flag "Upstream release reaches a ceiling: $(grep HOLD
 
 # --- Security: known vulnerabilities in installed packages, apps and containers --------
 sec "Security (syna-security-check)"
-raw=$(timeout 300 syna-security-check --quiet 2>&1 | strip)
+raw=$(set -o pipefail; timeout 300 syna-security-check --quiet 2>&1 | strip); security_rc=$?
+(( security_rc == 0 )) || flag "Security check reported failures or incomplete checks (exit $security_rc)"
 add "${raw:-  no problems found}"
 while IFS= read -r l; do flag "Security: ${l#FAIL  }"; done < <(grep '^FAIL' <<<"$raw")
 [[ -z $raw ]] || grep -qE '^(FAIL|WARN|==)' <<<"$raw" || flag "Security check did not run: $(head -1 <<<"$raw")"
 
 # --- Health ----------------------------------------------------------------------
 sec "Health"
-failed=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort)
-ufailed=$(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort)
+failed=$(set -o pipefail; systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort) || flag 'System service status unavailable'
+ufailed=$(set -o pipefail; systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | sort) || flag 'User service status unavailable'
 add "- Failed system units: $(tr '\n' ' ' <<<"${failed:-none}")"
 add "- Failed user units: $(tr '\n' ' ' <<<"${ufailed:-none}")"
 if [[ -f $BASELINE ]]; then
@@ -77,7 +80,7 @@ fi
 [[ -n $ufailed ]] && flag "Failed user units: $(tr '\n' ' ' <<<"$ufailed")"
 kerr=$(journalctl -k -b -p err --no-pager -q 2>/dev/null | grep -iE 'btrfs|nvme|i/o error|ata[0-9]|oops|BUG|panic|mce|hardware error')
 [[ -n $kerr ]] && { flag "Storage/hardware errors in this boot's kernel log ($(grep -c . <<<"$kerr"))"; add "- Kernel storage/hardware errors:"; add "$(head -5 <<<"$kerr" | cut -c1-200 | sed 's/^/  - /')"; }
-bstats=$(btrfs device stats / 2>/dev/null | awk '$2 != 0')
+bstats=$(set -o pipefail; btrfs device stats / 2>/dev/null | awk '$2 != 0') || { flag 'Btrfs counters unavailable'; bstats='unverified'; }
 [[ -n $bstats ]] && flag "Btrfs device error counters non-zero: $(tr '\n' ' ' <<<"$bstats")"
 add "- Btrfs error counters: ${bstats:-all zero}"
 add "- Uptime: $(uptime -p)"
@@ -162,16 +165,9 @@ done
 
 # --- Backups ---------------------------------------------------------------------
 sec "Backups"
-if [[ -r $BACKUP_REPO/snapshots ]]; then
-  newest=$(ls -t "$BACKUP_REPO/snapshots" 2>/dev/null | head -1)
-  if [[ -n $newest ]]; then
-    bdate=$(date -r "$BACKUP_REPO/snapshots/$newest" +%F)
-    bage=$(days_since "$bdate")
-    add "- Newest restic snapshot: $bdate ($bage days ago)"
-    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS): weekly timer missed? see syna-backup status, journalctl -u syna-backup"
-  fi
-elif mountpoint -q /mnt/SharedData 2>/dev/null; then add "- Restic repo not readable without root; check manually"
-else flag "Backup disk /mnt/SharedData not mounted"; fi
+backup_status=$(timeout 60 syna-backup-reminder --print 2>&1); backup_rc=$?
+add "$backup_status"
+(( backup_rc == 0 )) || flag "Backup check needs attention: $backup_status"
 add "- Off-machine copy: none configured (known gap, guides/backup.md)"
 
 # --- Records and docs drift ------------------------------------------------------

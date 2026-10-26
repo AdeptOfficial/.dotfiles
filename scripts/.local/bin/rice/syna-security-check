@@ -46,6 +46,13 @@ SECURITY_LIBS = re.compile(r'^(lib32-)?(openssl|gnutls|nss|curl|libcurl|webkit2g
                            r'openssh|libldap|libxml2|expat|systemd|linux-cachyos.*|firefox|chromium|libtiff|'
                            r'libwebp|libpng|giflib|openjpeg2|brotli|krb5|polkit|pam|cups|ffmpeg|gstreamer)')
 problems = 0
+unverified = 0
+
+
+def unknown(msg):
+    global unverified
+    unverified += 1
+    say('WARN', 'Unverified: ' + msg)
 
 
 def say(level, msg):
@@ -58,8 +65,16 @@ def say(level, msg):
 
 def run(*cmd, timeout=60):
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        allowed = {0}
+        if cmd == ('checkupdates',): allowed.add(2)
+        if cmd == ('pacman', '-Qm'): allowed.add(1)  # no foreign packages
+        if result.returncode not in allowed:
+            unknown(f'{cmd[0]} query failed (exit {result.returncode})')
+            return ''
+        return result.stdout
     except (FileNotFoundError, subprocess.TimeoutExpired):
+        unknown(f'{cmd[0]} missing or timed out')
         return ''
 
 
@@ -74,17 +89,22 @@ def fetch(url, timeout=30):
         return None
 
 
-def gh(path):
-    out = run('gh', 'api', path, timeout=30)
+def gh(path, paginate=False):
+    out = run('gh', 'api', *(['--paginate', '--slurp'] if paginate else []), path, timeout=60)
     try:
-        return json.loads(out) if out else None
+        data = json.loads(out) if out else None
+        if paginate and isinstance(data, list):
+            return [entry for page in data for entry in page]
+        return data
     except json.JSONDecodeError:
         return None
 
 
 def vercmp(a, b):
     out = run('vercmp', a, b).strip()
-    return int(out) if out.lstrip('-').isdigit() else 0
+    if not out.lstrip('-').isdigit():
+        raise ValueError('Version comparison unavailable')
+    return int(out)
 
 
 def plain(v):
@@ -99,7 +119,7 @@ def in_range(ver, rng):
     if not rng:
         return None
     for part in rng.split(','):
-        m = re.match(r'\s*(<=|>=|<|>|=)\s*v?([\w.\-]+)', part)
+        m = re.fullmatch(r'\s*(<=|>=|<|>|=)\s*v?([\w.\-]+)\s*', part)
         if not m:
             return None
         c = vercmp(ver, m.group(2))
@@ -123,14 +143,21 @@ def fixed(ver, patched):
 
 def advisories(repo, ver):
     """Published advisories of repo whose vulnerable range contains ver: [(severity, id, summary, patched)]."""
-    data = gh(f'repos/{repo}/security-advisories?per_page=50&state=published') or []
+    data = gh(f'repos/{repo}/security-advisories?per_page=100&state=published', paginate=True)
+    if not isinstance(data, list):
+        unknown(f'{repo}: advisories could not be read')
+        return []
     hits = []
     for a in data if isinstance(data, list) else []:
         vulns = a.get('vulnerabilities') or []
-        if fixed(ver, ' '.join(v.get('patched_versions') or '' for v in vulns)):
-            continue
         for v in vulns:
-            if in_range(ver, v.get('vulnerable_version_range')):
+            # A patched version for a DIFFERENT affected component cannot clear this one.
+            if fixed(ver, v.get('patched_versions')):
+                continue
+            affected = in_range(ver, v.get('vulnerable_version_range'))
+            if affected is None:
+                unknown(f'{repo}: unsupported advisory range in {a.get("ghsa_id")}')
+            if affected:
                 hits.append((a.get('severity') or '?', a.get('ghsa_id'), (a.get('summary') or '')[:90],
                              v.get('patched_versions') or 'no fix'))
                 break
@@ -155,7 +182,7 @@ def main():
     print('== 1. Repo packages (Arch Security Tracker)') if not QUIET else None
     allissues = fetch('https://security.archlinux.org/issues/all.json', 60)
     if allissues is None:
-        say('WARN', 'Arch Security Tracker unreachable: repo packages not checked')
+        unknown('Arch Security Tracker unreachable: repo packages not checked')
     else:
         unfixed, fixable = {}, 0
         for g in allissues:
@@ -198,17 +225,22 @@ def main():
             say('WARN', f'{p} {have} -> {r["Version"]} in the AUR')
         if r.get('OutOfDate'):
             say('WARN', f'{p}: flagged out of date on the AUR (upstream is newer than the package)')
-    say('ok', f'{seen} AUR packages compared') if seen else say('WARN', 'AUR unreachable: AUR packages not checked')
+    if seen:
+        say('ok', f'{seen} AUR packages compared')
+    elif foreign:
+        unknown('AUR returned no package metadata')
 
     print('== 4. App advisories (GitHub)') if not QUIET else None
     reg = {p: r for p, r in registry().items() if p in installed}
+    before = unverified
     with cf.ThreadPoolExecutor(8) as ex:
         res = dict(zip(reg, ex.map(lambda p: advisories(reg[p], plain(installed[p])), reg)))
     for p, hits in sorted(res.items()):
         for sev, gid, summ, fix in hits:
             say('FAIL' if sev in ('critical', 'high') else 'WARN',
                 f'{p} {plain(installed[p])}: {sev} {gid} "{summ}" (patched: {fix})')
-    say('ok', f'{len(reg)} tracked apps checked against their published advisories')
+    if unverified == before:
+        say('ok', f'{len(reg)} tracked apps checked against their published advisories')
 
     print('== 5. Containers') if not QUIET else None
     running = {l.split('\t')[0]: l.split('\t')[1] for l in
@@ -219,7 +251,7 @@ def main():
         latest = (gh(f'repos/{repo}/releases/latest') or {}).get('tag_name', '')
         ver = plain(str((fetch(url) or {}).get(key, ''))) if url else ''
         if not ver:
-            say('ok', f'{name}: no version endpoint; latest upstream {latest or "?"} (check the image date)')
+            unknown(f'{name}: installed version unavailable; latest upstream {latest or "?"} (check the image digest)')
             continue
         hits = advisories(repo, ver)
         for sev, gid, summ, fix in hits:
@@ -242,8 +274,8 @@ def main():
             + ', '.join(sorted(exposed, key=int)))
 
     if not QUIET or problems:
-        print(f'== {problems} FAIL' if problems else '== no FAIL')
-    sys.exit(1 if problems else 0)
+        print(f'== {problems} FAIL; {unverified} checks unverified')
+    sys.exit(1 if problems else 2 if unverified else 0)
 
 
 if __name__ == '__main__':

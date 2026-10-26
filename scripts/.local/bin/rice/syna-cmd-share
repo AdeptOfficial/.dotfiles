@@ -2,6 +2,8 @@
 
 # Share clipboard, file, or folder using LocalSend. Bound to Super + Ctrl + S by default.
 
+set -euo pipefail
+
 if (($# == 0)); then
   echo "Usage: syna-cmd-share [clipboard|file|folder]"
   exit 1
@@ -9,6 +11,7 @@ fi
 
 MODE="$1"
 shift
+case $MODE in clipboard|file|folder) ;; *) echo 'Unknown share mode' >&2; exit 2 ;; esac
 
 if [[ $MODE == "clipboard" ]]; then
   TEMP_FILE=$(mktemp --suffix=.txt)
@@ -16,7 +19,7 @@ if [[ $MODE == "clipboard" ]]; then
   FILES="$TEMP_FILE"
 else
   if (($# > 0)); then
-    FILES="$*"
+    exec systemd-run --user --quiet --collect localsend --headless send "$@"
   else
     if [[ $MODE == "folder" ]]; then
       # Pick a single folder from home directory

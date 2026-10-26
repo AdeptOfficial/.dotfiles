@@ -29,9 +29,14 @@ restore)
     exit 1
   fi
   NUMBER=$2
+  [[ $NUMBER =~ ^[1-9][0-9]*$ ]] || { echo 'Snapshot must be a positive number' >&2; exit 2; }
+  echo 'This replaces live root files. It does not restore /home or the matching kernel on /boot.'
+  read -r -p "Type snapshot $NUMBER to confirm live rollback: " answer
+  [[ $answer == "$NUMBER" ]] || { echo 'Nothing changed'; exit 1; }
   echo "Restoring snapshot $NUMBER..."
   sudo snapper undochange "$NUMBER"..0
-  echo "Restored. Reboot recommended."
+  syna-update-check post
+  echo "Root files restored. Review the post-check and boot recovery guide before restarting."
   ;;
 *)
   echo "Unknown command: $COMMAND"
