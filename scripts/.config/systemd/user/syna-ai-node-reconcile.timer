@@ -1,0 +1,10 @@
+[Unit]
+Description=Check workstation Ollama port restoration after login
+
+[Timer]
+OnStartupSec=30s
+OnUnitInactiveSec=2min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

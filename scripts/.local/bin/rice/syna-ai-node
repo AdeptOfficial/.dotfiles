@@ -42,7 +42,21 @@ wait_ready() {
   done
 }
 
-case ${1:-status} in pause|resume|status) ;; *) echo 'usage: syna-ai-node pause|resume|status' >&2; exit 2 ;; esac
+# The approved bindings are the explicit host addresses in the private compose file (loopback plus the AI-node LAN
+# address), not a wildcard LAN publication. Read from there so this public repo carries no instance address.
+expected_ports() {
+  sed -nE 's/^[[:space:]]*-[[:space:]]*"?([0-9.]+):11434:11434"?.*$/11434\/tcp -> \1:11434/p' "$COMPOSE" 2>/dev/null
+}
+ports_ok() {
+  local want expected
+  expected=$(expected_ports)
+  grep -Fxq '11434/tcp -> 127.0.0.1:11434' <<< "$expected" || return 1
+  while IFS= read -r want; do
+    grep -Fxq "$want" <<< "$ports" || return 1
+  done <<< "$expected"
+}
+
+case ${1:-status} in pause|resume|status|reconcile) ;; *) echo 'usage: syna-ai-node pause|resume|status|reconcile' >&2; exit 2 ;; esac
 (( $# <= 1 )) || { echo 'Too many arguments' >&2; exit 2; }
 [[ -d ${XDG_RUNTIME_DIR:-} && -O $XDG_RUNTIME_DIR ]] || fail 'Private runtime directory unavailable'
 exec 9>"$XDG_RUNTIME_DIR/syna-ai-node.lock" || exit 1
@@ -63,6 +77,19 @@ busy() {
     END { for (t in open) exit 0; exit 1 }'
 }
 
+# Timer repair never starts a stopped container or competes with GameMode hooks.
+# The same lock covers check and repair. An unknown GameMode state fails closed.
+automatic=false
+if [[ ${1:-status} == reconcile ]]; then
+  [[ $running == true ]] || exit 0
+  ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama port bindings'
+  ports_ok && exit 0
+  game_state=$(LC_ALL=C timeout 2 gamemoded -s 2>/dev/null) || fail 'Cannot establish GameMode state; automatic repair skipped'
+  [[ $game_state == 'gamemode is inactive' ]] || exit 0
+  automatic=true
+  set -- resume
+fi
+
 case "${1:-status}" in
   pause)
     if [[ $running == true ]]; then
@@ -80,13 +107,18 @@ case "${1:-status}" in
     fi
       # Docker sometimes starts it without its network, so no ports (seen 2026-10-25): recreate it from compose
       ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama port bindings'
-      if [[ $ports != *'11434/tcp -> '* ]]; then
+      if ! ports_ok; then
         [[ -r $COMPOSE ]] || fail 'Ollama compose file is missing'
         docker compose -f "$COMPOSE" up -d --no-deps --force-recreate --pull never "$CONTAINER" >/dev/null || fail 'Ollama recreation failed'
       fi
-      if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") == true && -n $(docker port "$CONTAINER" 11434/tcp 2>/dev/null) ]]; then
+      ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect repaired Ollama port bindings'
+      if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") == true ]] && ports_ok; then
         wait_ready || fail 'Ollama container started, but its server did not become ready. Check syna-ai-node status and docker logs ollama.'
-        notify "AI node back" "Game ended: the homeserver can use the 5090 again."
+        if $automatic; then
+          notify "AI node repaired" "Restored Ollama port bindings after startup."
+        else
+          notify "AI node back" "The homeserver can use the 5090 again."
+        fi
       else
         fail 'Ollama is not running with its expected port'
       fi
@@ -95,6 +127,7 @@ case "${1:-status}" in
     if [[ $running == true ]]; then
       wait_ready || fail 'Ollama container is running, but its server is not ready. Check docker logs ollama.'
       ports=$(docker port "$CONTAINER") || fail 'Cannot inspect Ollama port bindings'
+      ports_ok || fail 'Ollama is running but required ports are missing; run syna-ai-node resume'
       echo "running"
       printf '%s\n' "$ports" | sed 's/^/  port /'
       printf '%s\n' "$models"
@@ -102,5 +135,5 @@ case "${1:-status}" in
       echo "paused"
     fi
     ;;
-  *) echo "usage: syna-ai-node pause|resume|status" >&2; exit 2 ;;
+  *) echo "usage: syna-ai-node pause|resume|status|reconcile" >&2; exit 2 ;;
 esac

@@ -1,0 +1,8 @@
+[Unit]
+Description=Repair missing ports on an already-running workstation Ollama
+ConditionPathExists=%h/.config/syna/ai-stack/compose.yaml
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/rice/syna-ai-node reconcile
+TimeoutStartSec=22
