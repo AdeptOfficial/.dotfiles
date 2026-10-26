@@ -141,6 +141,23 @@ def fixed(ver, patched):
     return all(vercmp(ver, p) > 0 for p in pv)
 
 
+# Per-advisory corrections of upstream range metadata, keyed (repo, GHSA id, package ecosystem, package name,
+# range exactly as published) -> corrected range. Each needs a vendor source and is removed once upstream fixes
+# the metadata (the check then flags it stale). Record: ~/.syna/bugs/2026-10-26-security-check-portainer-range.md
+RANGE_FIXES = {
+    # Published as a bare '>= 2.39.0' with no fix, but the advisory's own "Affected Versions" table scopes it
+    # to the 2.39.x LTS branch (2.40.x+ is covered by the other range, fixed in 2.45.2).
+    # https://github.com/portainer/portainer/security/advisories/GHSA-jmr9-98g4-2phv
+    ('portainer/portainer', 'GHSA-jmr9-98g4-2phv', 'go', 'github.com/portainer/portainer', '>= 2.39.0'):
+        '>= 2.39.0, < 2.40.0',
+}
+
+
+def fix_key(repo, gid, v):
+    pkg = v.get('package') or {}
+    return repo, gid, pkg.get('ecosystem'), pkg.get('name'), v.get('vulnerable_version_range')
+
+
 def advisories(repo, ver):
     """Published advisories of repo whose vulnerable range contains ver: [(severity, id, summary, patched)]."""
     data = gh(f'repos/{repo}/security-advisories?per_page=100&state=published', paginate=True)
@@ -149,12 +166,17 @@ def advisories(repo, ver):
         return []
     hits = []
     for a in data if isinstance(data, list) else []:
-        vulns = a.get('vulnerabilities') or []
+        vulns, gid = a.get('vulnerabilities') or [], a.get('ghsa_id')
+        keys = {fix_key(repo, gid, v) for v in vulns}
+        for k in RANGE_FIXES:
+            if k[:2] == (repo, gid) and k not in keys:
+                unknown(f'{repo}: range exception for {gid} no longer matches upstream; remove it from RANGE_FIXES')
         for v in vulns:
             # A patched version for a DIFFERENT affected component cannot clear this one.
             if fixed(ver, v.get('patched_versions')):
                 continue
-            affected = in_range(ver, v.get('vulnerable_version_range'))
+            rng = v.get('vulnerable_version_range')
+            affected = in_range(ver, RANGE_FIXES.get(fix_key(repo, gid, v), rng))
             if affected is None:
                 unknown(f'{repo}: unsupported advisory range in {a.get("ghsa_id")}')
             if affected:
@@ -176,8 +198,24 @@ def registry():
     return reg
 
 
+def check_container(name, repo, url, key):
+    latest = (gh(f'repos/{repo}/releases/latest') or {}).get('tag_name', '')
+    ver = plain(str((fetch(url) or {}).get(key, ''))) if url else ''
+    if not ver:
+        unknown(f'{name}: installed version unavailable; latest upstream {latest or "?"} (check the image digest)')
+        return
+    before = unverified
+    hits = advisories(repo, ver)
+    for sev, gid, summ, fix in hits:
+        say('FAIL' if sev in ('critical', 'high') else 'WARN', f'{name} {ver}: {sev} {gid} "{summ}" (patched: {fix})')
+    if latest and vercmp(ver, plain(latest)) < 0:
+        say('WARN' if not hits else 'ok', f'{name} {ver} -> {plain(latest)} available upstream')
+    elif not hits and unverified == before:
+        say('ok', f'{name} {ver} is current, no advisory applies')
+
+
 def main():
-    installed = dict(l.split()[:2] for l in run('pacman', '-Q').splitlines() if l.strip())
+    installed =dict(l.split()[:2] for l in run('pacman', '-Q').splitlines() if l.strip())
 
     print('== 1. Repo packages (Arch Security Tracker)') if not QUIET else None
     allissues = fetch('https://security.archlinux.org/issues/all.json', 60)
@@ -246,20 +284,8 @@ def main():
     running = {l.split('\t')[0]: l.split('\t')[1] for l in
                run('docker', 'ps', '--format', '{{.Names}}\t{{.Image}}').splitlines() if '\t' in l}
     for name, (repo, url, key) in CONTAINERS.items():
-        if name not in running:
-            continue
-        latest = (gh(f'repos/{repo}/releases/latest') or {}).get('tag_name', '')
-        ver = plain(str((fetch(url) or {}).get(key, ''))) if url else ''
-        if not ver:
-            unknown(f'{name}: installed version unavailable; latest upstream {latest or "?"} (check the image digest)')
-            continue
-        hits = advisories(repo, ver)
-        for sev, gid, summ, fix in hits:
-            say('FAIL' if sev in ('critical', 'high') else 'WARN', f'{name} {ver}: {sev} {gid} "{summ}" (patched: {fix})')
-        if latest and vercmp(ver, plain(latest)) < 0:
-            say('WARN' if not hits else 'ok', f'{name} {ver} -> {plain(latest)} available upstream')
-        elif not hits:
-            say('ok', f'{name} {ver} is current, no advisory applies')
+        if name in running:
+            check_container(name, repo, url, key)
 
     print('== 6. Network (listening on all interfaces)') if not QUIET else None
     exposed = set()
