@@ -199,12 +199,14 @@ def registry():
 
 
 def check_container(name, repo, url, key):
+    before = unverified
     latest = (gh(f'repos/{repo}/releases/latest') or {}).get('tag_name', '')
     ver = plain(str((fetch(url) or {}).get(key, ''))) if url else ''
     if not ver:
         unknown(f'{name}: installed version unavailable; latest upstream {latest or "?"} (check the image digest)')
         return
-    before = unverified
+    if not latest:
+        unknown(f'{name} {ver}: latest upstream release unavailable; cannot confirm it is current')
     hits = advisories(repo, ver)
     for sev, gid, summ, fix in hits:
         say('FAIL' if sev in ('critical', 'high') else 'WARN', f'{name} {ver}: {sev} {gid} "{summ}" (patched: {fix})')
