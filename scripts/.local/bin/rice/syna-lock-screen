@@ -1,9 +1,17 @@
 #!/bin/bash
 
 # Locks the system using hyprlock, but not before ensuring 1password has also been locked, and the screensaver stopped.
+#   syna-lock-screen               lock now (keybind SUPER+CTRL+L, idle, menu)
+#   syna-lock-screen --preview [s] show the real lock screen for theme work: any key or mouse move unlocks without a
+#                                  password during the first s seconds (default 30); 1password and screensaver untouched
 
-# Lock the screen
-pidof hyprlock || hyprlock &
+if [[ ${1:-} == --preview ]]; then
+  pidof hyprlock >/dev/null && { echo "Already locked."; exit 1; }
+  exec hyprlock --quiet --grace "${2:-30}"
+fi
+
+# Lock the screen (detached and quiet: run from a terminal it must not print over the prompt)
+pidof hyprlock >/dev/null || setsid hyprlock --quiet >/dev/null 2>&1 &
 
 # Set keyboard layout to default (first layout)
 hyprctl switchxkblayout all 0 > /dev/null 2>&1

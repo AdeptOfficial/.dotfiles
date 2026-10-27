@@ -1,0 +1,6 @@
+[Unit]
+Description=Warn when the newest Syna backup is older than 8 days
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/rice/syna-backup-reminder

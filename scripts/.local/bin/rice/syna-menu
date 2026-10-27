@@ -277,7 +277,7 @@ show_setup_system_menu() {
 }
 
 show_install_menu() {
-  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n󰖟  Web App\n󰘔  TUI\n󰏘  Style\n󰵮  Development\n󱚤  AI\n󰊗  Gaming") in
+  case $(menu "Install" "󰏗  Package\n󰣇  AUR\n󰖟  Web App\n󰘔  TUI\n󰏘  Style\n󰵮  Development\n󱚤  AI\n󰊗  Gaming") in
   *Package*) terminal syna-pkg-install ;;
   *AUR*) terminal syna-pkg-aur-install ;;
   *Web*) present_terminal syna-webapp-install ;;
@@ -389,7 +389,7 @@ show_install_elixir_menu() {
 }
 
 show_remove_menu() {
-  case $(menu "Remove" "󰣇  Package\n  Web App\n  TUI\n󰵮  Development\n  Dictation\n󰸌  Theme\n󰈷  Fingerprint\n  Fido2") in
+  case $(menu "Remove" "󰏗  Package\n  Web App\n  TUI\n󰵮  Development\n  Dictation\n󰸌  Theme\n󰈷  Fingerprint\n  Fido2") in
   *Package*) terminal syna-pkg-remove ;;
   *Web*) present_terminal syna-webapp-remove ;;
   *TUI*) present_terminal syna-tui-remove ;;
@@ -447,7 +447,7 @@ show_remove_elixir_menu() {
 }
 
 show_update_menu() {
-  case $(menu "Update" "󰣇  System\n󰁯  Reset Configs\n󰸌  Extra Themes\n󰘚  Firmware\n󰌆  Password\n󰥔  Timezone\n󰅐  Time") in
+  case $(menu "Update" "􀀀  System\n󰁯  Reset Configs\n󰸌  Extra Themes\n󰘚  Firmware\n󰌆  Password\n󰥔  Timezone\n󰅐  Time") in
   *System*) present_terminal syna-update ;;
   *"Reset Configs"*) show_update_config_menu ;;
   *Themes*) present_terminal syna-theme-update ;;

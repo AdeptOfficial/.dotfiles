@@ -16,8 +16,7 @@
     "battery"
   ],
   "custom/menu": {
-    //"format": "<span font='syna'>\ue900</span>",
-    "format": "󰣇",
+    "format": "<span font='syna'>\ue900</span>",   // AdepT emblem (font: rice/.local/share/fonts/syna.ttf)
     "on-click": "syna-menu",
     "on-click-right": "xdg-terminal-exec",
     "tooltip-format": "Menu\n\nSuper + Alt + Space"

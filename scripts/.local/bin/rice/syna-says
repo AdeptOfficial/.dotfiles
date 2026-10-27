@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Print one of Syna's lines at random (fastfetch footer, greetings). Lines: ~/.config/rice/branding/syna-lines.txt
+#   syna-says            one random line
+#   syna-says --prompt   coloured "syna ❯ line" (brand colours, for terminal output)
+
+lines=~/.config/rice/branding/syna-lines.txt
+line=$(grep -v -e '^#' -e '^[[:space:]]*$' "$lines" 2>/dev/null | shuf -n1)
+[[ -n $line ]] || line="Static outside. Signal in here."
+if [[ ${1:-} == --prompt ]]; then
+  printf '\033[38;2;227;89;201msyna \033[38;2;63;212;230m❯ \033[38;2;239;248;250m%s\033[0m\n' "$line"
+else
+  printf '%s\n' "$line"
+fi

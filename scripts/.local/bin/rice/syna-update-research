@@ -46,9 +46,12 @@ EOF
 ISSUE_QUERY=(regression OR crash OR freeze OR hang OR nvidia)
 SYNA=~/.syna
 SINCE_DAYS_FALLBACK=30
+ERRORS=0
 # Soak: a candidate in these groups built fewer than SOAK_DAYS ago is flagged NEW (wait unless security)
 SOAK_DAYS=3
 SOAK_GROUPS=" kernel nvidia hypr walker "
+
+research_error() { printf '  ERROR: %s\n' "$*"; ERRORS=$((ERRORS + 1)); }
 
 bold() { printf '\n\e[1m%s\e[0m\n' "$*"; }
 note() { printf '  %s\n' "$*"; }
@@ -106,7 +109,10 @@ research() {
   fi
 
   local rel tag date first_date="" inst_date="" any=0
-  rel=$(releases "$repo")
+  if ! rel=$(releases "$repo"); then
+    research_error "$pkg: release query failed; upstream status is unverified"
+    rel=""
+  fi
   [[ $group == kernel ]] && note "CachyOS publishes no GitHub releases: read https://kernelnewbies.org/ for $cv and the CachyOS forum/news"
   [[ $group == kernel ]] && rel=""
   [[ -z $rel && $group != kernel ]] && note "no GitHub releases readable"
@@ -118,8 +124,12 @@ research() {
     [[ -n $cand ]] && newer "$tv" "$cv" && { note "(later upstream, not in repos yet: $tag $date)"; continue; }
     any=1; first_date=$date
     note "release $tag ($date)  https://github.com/$repo/releases/tag/$tag"
-    gh release view "$tag" -R "$repo" --json body -q .body 2>/dev/null \
-      | grep -iE 'breaking|deprecat|remov|renam|migrat|no longer|must|require|config' \
+    local body
+    if ! body=$(gh release view "$tag" -R "$repo" --json body -q .body 2>/dev/null); then
+      research_error "$pkg: cannot read release $tag"
+      continue
+    fi
+    printf '%s\n' "$body" | grep -iE 'breaking|deprecat|remov|renam|migrat|no longer|must|require|config' \
       | head -8 | cut -c1-160 | sed 's/^/      /'
   done <<<"$rel"
   [[ $any == 0 && -n $rel ]] && note "no upstream release between $iv and $cv (distro rebuild or patch)"
@@ -127,9 +137,15 @@ research() {
   # Open bugs filed since the installed release affect both installed and candidate
   local since=${inst_date:-${first_date:-$(date -d "-$SINCE_DAYS_FALLBACK days" +%F)}}
   local issues
-  issues=$(gh search issues "${ISSUE_QUERY[@]}" --repo "$repo" --state open --created ">=$since" \
+  if issues=$(gh search issues "${ISSUE_QUERY[@]}" --repo "$repo" --state open --created ">=$since" \
     --limit 8 --json title,url,commentsCount \
-    -q '.[] | "\(.commentsCount)c  \(.title[:110])  \(.url)"' 2>/dev/null)
+    -q '.[] | "\(.commentsCount)c  \(.title[:110])  \(.url)"' 2>/dev/null); then
+    :
+  else
+    research_error "$pkg: issue search failed; regression status is unverified"
+    issues=""
+    return
+  fi
   sleep 2   # search API: 30 requests/minute
   if [[ -n $issues ]]; then
     flag "open issues since $since matching regressions/crash/nvidia (check against our stack):"
@@ -149,7 +165,12 @@ upcoming() {
     inst=$(pacman -Q "$pkg" 2>/dev/null | awk '{print $2}') || true
     [[ -z $inst ]] && continue
     [[ $repo == gitlab:* || $repo == - ]] && continue
-    latest=$(releases "$repo" | head -1 | cut -f1)
+    local rel
+    if ! rel=$(releases "$repo"); then
+      research_error "$pkg: upcoming release query failed"
+      continue
+    fi
+    latest=$(head -1 <<<"$rel" | cut -f1)
     [[ -z $latest ]] && continue
     if newer "$(plain "$latest")" "$(plain "$inst")"; then
       if [[ $ceiling != - ]] && ! newer "$ceiling" "$(plain "$latest")"; then
@@ -165,7 +186,17 @@ case ${1:-} in
   --upcoming) upcoming ;;
   -h|--help) sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//' ;;
   "")
-    pending=$( { checkupdates 2>/dev/null; command -v paru >/dev/null && paru -Qua 2>/dev/null; } )
+    pending=$(checkupdates 2>/dev/null); pendingrc=$?
+    if (( pendingrc != 0 && pendingrc != 2 )); then
+      research_error "repo update inventory failed (checkupdates exited $pendingrc)"
+    fi
+    if command -v paru >/dev/null; then
+      if aur=$(paru -Qua 2>/dev/null); then
+        pending+=$'\n'"$aur"
+      else
+        research_error "AUR update inventory failed"
+      fi
+    fi
     found=0
     while read -r pkg _ _ new; do
       [[ -z $pkg || -z $(row "$pkg") ]] && continue
@@ -175,3 +206,6 @@ case ${1:-} in
     upcoming ;;
   *) for p in "$@"; do [[ -n $(row "$p") ]] && research "$p" || echo "$p: not in registry"; done ;;
 esac
+
+# A partial/failed query is never evidence that there are no known problems.
+(( ERRORS == 0 ))

@@ -7,7 +7,7 @@ show_always = true
 
 [hostname]
 ssh_only = false
-format = "[@$hostname]($style) "
+format = "[@](bold {{ prompt_at }})[$hostname]($style) "
 style = "bold {{ prompt_host }}"
 disabled = false
 

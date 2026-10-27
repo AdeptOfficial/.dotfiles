@@ -29,6 +29,8 @@ hl.bind("SUPER + D", hl.dsp.exec_cmd("syna-dashboard-toggle"))
 syna_optional(os.getenv("HOME") .. "/.config/hypr/autostart.local")  -- machine-local, not in git
 
 hl.on("hyprland.start", function()
+    -- Apply the active theme cursor, matching the current .conf startup.
+    hl.exec_cmd([[hyprctl setcursor "$(cat ~/.config/themes/current/cursor.theme 2>/dev/null || echo Adwaita)" "${XCURSOR_SIZE:-32}"]])
     hl.exec_cmd("syna-eww-init")
     hl.exec_cmd("syna-dashboard-focus-watcher")
     hl.exec_cmd("syna-audio-opacity-daemon")

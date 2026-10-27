@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Safety net for the weekly automatic backup: notifies if the newest backup snapshot is older than 8 days
+# (failed runs, disk not mounted, timer off). Run daily by syna-backup-reminder.timer; no root needed (reads
+# snapshot file dates in the Restic repository). Guide: ~/.syna/guides/backup.md
+#   syna-backup-reminder [--print]   --print: show the age instead of notifying
+
+repo=/mnt/SharedData/CachyOS_BackUp/restic
+max_days=8
+
+if ! mountpoint -q /mnt/SharedData; then
+  msg="Backup disk /mnt/SharedData is not mounted: backups cannot run."
+else
+  newest=$(ls -t "$repo/snapshots" 2>/dev/null | head -1)
+  if [[ -z $newest ]]; then
+    msg="No backup snapshots found in $repo."
+  else
+    age=$(( ($(date +%s) - $(stat -c %Y "$repo/snapshots/$newest")) / 86400 ))
+    [[ ${1:-} == --print ]] && { echo "Newest backup: $age days old (limit $max_days)"; exit 0; }
+    (( age > max_days )) && msg="Newest backup is $age days old. Run: syna-backup (and check: syna-backup status)."
+  fi
+fi
+
+[[ -z ${msg:-} ]] && exit 0
+[[ ${1:-} == --print ]] && { echo "$msg"; exit 1; }
+notify-send -u critical -a syna-backup "Backup overdue" "$msg"

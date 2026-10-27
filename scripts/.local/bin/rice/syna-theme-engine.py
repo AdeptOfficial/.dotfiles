@@ -49,13 +49,14 @@ def palette(path, override=None):
     return data
 
 
-PROMPT_DEFAULTS = {'prompt_user': 'color4', 'prompt_host': 'color2',
+PROMPT_DEFAULTS = {'prompt_user': 'color4', 'prompt_host': 'color2', 'prompt_at': 'color2',
                    'prompt_directory': 'color6', 'prompt_success': 'color2',
                    'prompt_error': 'color1'}
 
 
 def prompt_colors(name, colors, use_override=True):
     result = {key: colors[value] for key, value in PROMPT_DEFAULTS.items()}
+    result['prompt_at'] = result['prompt_host']   # the @ follows the host colour unless a theme sets it
     path = ROOT / '.overrides' / (name + '.prompt.toml')
     if use_override and path.exists():
         if path.is_symlink(): raise ValueError('Prompt colors must not be a symlink')
@@ -64,6 +65,8 @@ def prompt_colors(name, colors, use_override=True):
         if any(not re.fullmatch(r'#[0-9a-fA-F]{6}', str(v)) for v in override.values()):
             raise ValueError('Prompt colors must be six-digit hex colors')
         result.update(override)
+        if 'prompt_at' not in override:
+            result['prompt_at'] = result['prompt_host']
     return result
 
 
@@ -88,32 +91,103 @@ def nvim_colors(name, colors, use_override=True):
     return result
 
 
-WINDOW_DEFAULTS = {'border_size': 2, 'rounding': 8}
+# border_motion: seconds per turn of the active border's gradient (0 = still). A turning border makes Hyprland render
+# every frame at the refresh rate, also when borders are hidden; measured 2026-10-22 on the RTX desktop: within noise.
+WINDOW_DEFAULTS = {'border_size': 2, 'rounding': 8, 'border_motion': 0}
+WINDOW_MAXIMUM = {'border_size': 10, 'rounding': 40, 'border_motion': 60}
 
 def window_settings(name, use_override=True):
+    """Window shape and border motion: defaults, then the theme's own window.toml, then the user's override."""
     result = dict(WINDOW_DEFAULTS)
-    path = ROOT / '.overrides' / (name + '.window.toml')
-    if use_override and path.exists():
+    paths = [ROOT / name / 'window.toml'] + ([ROOT / '.overrides' / (name + '.window.toml')] if use_override else [])
+    for path in paths:
+        if not path.exists():
+            continue
         if path.is_symlink(): raise ValueError('Window settings must not be a symlink')
         data = tomllib.loads(path.read_text())
         if set(data) - set(result): raise ValueError('Unknown window setting')
         for key, value in data.items():
-            maximum = 10 if key == 'border_size' else 40
+            maximum = WINDOW_MAXIMUM[key]
             if type(value) is not int or not 0 <= value <= maximum:
                 raise ValueError(f'{key} must be an integer from 0 to {maximum}')
         result.update(data)
     return result
 
 def window_config(settings):
-    return f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
+    text = f"general {{\n    border_size = {settings['border_size']}\n}}\ndecoration {{\n    rounding = {settings['rounding']}\n}}\n"
+    if settings['border_motion']:   # speed is in tenths of a second
+        text += f"animations {{\n    animation = borderangle, 1, {settings['border_motion'] * 10}, linear, loop\n}}\n"
+    return text
+
+
+ICON_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._+-]{0,63}')
+DEFAULT_ICONS = 'Yaru-blue'
+
+
+def icon_themes():
+    """Installed icon themes (not cursor-only themes): directories with an index.theme listing icon Directories."""
+    found = set()
+    for base in (Path('/usr/share/icons'), Path.home() / '.local/share/icons', Path.home() / '.icons'):
+        for index in base.glob('*/index.theme') if base.is_dir() else []:
+            try:
+                text = index.read_text(errors='replace')
+            except OSError:
+                continue
+            if re.search(r'^Directories\s*=\s*\S', text, re.M) and ICON_NAME.fullmatch(index.parent.name):
+                found.add(index.parent.name)
+    return sorted(found, key=str.casefold)
+
+
+def theme_icons(name, use_override=True):
+    """Icon theme for a theme: the user's override (.overrides/<name>.icons), else the theme's own icons.theme."""
+    candidates = [ROOT / '.overrides' / (name + '.icons')] if use_override else []
+    candidates.append(ROOT / name / 'icons.theme')
+    for path in candidates:
+        if path.is_file() and not path.is_symlink():
+            value = path.read_text().strip()
+            if not ICON_NAME.fullmatch(value):
+                raise ValueError(f'Invalid icon theme name in {path.name}')
+            return value
+    return None
+
+
+DEFAULT_CURSOR = 'Adwaita'
+
+
+def cursor_themes():
+    """Installed cursor themes: icon-theme directories that contain a cursors/ folder."""
+    found = set()
+    for base in (Path('/usr/share/icons'), Path.home() / '.local/share/icons', Path.home() / '.icons'):
+        for cursors in base.glob('*/cursors') if base.is_dir() else []:
+            if cursors.is_dir() and ICON_NAME.fullmatch(cursors.parent.name):
+                found.add(cursors.parent.name)
+    return sorted(found, key=str.casefold)
+
+
+def theme_cursor(name, use_override=True):
+    """Cursor theme for a theme: the user's override (.overrides/<name>.cursor), else the theme's cursor.theme."""
+    candidates = [ROOT / '.overrides' / (name + '.cursor')] if use_override else []
+    candidates.append(ROOT / name / 'cursor.theme')
+    for path in candidates:
+        if path.is_file() and not path.is_symlink():
+            value = path.read_text().strip()
+            if not ICON_NAME.fullmatch(value):
+                raise ValueError(f'Invalid cursor theme name in {path.name}')
+            return value
+    return None
 
 
 def window_config_lua(settings):
-    # Lua config (Hyprland 0.55+); the integers are range-checked in window_settings().
-    return ("hl.config({\n"
+    # Integers are range-checked in window_settings().
+    text = ("hl.config({\n"
             f"    general = {{ border_size = {settings['border_size']} }},\n"
             f"    decoration = {{ rounding = {settings['rounding']} }},\n"
             "})\n")
+    if settings['border_motion']:
+        text += ("hl.animation({ leaf = \"borderangle\", enabled = true, "
+                 f"speed = {settings['border_motion'] * 10}, "
+                 "bezier = \"linear\", style = \"loop\" })\n")
+    return text
 
 
 def render(template, colors):
@@ -173,6 +247,12 @@ def build(name, stage):
     for required in ('hyprland.conf', 'hyprland.lua', 'eww-colors.scss', 'fastfetch.jsonc'):
         if not (stage / required).is_file():
             raise ValueError(f'Missing generated file: {required}')
+    icons = theme_icons(name)
+    if icons:
+        (stage / 'icons.theme').write_text(icons + '\n')
+    cursor = theme_cursor(name)
+    if cursor:
+        (stage / 'cursor.theme').write_text(cursor + '\n')
     (stage / '.theme-name').write_text(name + '\n')
     # Explicit personal wallpaper selection survives switching away and back.
     preference = ROOT / '.overrides' / (name + '.wallpaper')

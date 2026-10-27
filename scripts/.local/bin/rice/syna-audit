@@ -14,7 +14,7 @@ OUT_DIR="$SYNA/docs/audits"
 BASELINE=~/.local/state/syna/failed-units.baseline
 BACKUP_REPO=/mnt/SharedData/CachyOS_BackUp/restic
 LAST_UPDATE_MAX_DAYS=14
-BACKUP_MAX_DAYS=30
+BACKUP_MAX_DAYS=10   # weekly automatic backup since 2026-10-22
 
 FLAGS=()
 BODY=""
@@ -162,7 +162,7 @@ if [[ -r $BACKUP_REPO/snapshots ]]; then
     bdate=$(date -r "$BACKUP_REPO/snapshots/$newest" +%F)
     bage=$(days_since "$bdate")
     add "- Newest restic snapshot: $bdate ($bage days ago)"
-    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS): run syna-backup (manual, no schedule)"
+    (( bage > BACKUP_MAX_DAYS )) && flag "Newest backup is $bage days old (> $BACKUP_MAX_DAYS): weekly timer missed? see syna-backup status, journalctl -u syna-backup"
   fi
 elif mountpoint -q /mnt/SharedData 2>/dev/null; then add "- Restic repo not readable without root; check manually"
 else flag "Backup disk /mnt/SharedData not mounted"; fi
