@@ -12,6 +12,17 @@ if grep -q '^\*\*Review:\*\* pending' "$newest"; then
   echo "Syna audit pending review: ${newest#"$HOME"/} ($n flags). Review it first: ~/.syna/workflows/audit-system.md"
   exit 0
 fi
-age=$(( ( $(date +%s) - $(date -r "$newest" +%s) ) / 86400 ))
+report_date=$(basename "$newest")
+report_date=${report_date%-audit.md}
+if [[ ! $report_date =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || ! report_epoch=$(date -d "$report_date" +%s 2>/dev/null); then
+  echo "Syna audit: invalid report date in ${newest##*/}; correct the report metadata."
+  exit 1
+fi
+age=$(( ( $(date +%s) - report_epoch ) / 86400 ))
+if (( age < 0 )); then
+  echo "Syna audit: report ${newest##*/} is future-dated; check the report and clock."
+  exit 1
+fi
 (( age > 35 )) && echo "Syna audit overdue: last report ${age} days old. Check syna-audit.timer, or run syna-audit."
+
 exit 0
