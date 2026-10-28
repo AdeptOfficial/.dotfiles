@@ -5,6 +5,8 @@
 #                          free and the homeserver falls back to its own models
 #   syna-ai-node resume    start it again (models load on the next request); recreates it if Docker left it without ports
 #   syna-ai-node status    running or paused, and which models are loaded
+#   syna-ai-node reconcile what the timer runs after login and every 2 min: repairs a container that failed to
+#                          start at boot or lost its ports; leaves a paused or stopped one alone
 #
 # GameMode runs pause when a game starts and resume when the last game ends (~/.config/gamemode.ini), so
 # homeserver requests fall back while Ollama is stopped. Resume may recreate the container from compose;
@@ -77,13 +79,28 @@ busy() {
     END { for (t in open) exit 0; exit 1 }'
 }
 
-# Timer repair never starts a stopped container or competes with GameMode hooks.
+# Timer repair never undoes a GameMode pause or a manual stop (docker stop leaves exit code 0, 137 or 143)
+# and never competes with GameMode hooks. It repairs two startup failures: a running container without its
+# ports (seen 2026-10-25) and a container that failed to start because Docker came up before the LAN address
+# existed (exit 128, seen 2026-10-27; NetworkManager-wait-online is masked on this machine). The failed-start
+# repair waits until every expected address is present, so it never retries into the same failure.
 # The same lock covers check and repair. An unknown GameMode state fails closed.
 automatic=false
 if [[ ${1:-status} == reconcile ]]; then
-  [[ $running == true ]] || exit 0
-  ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama port bindings'
-  ports_ok && exit 0
+  if [[ $running == true ]]; then
+    ports=$(docker port "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama port bindings'
+    ports_ok && exit 0
+    repair='Restored Ollama port bindings after startup.'
+  else
+    exit_code=$(docker inspect -f '{{.State.ExitCode}}' "$CONTAINER" 2>/dev/null) || fail 'Cannot inspect Ollama exit code'
+    [[ $exit_code =~ ^[0-9]+$ && $exit_code != 0 && $exit_code != 137 && $exit_code != 143 ]] || exit 0
+    while IFS= read -r want; do
+      address=${want##*-> }; address=${address%:11434}
+      [[ $address == 127.0.0.1 ]] && continue
+      ip -4 -o addr show 2>/dev/null | grep -Fq " $address/" || exit 0
+    done < <(expected_ports)
+    repair='Started Ollama after it failed to start at boot.'
+  fi
   game_state=$(LC_ALL=C timeout 2 gamemoded -s 2>/dev/null) || fail 'Cannot establish GameMode state; automatic repair skipped'
   [[ $game_state == 'gamemode is inactive' ]] || exit 0
   automatic=true
@@ -115,7 +132,7 @@ case "${1:-status}" in
       if [[ $(docker inspect -f '{{.State.Running}}' "$CONTAINER") == true ]] && ports_ok; then
         wait_ready || fail 'Ollama container started, but its server did not become ready. Check syna-ai-node status and docker logs ollama.'
         if $automatic; then
-          notify "AI node repaired" "Restored Ollama port bindings after startup."
+          notify "AI node repaired" "$repair"
         else
           notify "AI node back" "The homeserver can use the 5090 again."
         fi
