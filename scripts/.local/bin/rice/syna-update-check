@@ -297,7 +297,9 @@ post() {
   section "Transaction"
   info "$(grep -E 'starting full system upgrade|transaction completed' /var/log/pacman.log | tail -1)"
   local errs; errs=$(awk '/starting full system upgrade/{buf=""} {buf=buf"\n"$0} END{print buf}' /var/log/pacman.log \
+    | grep -vE '\[ALPM\] (installed|upgraded|downgraded|reinstalled|removed) ' \
     | grep -iE 'error|failed|warning: .*(mkinitcpio|limine)' | grep -v 'pacnew' )
+  # Package lines are skipped: a name such as perl-error is not an error (false warning 2026-10-29)
   [[ -z $errs ]] && ok "no errors in the last upgrade log" || while read -r l; do [[ -n $l ]] && warn "${l:0:160}"; done <<<"$errs"
   check_nvidia_modules
   check_dkms_modules
