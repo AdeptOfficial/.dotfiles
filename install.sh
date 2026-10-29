@@ -407,6 +407,8 @@ echo "Creating machine-specific configs in ~/.config/hypr/:"
 for f in monitors input autostart; do
   template="$(get_template "$f" "$EFFECTIVE_PROFILE")"
   create_local_if_missing "$HOME/.config/hypr/${f}.local.conf" "$template"
+  # Lua config (Hyprland 0.55+): same layout, template "<name>.<profile>.lua.example"
+  create_local_if_missing "$HOME/.config/hypr/${f}.local.lua" "${template%.example}.lua.example"
 done
 
 # Waybar workspaces local config (persistent workspace count per machine)

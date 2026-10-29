@@ -241,7 +241,7 @@ show_setup_security_menu() {
 show_setup_config_menu() {
   case $(menu "Setup" "  Defaults\n  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n  Swayosd\n󰌧  Walker\n󰍜  Waybar\n󰞅  XCompose") in
   *Defaults*) open_in_editor ~/.config/uwsm/default ;;
-  *Hyprland*) open_in_editor ~/.config/hypr/hyprland.conf ;;
+  *Hyprland*) if [[ -f ~/.config/hypr/hyprland.lua ]]; then open_in_editor ~/.config/hypr/hyprland.lua; else open_in_editor ~/.config/hypr/hyprland.conf; fi ;;
   *Hypridle*) open_in_editor ~/.config/hypr/hypridle.conf && syna-restart-hypridle ;;
   *Hyprlock*) open_in_editor ~/.config/hypr/hyprlock.conf ;;
   *Hyprsunset*) open_in_editor ~/.config/hypr/hyprsunset.conf && syna-restart-hyprsunset ;;

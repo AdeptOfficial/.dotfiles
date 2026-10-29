@@ -133,9 +133,9 @@ def get_window_title(address, clients):
 def set_opacity(address, opaque):
     """Set window opacity via hyprctl."""
     if opaque:
-        run_cmd(["hyprctl", "dispatch", "setprop", f"address:{address}", "opaque", "1"])
+        run_cmd(["hyprctl", "dispatch", f'hl.dsp.window.set_prop({{ prop = "opaque", value = "1", window = "address:{address}" }})'])
     else:
-        run_cmd(["hyprctl", "dispatch", "setprop", f"address:{address}", "opaque", "unset"])
+        run_cmd(["hyprctl", "dispatch", f'hl.dsp.window.set_prop({{ prop = "opaque", value = "unset", window = "address:{address}" }})'])
 
 
 def update_windows():

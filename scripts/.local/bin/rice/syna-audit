@@ -127,8 +127,9 @@ fw=$(timeout 60 fwupdmgr get-updates --no-unreported-check 2>/dev/null | grep -E
 
 # --- Desktop config --------------------------------------------------------------
 sec "Desktop config"
-hv=$(timeout 30 Hyprland --verify-config 2>&1)
-if grep -q '^config ok' <<<"$hv"; then add "- Hyprland --verify-config: ok"
+hcfg=~/.config/hypr/hyprland.lua; [[ -f $hcfg ]] || hcfg=~/.config/hypr/hyprland.conf
+hv=$(timeout 30 Hyprland --verify-config -c "$hcfg" 2>&1)
+if grep -q '^config ok' <<<"$hv"; then add "- Hyprland --verify-config ($(basename "$hcfg")): ok"
 else flag "Hyprland config does not verify"; add "- Hyprland --verify-config:"; add "$(grep -vE '^=+|^$' <<<"$hv" | tail -5 | sed 's/^/  - /')"; fi
 hyprctl version >/dev/null 2>&1 && {
   ce=$(hyprctl configerrors 2>/dev/null | sed '/^\s*$/d')

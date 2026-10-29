@@ -364,7 +364,7 @@
 (defwidget workspace-card [ws]
   (box :class {ws.css} :orientation "v" :space-evenly false :spacing 8 :hexpand true :valign "start"
     (button :class "workspace-switch" :tooltip "Switch to workspace ${ws.id}"
-            :onclick "hyprctl dispatch workspace ${ws.id}"
+            :onclick "hyprctl dispatch 'hl.dsp.focus({ workspace = ${ws.id} })'"
       (box :orientation "v" :space-evenly false :spacing 10
         (box :orientation "h" :space-evenly false
           (label :class "workspace-number" :text {ws.number} :hexpand true :halign "start")
@@ -380,7 +380,7 @@
       (box :orientation "v" :space-evenly false :spacing 4
         (for win in {ws.windows}
           (button :class "workspace-window" :tooltip {win.title}
-                  :onclick "hyprctl dispatch focuswindow address:${win.address}"
+                  :onclick "hyprctl dispatch 'hl.dsp.focus({ window = [[address:${win.address}]] })'"
             (box :orientation "v" :space-evenly false :spacing 3
               (label :class "workspace-window-app" :text {win.app} :limit-width 24 :halign "start")
               (label :text {win.title} :limit-width 26 :halign "start"))))))))

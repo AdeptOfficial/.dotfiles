@@ -6,6 +6,7 @@
 
 # Machine-specific local overrides (never tracked)
 hypr/.config/hypr/monitors.local.conf
+*.local.lua
 hypr/.config/hypr/input.local.conf
 hypr/.config/hypr/autostart.local.conf
 waybar/.config/waybar/workspaces.local.jsonc

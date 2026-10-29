@@ -6,7 +6,7 @@ workspace_id=$(hyprctl activeworkspace -j | jq -r .id)
 gaps=$(hyprctl workspacerules -j | jq -r ".[] | select(.workspaceString==\"$workspace_id\") | .gapsOut[0] // 0")
 
 if [[ $gaps == "0" ]]; then
-  hyprctl keyword "workspace $workspace_id, gapsout:10, gapsin:5, bordersize:2"
+  hyprctl eval "hl.workspace_rule({ workspace = \"$workspace_id\", gaps_out = 10, gaps_in = 5, border_size = 2 })"
 else \
-  hyprctl keyword "workspace $workspace_id, gapsout:0, gapsin:0, bordersize:0"
+  hyprctl eval "hl.workspace_rule({ workspace = \"$workspace_id\", gaps_out = 0, gaps_in = 0, border_size = 0 })"
 fi

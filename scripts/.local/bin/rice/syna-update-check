@@ -158,8 +158,10 @@ check_esp() {
 
 # Parses the live config with the installed binary: after an update, that is the new version
 check_hyprland_config() {
-  section "Hyprland config vs installed Hyprland $(pkg_ver hyprland)"
-  local cfg="$USER_HOME/.config/hypr/hyprland.conf" out
+  # Prefer Lua when present, matching Hyprland configuration selection.
+  local cfg="$USER_HOME/.config/hypr/hyprland.lua" out
+  [[ -f $cfg ]] || cfg="$USER_HOME/.config/hypr/hyprland.conf"
+  section "Hyprland config ($(basename "$cfg")) vs installed Hyprland $(pkg_ver hyprland)"
   # Hyprland aborts without XDG_RUNTIME_DIR, which sudo strips: under sudo, verify as the real user
   local as_user=()
   if have_root && [[ -n ${SUDO_USER:-} ]]; then
