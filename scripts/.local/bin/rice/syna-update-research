@@ -13,7 +13,7 @@
 
 # package | GitHub repo | ceiling (first version we must NOT install; - for none) | hold group
 REGISTRY=$(cat <<'EOF'
-hyprland                    hyprwm/Hyprland                  0.57  hypr
+hyprland                    hyprwm/Hyprland                  -     hypr
 aquamarine                  hyprwm/aquamarine                -     hypr
 hyprutils                   hyprwm/hyprutils                 -     hypr
 hyprlang                    hyprwm/hyprlang                  -     hypr
