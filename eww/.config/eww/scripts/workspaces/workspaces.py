@@ -26,7 +26,7 @@ def build(monitors, workspaces, clients, rules):
                                       m.get('description', '').startswith(target[5:])):
                 assigned[int(key)] = m['name']
                 break
-    live = {w['id']: w for w in workspaces if w['id'] > 0}
+    live = {w['id']: w for w in workspaces if (w.get('id') or 0) > 0}  # 0.57 omits id for named/special workspaces
     assigned.update({i: w['monitor'] for i, w in live.items() if w['monitor'] in by_name})
     windows = {}
     for c in clients:

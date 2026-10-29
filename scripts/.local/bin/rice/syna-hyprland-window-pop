@@ -40,8 +40,7 @@ elif [[ -n $addr ]]; then
     hyprctl dispatch "hl.dsp.window.center({ $w })"
   fi
 
-  hyprctl -q --batch \
-    "dispatch pin address:$addr;" \
-    "dispatch alterzorder top address:$addr;" \
-    "dispatch tagwindow +pop address:$addr;"
+  hyprctl -q dispatch "hl.dsp.window.pin({ $w })"
+  hyprctl -q dispatch "hl.dsp.window.bring_to_top()"  # takes no arguments on 0.57; acts on the active window (this one)
+  hyprctl -q dispatch "hl.dsp.window.tag({ tag = \"+pop\", $w })"
 fi

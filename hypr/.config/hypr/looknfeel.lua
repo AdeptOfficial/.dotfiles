@@ -32,3 +32,15 @@ hl.config({
     -- Workspace transitions - slide with auto-direction based on workspace ID
 })
 
+-- Kept at the 0.56.2 behaviour when moving to Hyprland 0.57 (2026-10-29). A separate call: an unknown key skips
+-- only its own hl.config call (misc.bell_sound does not exist before 0.57).
+hl.config({
+    misc = {
+        bell_sound = "none",  -- 0.57 plays a sound on terminal bells by default (#15502); "default" turns it on
+    },
+    quirks = {
+        -- 0.57 flipped the default to true (#15803); black-window/EGL reports #16702/#16703 use false as the fix
+        skip_non_kms_dmabuf_formats = false,
+    },
+})
+
