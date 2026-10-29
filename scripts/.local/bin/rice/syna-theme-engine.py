@@ -279,9 +279,11 @@ def validate(stage):
         if item.suffix in ('.conf', '.lua', '.css', '.scss', '.toml', '.jsonc', '.ini', '.theme') and item.is_file():
             if TOKEN.search(item.read_text()):
                 raise ValueError(f'Unresolved template placeholder in {item.name}')
-    # Parse the full Hyprland configuration with only the theme include changed.
+    # Parse the full Hyprland configuration with only the theme include changed. Only the entry point Hyprland loads:
+    # hyprland.lua wins when present, and 0.57 parses every file as Lua, so the kept hyprland.conf (the 0.56.2
+    # rollback) is validated only when hyprland.lua is absent (failed on every switch 2026-10-29: '#' as Lua).
     config = Path.home() / '.config/hypr/hyprland.conf'
-    if config.exists() and shutil.which('hyprland'):
+    if config.exists() and not (Path.home() / '.config/hypr/hyprland.lua').exists() and shutil.which('hyprland'):
         text = config.read_text()
         needle = '~/.config/themes/current/hyprland.conf'
         if needle not in text:
