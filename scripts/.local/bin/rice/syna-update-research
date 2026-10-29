@@ -39,7 +39,7 @@ systemd                     systemd/systemd                  -     -
 coolercontrold-bin          gitlab:coolercontrol/coolercontrol -   cooler
 coolercontrol-bin           gitlab:coolercontrol/coolercontrol -   cooler
 vesktop                     Vencord/Vesktop                  -     -
-1password-beta              -                                -     -
+bitwarden-bin               bitwarden/clients                -     -
 EOF
 )
 # Separate words: gh quotes a single argument as one phrase, which silently matches nothing
@@ -72,7 +72,9 @@ releases() { gh release list -R "$1" --limit 30 --exclude-pre-releases --json ta
   -q '.[] | "\(.tagName)\t\(.publishedAt[:10])"' 2>/dev/null; }
 
 local_issues() {
-  grep -rliw -- "$1" "$SYNA"/issues/active "$SYNA"/projects/*/*/issues 2>/dev/null \
+  # Open records only: root and project bugs/ + issues/; archive/ is history, README.md is a generated index.
+  grep -rliw --exclude-dir=archive --exclude=README.md -- "$1" "$SYNA"/bugs "$SYNA"/issues \
+    "$SYNA"/projects/*/*/bugs "$SYNA"/projects/*/*/issues 2>/dev/null \
     | sed "s#^$SYNA/##"
 }
 
@@ -93,9 +95,18 @@ research() {
   fi
   [[ $repo == - ]] && { note "closed source: read the vendor release notes"; return; }
   if [[ -n $cand && $SOAK_GROUPS == *" $group "* ]]; then
-    local built age
-    built=$(LC_ALL=C pacman -Si "$pkg" 2>/dev/null | awk -F': ' '/^Build Date/{print $2; exit}')
-    if [[ -n $built ]]; then
+    local built="" age info
+    # The candidate comes from checkupdates' freshly synced database; the system one can be older (2026-10-29 it
+    # gave 0.56.2's build date for hyprland 0.57.0: "29 days ok" for a 1-day-old build). Read the same copy and
+    # trust the date only when its version is the candidate.
+    info=$(LC_ALL=C pacman -Si --dbpath "${CHECKUPDATES_DB:-${TMPDIR:-/tmp}/checkup-db-$UID}" "$pkg" 2>/dev/null)
+    [[ $(awk -F': ' '/^Version/{print $2; exit}' <<<"$info") == "$cand" ]] &&
+      built=$(awk -F': ' '/^Build Date/{print $2; exit}' <<<"$info")
+    if pacman -Qmq "$pkg" >/dev/null 2>&1; then
+      note "AUR package: no repo build date; check its last update on the AUR page"
+    elif [[ -z $built ]]; then
+      flag "build date of $cand unverified (not in the synced package database): check it before installing"
+    else
       age=$(( ( $(date +%s) - $(date -d "$built" +%s) ) / 86400 ))
       if (( age < SOAK_DAYS )); then
         flag "NEW: $pkg $cv was built $age day(s) ago; safer to wait until $(date -d "$built + $SOAK_DAYS days" +%F) unless it fixes a security issue"
@@ -191,11 +202,14 @@ case ${1:-} in
       research_error "repo update inventory failed (checkupdates exited $pendingrc)"
     fi
     if command -v paru >/dev/null; then
-      if aur=$(paru -Qua 2>/dev/null); then
-        pending+=$'\n'"$aur"
-      else
+      # paru -Qua exits 1 with no output when nothing needs upgrading; only an error message means it failed
+      aurerr=$(mktemp); aur=$(paru -Qua 2>"$aurerr"); aurrc=$?
+      if (( aurrc != 0 )) && [[ -s $aurerr ]]; then
         research_error "AUR update inventory failed"
+      elif [[ -n $aur ]]; then
+        pending+=$'\n'"$aur"
       fi
+      rm -f "$aurerr"
     fi
     found=0
     while read -r pkg _ _ new; do

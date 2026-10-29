@@ -1,5 +1,8 @@
 #!/bin/bash
 
 # Reload opencode configuration (used by Syna theme switching).
+# opencode 2.x: ask the background service to reload; never start it. (The v1 SIGUSR2 no longer matches: the binary is opencode.exe.)
 
-killall -SIGUSR2 opencode 2>/dev/null || true
+command -v opencode >/dev/null || exit 0
+opencode service status 2>/dev/null | grep -q '^http' || exit 0
+timeout 10 opencode reload >/dev/null 2>&1 || true

@@ -2,6 +2,8 @@
 
 # Install one of the supported development environments. Usually called via Install > Development > * in the Syna Menu.
 
+set -e -o pipefail
+
 if [[ -z "$1" ]]; then
   echo "Usage: syna-install-dev-env <ruby|node|bun|go|laravel|symfony|php|python|elixir|phoenix|rust|java|ocaml|dotnet|clojure>" >&2
   exit 1
@@ -114,7 +116,8 @@ phoenix)
   ;;
 rust)
   echo -e "Installing Rust...\n"
-  bash -c "$(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)" -- -y
+  installer=$(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)
+  bash -c "$installer" -- -y
   ;;
 java)
   echo -e "Installing Java...\n"
@@ -127,7 +130,8 @@ zig)
   ;;
 ocaml)
   echo -e "Installing OCaml...\n"
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)"
+  installer=$(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+  bash -c "$installer"
   opam init --yes
   eval "$(opam env)"
   opam install ocaml-lsp-server odoc ocamlformat utop --yes
@@ -141,4 +145,5 @@ clojure)
   syna-pkg-add rlwrap
   mise use --global clojure@latest
   ;;
+*) echo "Unknown environment: $1" >&2; exit 2 ;;
 esac

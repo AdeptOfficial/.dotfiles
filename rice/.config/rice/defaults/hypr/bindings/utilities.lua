@@ -29,11 +29,6 @@ hl.bind("SUPER + CTRL + I", hl.dsp.exec_cmd("syna-toggle-idle"), { description =
 -- Toggle nightlight
 hl.bind("SUPER + CTRL + N", hl.dsp.exec_cmd("syna-toggle-nightlight"), { description = "Toggle nightlight" })
 
--- Control Apple Display brightness
-hl.bind("CTRL + F1", hl.dsp.exec_cmd("syna-cmd-apple-display-brightness -5000"), { description = "Apple Display brightness down" })
-hl.bind("CTRL + F2", hl.dsp.exec_cmd("syna-cmd-apple-display-brightness +5000"), { description = "Apple Display brightness up" })
-hl.bind("SHIFT + CTRL + F2", hl.dsp.exec_cmd("syna-cmd-apple-display-brightness +60000"), { description = "Apple Display full brightness" })
-
 -- File sharing
 hl.bind("SUPER + CTRL + S", hl.dsp.exec_cmd("syna-menu share"), { description = "Share" })
 

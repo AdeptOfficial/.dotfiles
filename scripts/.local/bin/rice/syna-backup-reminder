@@ -1,26 +1,66 @@
 #!/bin/bash
 
-# Safety net for the weekly automatic backup: notifies if the newest backup snapshot is older than 8 days
-# (failed runs, disk not mounted, timer off). Run daily by syna-backup-reminder.timer; no root needed (reads
-# snapshot file dates in the Restic repository). Guide: ~/.syna/guides/backup.md
-#   syna-backup-reminder [--print]   --print: show the age instead of notifying
+# Safety net for the weekly automatic backup: notifies if the last successful backup is older than 8 days
+# (failed runs, disk not mounted, timer off), or if a container the backup engine needs no longer exists (renamed
+# or replaced: the next run would fail). Run daily by syna-backup-reminder.timer; no root needed (reads snapshot
+# successful-run metadata and the container list install-root.sh publishes).
+# A stopped container is fine: GameMode stops ollama during games (syna-ai-node) and the engine handles that.
+# Guide: ~/.syna/guides/backup.md
+#   syna-backup-reminder [--print]   --print: show the status instead of notifying
 
-repo=/mnt/SharedData/CachyOS_BackUp/restic
+repo=${SYNA_BACKUP_REPO:-/mnt/SharedData/CachyOS_BackUp/restic}
+containers=${SYNA_BACKUP_CONTAINERS:-/usr/local/share/syna-backup/containers.txt}
+success=${SYNA_BACKUP_SUCCESS:-/usr/local/share/syna-backup/last-success.json}
 max_days=8
+msgs=()
 
-if ! mountpoint -q /mnt/SharedData; then
-  msg="Backup disk /mnt/SharedData is not mounted: backups cannot run."
+if [[ $(findmnt -n -M /mnt/SharedData -o UUID 2>/dev/null) != A60E23940E235D15 ]]; then
+  msgs+=("Backup disk /mnt/SharedData is not mounted: backups cannot run.")
 else
-  newest=$(ls -t "$repo/snapshots" 2>/dev/null | head -1)
-  if [[ -z $newest ]]; then
-    msg="No backup snapshots found in $repo."
+  if ! age=$(python3 -I - "$success" "$repo" <<'PY'
+import datetime, json, pathlib, re, sys
+try:
+    last = json.loads(pathlib.Path(sys.argv[1]).read_text())
+    snapshot = last['snapshot']
+    if not re.fullmatch(r'[0-9a-f]{64}', snapshot):
+        raise ValueError('invalid snapshot')
+    if not (pathlib.Path(sys.argv[2]) / 'snapshots' / snapshot).is_file():
+        raise ValueError('snapshot missing')
+    age = (datetime.datetime.now().astimezone() - datetime.datetime.fromisoformat(last['completed'])).total_seconds()
+    if age < -300:
+        raise ValueError('future completion time')
+    print(max(0, int(age // 86400)))
+except (OSError, ValueError, KeyError, TypeError):
+    sys.exit(1)
+PY
+  ); then
+    msgs+=("Cannot verify the last successful backup. Run syna-backup status; reinstall the engine if its public status file is missing.")
   else
-    age=$(( ($(date +%s) - $(stat -c %Y "$repo/snapshots/$newest")) / 86400 ))
-    [[ ${1:-} == --print ]] && { echo "Newest backup: $age days old (limit $max_days)"; exit 0; }
-    (( age > max_days )) && msg="Newest backup is $age days old. Run: syna-backup (and check: syna-backup status)."
+    [[ ${1:-} == --print ]] && echo "Last successful backup: $age days old (limit $max_days)"
+    (( age > max_days )) && msgs+=("Last successful backup is $age days old. Run: syna-backup (and check: syna-backup status).")
   fi
 fi
 
-[[ -z ${msg:-} ]] && exit 0
-[[ ${1:-} == --print ]] && { echo "$msg"; exit 1; }
-notify-send -u critical -a syna-backup "Backup overdue" "$msg"
+# Report daemon/access failures separately from removed containers. Bound every query.
+if [[ ! -s $containers ]]; then
+  msgs+=("Backup container list missing or empty: reinstall the backup engine.")
+elif ! timeout 5 docker info >/dev/null 2>&1; then
+  msgs+=("Cannot query Docker: daemon unavailable, access denied or timed out. Backup container checks could not run.")
+else
+  missing=()
+  while read -r name; do
+    [[ -n $name ]] && ! timeout 5 docker inspect --type container "$name" >/dev/null 2>&1 && missing+=("$name")
+  done < "$containers"
+  (( ${#missing[@]} )) && msgs+=("Container(s) missing or unreadable: ${missing[*]}. Check Docker; if renamed, update APPS in syna-backup.py, then run install-root.sh.")
+fi
+
+for scope in system user; do
+  unit=syna-backup.timer
+  opts=()
+  [[ $scope == user ]] && { opts=(--user); unit=syna-backup-reminder.timer; }
+  timeout 5 systemctl "${opts[@]}" is-active --quiet "$unit" || msgs+=("$unit is inactive or cannot be checked.")
+done
+
+(( ${#msgs[@]} )) || exit 0
+if [[ ${1:-} == --print ]]; then printf '%s\n' "${msgs[@]}"; exit 1; fi
+notify-send -u critical -a syna-backup "Backup needs attention" "$(printf '%s\n' "${msgs[@]}")"

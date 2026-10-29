@@ -2,11 +2,14 @@
 
 # Install VSCode and configure it to use the gnome-libsecret password store, not to update automatically, and to use the current Syna theme.
 
+set -e
+
 echo "Installing VSCode..."
 syna-pkg-add visual-studio-code-bin
 
 mkdir -p ~/.vscode ~/.config/Code/User
 
+if [[ ! -e ~/.vscode/argv.json ]]; then
 cat > ~/.vscode/argv.json << 'EOF'
 // This configuration file allows you to pass permanent command line arguments to VS Code.
 // Only a subset of arguments is currently supported to reduce the likelihood of breaking
@@ -19,9 +22,14 @@ cat > ~/.vscode/argv.json << 'EOF'
   "password-store":"gnome-libsecret"
 }
 EOF
+fi
 
 # Ensure VSC's own auto-update feature is turned off
-printf '{\n  "update.mode": "none"\n}\n' > ~/.config/Code/User/settings.json
+if [[ ! -e ~/.config/Code/User/settings.json ]]; then
+  printf '{\n  "update.mode": "none"\n}\n' > ~/.config/Code/User/settings.json
+else
+  echo 'Preserved existing VS Code settings. Set update.mode to none in VS Code if needed.'
+fi
 
 # Apply Syna theme to VSCode
 syna-theme-set-vscode

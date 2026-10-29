@@ -8,6 +8,7 @@
 
 set -euo pipefail
 base=${2:-Papirus-Dark}
+case $base in Papirus|Papirus-Dark|Papirus-Light) ;; *) echo 'Invalid Papirus base theme' >&2; exit 2 ;; esac
 src=/usr/share/icons/Papirus     # folder icons live here; -Dark/-Light inherit them
 [[ -d $src ]] || { echo "Papirus is not installed: sudo pacman -S --needed papirus-icon-theme" >&2; exit 1; }
 
@@ -15,11 +16,16 @@ src=/usr/share/icons/Papirus     # folder icons live here; -Dark/-Light inherit 
 colours() { find "$src" -path '*/places/folder-*-download.svg' -printf '%f\n' | sed -n 's/^folder-\([a-z]*\)-download\.svg$/\1/p' | sort -u; }
 if [[ ${1:-} == --list || -z ${1:-} ]]; then colours | tr '\n' ' '; echo; exit 0; fi
 colour=$1
-colours | grep -qx "$colour" || { echo "Unknown colour '$colour'. Available: $(colours | tr '\n' ' ')" >&2; exit 2; }
+colours | grep -Fx -- "$colour" >/dev/null || { echo "Unknown colour '$colour'. Available: $(colours | tr '\n' ' ')" >&2; exit 2; }
 
 name="$base-${colour^}"
 out=~/.local/share/icons/$name
-rm -rf "$out"; mkdir -p "$out"
+if [[ -e $out || -L $out ]]; then
+  archive=$(mktemp -d "$HOME/.local/share/icons/.papirus-backup.XXXXXXXX")
+  mv -- "$out" "$archive/theme"
+  echo "Previous icon theme retained: $archive/theme"
+fi
+mkdir -p "$out"
 cat > "$out/index.theme" <<EOF
 [Icon Theme]
 Name=$name

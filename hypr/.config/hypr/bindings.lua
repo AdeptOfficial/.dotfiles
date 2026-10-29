@@ -14,7 +14,7 @@ hl.bind("SUPER + SHIFT + D", hl.dsp.exec_cmd("syna-launch-tui lazydocker"), { de
 hl.bind("SUPER + SHIFT + G", hl.dsp.exec_cmd("syna-launch-or-focus ^signal$ \"uwsm-app -- signal-desktop\""), { description = "Signal" })
 hl.bind("SUPER + SHIFT + O", hl.dsp.exec_cmd("syna-launch-or-focus ^obsidian$ \"uwsm-app -- obsidian -disable-gpu --enable-wayland-ime\""), { description = "Obsidian" })
 hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("uwsm-app -- typora --enable-wayland-ime"), { description = "Typora" })
-hl.bind("SUPER + SHIFT + SLASH", hl.dsp.exec_cmd("uwsm-app -- 1password"), { description = "Passwords" })
+hl.bind("SUPER + SHIFT + SLASH", hl.dsp.exec_cmd("uwsm-app -- bitwarden"), { description = "Passwords" })
 
 -- If your web app url contains #, type it as ## to prevent hyprland treating it as a comment
 hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd("syna-launch-webapp \"https://chatgpt.com\""), { description = "ChatGPT" })

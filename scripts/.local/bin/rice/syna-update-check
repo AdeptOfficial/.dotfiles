@@ -182,8 +182,11 @@ check_hyprland_config() {
 check_aur_pending() {
   section "AUR updates (install separately: paru -Sua)"
   command -v paru >/dev/null || { info "paru not installed"; return; }
-  local list pkg old new mark f
-  list=$(paru -Qua 2>/dev/null) || { fail "cannot query AUR updates (unverified)"; return; }
+  local list pkg old new mark f err rc
+  # paru -Qua exits 1 with no output when nothing needs upgrading; only an error message means the query failed
+  err=$(mktemp); list=$(paru -Qua 2>"$err"); rc=$?
+  if (( rc != 0 )) && [[ -s $err ]]; then rm -f "$err"; fail "cannot query AUR updates (unverified)"; return; fi
+  rm -f "$err"
   [[ -z $list ]] && { ok "no AUR updates"; return; }
   while read -r pkg old _ new; do
     mark=""
@@ -198,7 +201,9 @@ check_aur_pending() {
 # Reviewed checkrebuild hits that are not real breakage (package: reason). Keep in sync with syna-audit.
 #   nexusmods-app-bin: bundles musl/jemalloc variants of rocksdb that glibc systems never load
 #   lib32-imlib2: only its optional id3 (MP3 tag) loader lacks lib32-libid3tag; images load fine
-REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2"
+#   proton-rtsp-bin: bundled GStreamer plugins link libvpx.so.9, libtheora, libnettle.so.8, libdav1d.so.6, which the
+#     Steam Linux Runtime container provides; Proton never loads them from the host (VRChat camera verified 2026-10-25)
+REBUILD_IGNORE="nexusmods-app-bin lib32-imlib2 proton-rtsp-bin"
 
 # AUR/foreign programs linked against libraries the update replaced stop launching until rebuilt
 check_rebuilds() {
@@ -249,12 +254,16 @@ pre() {
 
   section "Arch news (read anything that says manual intervention)"
   if command -v paru >/dev/null; then
-    local news
-    if news=$(paru -Pw 2>/dev/null); then
+    local news rc
+    news=$(paru -Pw 2>&1); rc=$?
+    # paru exits 1 with "No new news" when nothing is unread: that is a pass, not a query failure.
+    if [[ $rc -eq 0 && -n $news ]]; then
       sed 's/^/  /' <<<"$news" | head -20
-      info "(empty = no unread news since last upgrade)"
+      warn "unread Arch news above: read it before updating (manual intervention?)"
+    elif grep -qi 'no new news' <<<"$news"; then
+      ok "no unread Arch news since the last upgrade"
     else
-      fail "cannot query Arch news; unread intervention notices are unverified"
+      fail "cannot query Arch news; unread intervention notices are unverified ($(head -1 <<<"$news"))"
     fi
   else
     info "check https://archlinux.org/news/ and https://cachyos.org/blog/"
@@ -290,7 +299,9 @@ post() {
   section "Transaction"
   info "$(grep -E 'starting full system upgrade|transaction completed' /var/log/pacman.log | tail -1)"
   local errs; errs=$(awk '/starting full system upgrade/{buf=""} {buf=buf"\n"$0} END{print buf}' /var/log/pacman.log \
+    | grep -vE '\[ALPM\] (installed|upgraded|downgraded|reinstalled|removed) ' \
     | grep -iE 'error|failed|warning: .*(mkinitcpio|limine)' | grep -v 'pacnew' )
+  # Package lines are skipped: a name such as perl-error is not an error (false warning 2026-10-29)
   [[ -z $errs ]] && ok "no errors in the last upgrade log" || while read -r l; do [[ -n $l ]] && warn "${l:0:160}"; done <<<"$errs"
   check_nvidia_modules
   check_dkms_modules

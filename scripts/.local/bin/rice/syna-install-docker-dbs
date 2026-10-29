@@ -3,10 +3,12 @@
 # Install one of the supported databases in a Docker container with the suitable development options.
 # Usually called via Install > Development > Docker DB from the Syna Menu.
 
+set -euo pipefail
+
 options=("MySQL" "PostgreSQL" "Redis" "MongoDB" "MariaDB" "MSSQL")
 
 if [[ "$#" -eq 0 ]]; then
-  choices=$(printf "%s\n" "${options[@]}" | gum choose --header "Select database (return to install, esc to cancel)") || main_menu
+  choices=$(printf "%s\n" "${options[@]}" | gum choose --header "Select database (return to install, esc to cancel)") || exit 0
 else
   choices="$@"
 fi
@@ -20,6 +22,7 @@ if [[ -n "$choices" ]]; then
     Redis) sudo docker run -d --restart unless-stopped -p "127.0.0.1:6379:6379" --name=redis redis:7 ;;
     MongoDB) sudo docker run -d --restart unless-stopped -p "127.0.0.1:27017:27017" --name mongodb -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=admin123 mongo:noble ;;
     MSSQL) sudo docker run -d --restart unless-stopped -p "127.0.0.1:1433:1433" --name mssql -e MSSQL_PID=Developer -e ACCEPT_EULA=Y -e "MSSQL_SA_PASSWORD=@dmin123" mcr.microsoft.com/mssql/server:2022-CU12-ubuntu-22.04 ;;
+    *) echo "Unknown database: $db" >&2; exit 2 ;;
     esac
   done
 else

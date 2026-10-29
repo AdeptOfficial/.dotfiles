@@ -2,13 +2,15 @@
 
 # Uninstalls a language toolchain via mise, pacman (sudo) or rustup; deletes related files in home
 
+set -e
+
 if [[ -z "$1" ]]; then
   echo "Usage: syna-remove-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|zig|rust|java|dotnet|ocaml|clojure>" >&2
   exit 1
 fi
 
 remove_php() {
-  sudo pacman -Rns --noconfirm php composer php-sqlite xdebug 2>/dev/null || true
+  syna-pkg-drop php composer php-sqlite xdebug
 }
 
 case "$1" in
@@ -44,11 +46,11 @@ php)
   ;;
 laravel)
   echo -e "Removing Laravel...\n"
-  composer global remove laravel/installer 2>/dev/null || true
+  composer global remove laravel/installer
   ;;
 symfony)
   echo -e "Removing Symfony CLI...\n"
-  sudo pacman -Rns --noconfirm symfony-cli 2>/dev/null || true
+  syna-pkg-drop symfony-cli
   ;;
 python)
   echo -e "Removing Python...\n"
@@ -72,7 +74,7 @@ zig)
   ;;
 rust)
   echo -e "Removing Rust...\n"
-  rustup self uninstall -y 2>/dev/null || true
+  rustup self uninstall
   ;;
 java)
   echo -e "Removing Java...\n"
@@ -86,7 +88,7 @@ dotnet)
   ;;
 ocaml)
   echo -e "Removing OCaml...\n"
-  opam switch remove default -y 2>/dev/null || true
+  opam switch remove default
   rm -rf ~/.opam 2>/dev/null || true
   sudo rm -f /usr/local/bin/opam 2>/dev/null || true
   ;;

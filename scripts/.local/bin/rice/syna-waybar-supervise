@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Runs waybar and restarts it whenever it exits on its own; a deliberate stop ends the supervisor too.
+#   syna-waybar-supervise          started by autostart, syna-toggle-waybar and syna-restart-waybar (via uwsm-app)
+#
+# The bar process keeps the name `waybar` (systemd-cat execs it), so `pgrep -x waybar`, `pkill -x waybar` (toggle,
+# restart) and `pkill -RTMIN+8 waybar` (screen-record indicator) work unchanged. A deliberate stop is SIGTERM (143,
+# what `pkill -x waybar` sends) or SIGKILL (137); every other exit restarts it: crash signals, and plain codes such
+# as 1 (GTK exits with 1 when the compositor drops it after a Wayland protocol error, no core dump).
+# At most 5 restarts in 10 minutes, so a broken config cannot loop forever.
+# Waybar's output and every exit code go to the journal: journalctl --user -t waybar -t syna-waybar-supervise
+# Added 2026-10-24 after a SIGABRT crash; 2026-10-29 the bar died without a core dump and the old crash-signal-only
+# rule took it for a deliberate stop.
+
+MAX_RESTARTS=5
+WINDOW=600
+restarts=()
+
+while true; do
+  systemd-cat -t waybar waybar &
+  child=$!
+  wait "$child"
+  code=$?
+
+  case $code in
+    137|143)                                # SIGKILL, SIGTERM: stopped on purpose
+      logger -t syna-waybar-supervise "waybar stopped (exit $code), supervisor exiting"
+      exit 0 ;;
+  esac
+  logger -t syna-waybar-supervise -p user.warning "waybar exited unexpectedly (exit $code)"
+
+  now=$(date +%s)
+  recent=()
+  for t in "${restarts[@]}"; do (( now - t < WINDOW )) && recent+=("$t"); done
+  restarts=("${recent[@]}" "$now")
+  if (( ${#restarts[@]} > MAX_RESTARTS )); then
+    logger -t syna-waybar-supervise -p user.err "giving up after $MAX_RESTARTS restarts in 10 minutes"
+    notify-send -u critical "Waybar keeps crashing" "Stopped restarting after $MAX_RESTARTS crashes in 10 minutes. Check: syna-restart-waybar" 2>/dev/null
+    exit 1
+  fi
+  notify-send "Waybar crashed" "Restarted automatically (exit $code)." 2>/dev/null
+  sleep 2
+done

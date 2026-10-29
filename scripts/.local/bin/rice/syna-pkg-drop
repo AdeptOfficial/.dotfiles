@@ -2,8 +2,14 @@
 
 # Remove all the named packages from the system if they're installed (otherwise ignore).
 
+set -euo pipefail
+(( $# )) || { echo 'Provide package names' >&2; exit 2; }
+for pkg in "$@"; do
+  [[ $pkg =~ ^[a-zA-Z0-9@_+][a-zA-Z0-9@._+-]*$ ]] || { echo 'Invalid package name' >&2; exit 2; }
+done
+
 for pkg in "$@"; do
   if pacman -Q "$pkg" &>/dev/null; then
-    sudo pacman -Rns --noconfirm "$pkg"
+    sudo pacman -Rns -- "$pkg"
   fi
 done

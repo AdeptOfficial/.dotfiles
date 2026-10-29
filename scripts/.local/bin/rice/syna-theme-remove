@@ -42,6 +42,14 @@ if [ "$THEME_NAME" = "$CURRENT_THEME" ]; then
   exit 1
 fi
 
-# Remove the theme directory
-rm -rf "$THEME_PATH"
-echo "Removed theme: $THEME_NAME"
+# Use the same reversible, locked archive operation as the theme picker.
+python3 - "$(dirname "$0")/syna-theme-customize.py" "$THEME_NAME" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location('custom', sys.argv[1])
+custom = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(custom)
+try:
+    print('Theme archived:', custom.remove_theme(sys.argv[2]))
+except (OSError, ValueError) as error:
+    sys.exit(str(error))
+PY

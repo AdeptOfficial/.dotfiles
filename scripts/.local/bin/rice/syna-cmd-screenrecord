@@ -79,18 +79,24 @@ start_screenrecording() {
   toggle_screenrecording_indicator
 }
 
+# PIDs of recordings (writing a file); the gsr-ui replay buffer ("-r <seconds>") and probes are left alone
+recording_pids() {
+  pgrep -af "^gpu-screen-recorder" | grep -- " -o " | grep -v -- " -r [0-9]" | cut -d' ' -f1
+}
+
 stop_screenrecording() {
-  pkill -SIGINT -f "^gpu-screen-recorder"  # SIGINT required to save video properly
+  local pids=$(recording_pids)
+  kill -SIGINT $pids  # SIGINT required to save video properly
 
   # Wait a maximum of 5 seconds to finish before hard killing
   local count=0
-  while pgrep -f "^gpu-screen-recorder" >/dev/null && [ $count -lt 50 ]; do
+  while [[ -n "$(recording_pids)" ]] && [ $count -lt 50 ]; do
     sleep 0.1
     count=$((count + 1))
   done
 
-  if pgrep -f "^gpu-screen-recorder" >/dev/null; then
-    pkill -9 -f "^gpu-screen-recorder"
+  if [[ -n "$(recording_pids)" ]]; then
+    kill -9 $(recording_pids)
     cleanup_webcam
     notify-send "Screen recording error" "Recording process had to be force-killed. Video may be corrupted." -u critical -t 5000
   else
@@ -105,11 +111,11 @@ toggle_screenrecording_indicator() {
 }
 
 screenrecording_active() {
-  pgrep -f "^gpu-screen-recorder" >/dev/null || pgrep -f "WebcamOverlay" >/dev/null
+  [[ -n "$(recording_pids)" ]] || pgrep -f "WebcamOverlay" >/dev/null
 }
 
 if screenrecording_active; then
-  if pgrep -f "WebcamOverlay" >/dev/null && ! pgrep -f "^gpu-screen-recorder" >/dev/null; then
+  if pgrep -f "WebcamOverlay" >/dev/null && [[ -z "$(recording_pids)" ]]; then
     cleanup_webcam
   else
     stop_screenrecording

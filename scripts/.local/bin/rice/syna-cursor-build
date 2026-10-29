@@ -13,7 +13,7 @@ Design spec, every tuning knob and pitfalls: ~/.syna/guides/cursor.md (keep it i
     syna-cursor-build --name N --fill #rrggbb --outline #rrggbb --accent #rrggbb
     syna-cursor-build --preview [colour options]   labelled sheet of every cursor, opened in imv (builds nothing)
 """
-import argparse, glob, os, re, shutil, subprocess, sys, tempfile, tomllib
+import argparse, glob, os, re, shutil, subprocess, sys, tempfile, tomllib, uuid
 from pathlib import Path
 
 TAG = 'v2.0.7'
@@ -217,8 +217,12 @@ if args.preview:
     sys.exit(0)
 
 try:
-    (out / 'cursors').mkdir(parents=True, exist_ok=False) if not out.exists() else None
-    shutil.rmtree(out); (out / 'cursors').mkdir(parents=True)
+    destination = out
+    if destination.is_symlink():
+        raise ValueError('Cursor destination must not be a symlink')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    out = Path(tempfile.mkdtemp(prefix='.cursor-build-', dir=destination.parent))
+    (out / 'cursors').mkdir()
     built = 0
     for key, c in cfg.items():
         pattern = c['png'].removesuffix('.png')
@@ -248,6 +252,20 @@ try:
         built += 1
     (out / 'index.theme').write_text(f'[Icon Theme]\nName={args.name}\nComment=SynaOS cursor: Bibata {args.style.title()} {TAG} '
                                      f'(GPL-3.0), ' + (f'flat outline {args.stroke:g}' if args.flat else 'emblem layers') + f', SynaOS arrow, colours {args.fill}/{args.outline}/{args.accent}\nInherits=Adwaita\n')
-    print(f'Built {out} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
+    if not built:
+        raise ValueError('No cursors were built; existing theme preserved')
+    archive = None
+    if destination.exists():
+        archive = destination.with_name('.' + destination.name + '.previous-' + uuid.uuid4().hex)
+        destination.rename(archive)
+    try:
+        out.rename(destination)
+    except Exception:
+        if archive is not None:
+            archive.rename(destination)
+        raise
+    print(f'Built {destination} ({built} cursors, sizes {sizes[0]}-{sizes[-1]})')
+    if archive is not None:
+        print('Previous cursor theme retained:', archive)
 finally:
     shutil.rmtree(work, ignore_errors=True)

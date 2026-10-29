@@ -10,6 +10,6 @@ fi
 
 WINDOW_PATTERN="$1"
 shift
-LAUNCH_COMMAND="syna-launch-webapp $@"
+printf -v LAUNCH_COMMAND '%q ' syna-launch-webapp "$@"
 
 exec syna-launch-or-focus "$WINDOW_PATTERN" "$LAUNCH_COMMAND"

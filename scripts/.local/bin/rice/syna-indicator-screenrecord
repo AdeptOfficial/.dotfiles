@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Waybar module: prints a stop-recording icon JSON while gpu-screen-recorder runs, else empty text
+# Waybar module: prints a stop-recording icon JSON while gpu-screen-recorder records, else empty text.
+# Only processes writing a file (-o) count: not the always-on replay buffer (gsr-ui, "-r <seconds>")
+# and not gsr-ui's short --info/--list-* probes.
 
-if pgrep -f "^gpu-screen-recorder" >/dev/null; then
+if pgrep -af "^gpu-screen-recorder" | grep -- " -o " | grep -qv -- " -r [0-9]"; then
   echo '{"text": "󰻂", "tooltip": "Stop recording", "class": "active"}'
 else
   echo '{"text": ""}'

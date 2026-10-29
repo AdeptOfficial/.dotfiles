@@ -2,6 +2,8 @@
 
 # Show a fuzzy-finder TUI for picking new Arch and OPR packages to install.
 
+set -euo pipefail
+
 fzf_args=(
   --multi
   --preview 'pacman -Sii {1}'
@@ -18,6 +20,7 @@ pkg_names=$(pacman -Slq | fzf "${fzf_args[@]}")
 
 if [[ -n "$pkg_names" ]]; then
   # Convert newline-separated selections to space-separated for yay
-  echo "$pkg_names" | tr '\n' ' ' | xargs sudo pacman -S --noconfirm
+  mapfile -t packages <<<"$pkg_names"
+  sudo pacman -S -- "${packages[@]}"
   syna-show-done
 fi

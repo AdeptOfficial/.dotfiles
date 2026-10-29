@@ -20,10 +20,11 @@ FILES:
   Log:  /tmp/audio-daemon.log (when DEBUG=1)
   PID:  /tmp/syna-audio-opacity.pid
 
-DOCS: ~/.syna/issues/resolved/helium-browser-audio-opacity.md
+DOCS: ~/.syna/features/archive/helium-browser-audio-opacity.md
 """
 
 import atexit
+import fcntl
 import json
 import os
 import re
@@ -34,8 +35,10 @@ import threading
 import time
 
 DEBUG = os.environ.get("DEBUG", "0") == "1"
-LOG_FILE = "/tmp/audio-daemon.log"
-PID_FILE = "/tmp/syna-audio-opacity.pid"
+RUNTIME = os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
+LOG_FILE = os.path.join(RUNTIME, 'syna-audio-opacity-daemon.log')
+PID_FILE = os.path.join(RUNTIME, 'syna-audio-opacity-daemon.lock')
+instance_lock = None
 MEDIA_SITES = re.compile(
     r"YouTube|Twitch|Netflix|Prime Video|Disney\+|Vimeo|Plex|HBO|Hulu|Crunchyroll|Spotify",
     re.IGNORECASE,
@@ -56,24 +59,15 @@ def log(msg):
 
 
 def check_single_instance():
-    """Ensure only one instance runs. Kill existing if found."""
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE) as f:
-                old_pid = int(f.read().strip())
-            # Check if process exists
-            os.kill(old_pid, 0)
-            # Process exists, kill it
-            log(f"Killing existing instance {old_pid}")
-            os.kill(old_pid, signal.SIGTERM)
-            time.sleep(0.5)
-        except (ProcessLookupError, ValueError, FileNotFoundError):
-            pass
-
-    # Write our PID
-    with open(PID_FILE, "w") as f:
-        f.write(str(os.getpid()))
-    atexit.register(lambda: os.path.exists(PID_FILE) and os.remove(PID_FILE))
+    """Lock in the private runtime directory; never kill a PID from a stale/shared file."""
+    global instance_lock
+    if os.stat(RUNTIME).st_uid != os.getuid():
+        raise RuntimeError('Runtime directory has the wrong owner')
+    instance_lock = open(PID_FILE, 'a')
+    try:
+        fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit('Audio opacity daemon is already running')
 
 
 def run_cmd(cmd):
@@ -200,8 +194,6 @@ def cleanup(signum=None, frame=None):
     log("Cleanup - resetting all windows")
     for addr in list(opaque_windows):
         set_opacity(addr, False)
-    if os.path.exists(PID_FILE):
-        os.remove(PID_FILE)
     sys.exit(0)
 
 
@@ -238,6 +230,8 @@ def main():
                 if "sink-input" in line.lower():
                     log(f"Event: {line.strip()}")
                     update_windows()
+            proc.wait()
+            time.sleep(5)  # A disconnected audio server must not cause a rapid respawn loop.
         except Exception as e:
             log(f"pactl subscribe error: {e}, retrying in 5s")
             time.sleep(5)

@@ -23,7 +23,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-LOG_FILE="/tmp/syna-debug.log"
+umask 077
+LOG_FILE=$(mktemp /tmp/syna-debug.XXXXXXXX.log) || exit 1
 
 if [ "$NO_SUDO" = true ]; then
   DMESG_OUTPUT="(skipped - --no-sudo flag used)"
