@@ -65,10 +65,10 @@ hl.bind("SUPER + SHIFT + TAB", hl.dsp.focus({ workspace = "e-1" }), { descriptio
 hl.bind("SUPER + CTRL + TAB", hl.dsp.focus({ workspace = "previous" }), { description = "Former workspace" })
 
 -- Move workspaces to other monitors
-hl.bind("SUPER + SHIFT + ALT + LEFT", function() local w = hl.get_active_workspace(); if not w then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "l" })) end, { description = "Move workspace to left monitor" })
-hl.bind("SUPER + SHIFT + ALT + RIGHT", function() local w = hl.get_active_workspace(); if not w then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "r" })) end, { description = "Move workspace to right monitor" })
-hl.bind("SUPER + SHIFT + ALT + UP", function() local w = hl.get_active_workspace(); if not w then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "u" })) end, { description = "Move workspace to up monitor" })
-hl.bind("SUPER + SHIFT + ALT + DOWN", function() local w = hl.get_active_workspace(); if not w then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "d" })) end, { description = "Move workspace to down monitor" })
+hl.bind("SUPER + SHIFT + ALT + LEFT", function() local w = hl.get_active_workspace(); if not (w and w.id) then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "l" })) end, { description = "Move workspace to left monitor" })
+hl.bind("SUPER + SHIFT + ALT + RIGHT", function() local w = hl.get_active_workspace(); if not (w and w.id) then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "r" })) end, { description = "Move workspace to right monitor" })
+hl.bind("SUPER + SHIFT + ALT + UP", function() local w = hl.get_active_workspace(); if not (w and w.id) then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "u" })) end, { description = "Move workspace to up monitor" })
+hl.bind("SUPER + SHIFT + ALT + DOWN", function() local w = hl.get_active_workspace(); if not (w and w.id) then return end; hl.dispatch(hl.dsp.workspace.move({ workspace = w.id, monitor = "d" })) end, { description = "Move workspace to down monitor" })
 
 -- Swap active window with the one next to it with SUPER + SHIFT + arrow keys
 hl.bind("SUPER + SHIFT + LEFT", hl.dsp.window.swap({ direction = "l" }), { description = "Swap window to the left" })
@@ -93,8 +93,8 @@ hl.bind("SUPER + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description
 hl.bind("SUPER + mouse_up", hl.dsp.focus({ workspace = "e-1" }), { description = "Scroll active workspace backward" })
 
 -- Move/resize windows with mainMod + LMB/RMB and dragging
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { description = "Move window" })
-hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { description = "Resize window" })
+hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Move window" })  -- mouse = true: drag bind (was bindm; the converter dropped it)
+hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Resize window" })  -- needs 0.57: mouse resize crashed 0.56.2 (#16118, fixed by #16454)
 
 -- Toggle groups
 hl.bind("SUPER + G", hl.dsp.group.toggle(), { description = "Toggle window grouping" })
