@@ -22,3 +22,7 @@ if test -f ~/.config/fish/config.local.fish
     source ~/.config/fish/config.local.fish
 end
 
+
+# >>> grok installer >>>
+fish_add_path $HOME/.grok/bin
+# <<< grok installer <<<
