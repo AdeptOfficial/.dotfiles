@@ -9,7 +9,8 @@ fi
 if grep -q '^syna-dashboard:' <<< "$windows"; then
     timeout 2 eww close syna-dashboard
 else
-    monitor=$(timeout 2 hyprctl monitors -j | jq -er '.[] | select(.focused) | .id') || exit 1
+    # Use the connector name: Hyprland IDs and EWW's numeric --screen (GDK order) can disagree.
+    monitor=$(timeout 2 hyprctl monitors -j | jq -er '.[] | select(.focused) | .name') || exit 1
     timeout 2 eww update "cal-day=$(date +%-d)" "cal-month=$(date +%-m)" "cal-year=$(date +%Y)" || exit 1
     timeout 3 eww open syna-dashboard --screen "$monitor"
 fi
