@@ -13,6 +13,15 @@ hl.window_rule({
     rounding = 0,
 })
 
+-- Helium triggers HDR mode switches even for plain fullscreen pages.
+-- Keep auto-HDR available elsewhere; confirmed workaround 2026-11-01.
+-- Upstream: https://github.com/hyprwm/Hyprland/pull/14694
+hl.window_rule({
+    name = "helium-no-auto-hdr",
+    match = { class = "^helium$" },
+    no_auto_hdr = true,
+})
+
 -- Chromium → workspace 2 (runtime/manual launches)
 --windowrule = workspace 2 silent, match:initialClass ^(chromium|google-chrome|brave)$
 
