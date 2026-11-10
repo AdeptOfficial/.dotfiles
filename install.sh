@@ -233,7 +233,7 @@ echo -e "${GREEN}[4/9] Installing AUR packages...${NC}"
 paru -S --needed --noconfirm \
   walker elephant elephant-desktopapplications \
   ghostty grimblast-git satty gpu-screen-recorder helium-browser-bin \
-  wiremix bluetui eww xdg-terminal-exec vesktop yaru-icon-theme \
+  wiremix bluetui eww xdg-terminal-exec vesktop-bin yaru-icon-theme \
   spotify visual-studio-code-bin wayfreeze-git \
   typora voxtype-bin bitwarden-bin \
   python-terminaltexteffects   # tte: the AFK screensaver (syna-dream / afk, idle)

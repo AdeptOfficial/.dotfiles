@@ -36,9 +36,9 @@ neovim                      neovim/neovim                    -     -
 linux-cachyos               CachyOS/linux-cachyos            -     kernel
 nvidia-utils                NVIDIA/open-gpu-kernel-modules   -     nvidia
 systemd                     systemd/systemd                  -     -
-coolercontrold-bin          gitlab:coolercontrol/coolercontrol -   cooler
-coolercontrol-bin           gitlab:coolercontrol/coolercontrol -   cooler
-vesktop                     Vencord/Vesktop                  -     -
+coolercontrold              gitlab:coolercontrol/coolercontrol -   cooler
+coolercontrol               gitlab:coolercontrol/coolercontrol -   cooler
+vesktop-bin                 Vencord/Vesktop                  -     -
 bitwarden-bin               bitwarden/clients                -     -
 EOF
 )

@@ -1,6 +1,8 @@
 # deej config (Linux)
 # - names are case-insensitive: prefer application.process.binary (including Proton .exe),
-#   falling back to application.name with the patched client. Inspect live streams:
+#   falling back to application.name with the patched client. Apps on Arch's system Electron
+#   report the binary "electron"; the patched client uses their application.name (vesktop).
+#   Inspect live streams:
 #   pactl -f json list sink-inputs
 # - 'master'        = system master volume
 # - 'mic'           = default mic input level
