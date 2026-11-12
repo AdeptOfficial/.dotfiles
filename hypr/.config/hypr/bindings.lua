@@ -42,6 +42,9 @@ hl.bind("SUPER + G", hl.dsp.exec_cmd("~/.local/bin/rice/syna-launch-gaming"), { 
 -- Custom Keybindings
 --bind = SUPER, B, exec, firefox
 
+-- Night mode: OpenRGB "off" profile + Koorui display asleep; press again to restore.
+hl.bind("SUPER + CTRL + SHIFT + N", hl.dsp.exec_cmd("~/.local/bin/rice/syna-night"), { description = "Night mode (LEDs + Koorui off)" })
+
 -- One application-launcher binding, after inherited defaults.
 hl.unbind("SUPER + SPACE")  -- remove the inherited launcher bind (rice defaults bindings/utilities)
 hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("~/.local/bin/rice/syna-launch-walker"), { description = "Launch apps" })

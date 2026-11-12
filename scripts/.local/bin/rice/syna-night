@@ -1,0 +1,52 @@
+#!/bin/bash
+# Night mode: OpenRGB profile "off" + Koorui (HKC 24E3) output disabled; mouse/key input or the keybind again restores both.
+# DPMS sleep does not work on the Koorui: in standby it drops off DisplayPort every ~15 s and reconnects
+# switched on (tested 2026-11-11). Disabling the output survives those reconnects; workspaces 4-6 move to
+# the ASUS meanwhile and `hyprctl reload` (monitors.local.lua) brings the Koorui and its workspaces back.
+# Input is detected by a separate hypridle instance (1 s idle, then any activity runs `syna-night wake`).
+# Profiles live in ~/.config/OpenRGB (saved 2026-11-11). Guide: ~/.syna/guides/commands.md
+#   syna-night        toggle
+#   syna-night wake   end night mode (used by the watcher)
+
+run="${XDG_RUNTIME_DIR:-/tmp}"
+state="$run/syna-night"
+watcher_pid="$run/syna-night-watcher.pid"
+watcher_conf="$run/syna-night-hypridle.conf"
+koorui_desc='HKC OVERSEAS LIMITED 24E3'
+
+koorui_connected() {
+  hyprctl monitors all -j | jq -e --arg d "$koorui_desc" 'any(.[]; .description | startswith($d))' >/dev/null
+}
+
+# Only the caller whose rm succeeds restores, so the keybind and the watcher never both run it.
+night_off() {
+  rm "$state" 2>/dev/null || return 0
+  [[ -f "$watcher_pid" ]] && kill "$(cat "$watcher_pid")" 2>/dev/null
+  rm -f "$watcher_pid"
+  hyprctl reload >/dev/null # re-applies monitors.local.lua: Koorui back on, workspaces 4-6 return
+  notify-send "󰖨  Night mode off"
+  openrgb -p on >/dev/null 2>&1
+}
+
+night_on() {
+  touch "$state"
+  notify-send "󰖔  Night mode on"
+  openrgb -p off >/dev/null 2>&1
+  sleep 1 # let go of the keys first
+  koorui_connected && hyprctl eval "hl.monitor({ output = \"desc:$koorui_desc\", disabled = true })" >/dev/null
+
+  cat >"$watcher_conf" <<EOF
+listener {
+    timeout = 1
+    on-timeout = true
+    on-resume = $0 wake
+}
+EOF
+  setsid hypridle -q -c "$watcher_conf" >/dev/null 2>&1 &
+  echo $! >"$watcher_pid"
+}
+
+case "$1" in
+  wake) night_off ;;
+  *) if [[ -e "$state" ]]; then night_off; else night_on; fi ;;
+esac
