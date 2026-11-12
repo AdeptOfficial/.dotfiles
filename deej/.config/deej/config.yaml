@@ -34,8 +34,10 @@ slider_mapping:
     - "STRAFTAT.exe"
     - "Wuthering Waves.exe"
     - "Client-Win64-Shipping.exe"
-    # CachyOS Proton PipeWire reports Wuthering Waves as UE4, without a binary.
+    # CachyOS Proton PipeWire reports Wuthering Waves without a binary: as UE4 up to 3.7,
+    # as "Wuthering Waves" since the 3.8 official-launcher build (2026-11-11).
     - "UE4"
+    - "Wuthering Waves"
 
 # set true if your sliders read inverted (top = 0%, bottom = 100%)
 invert_sliders: false
