@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# Wuthering Waves: start the game directly (skip Kuro's launcher); opens the launcher only when an update is needed.
+#
+# Based on RealNath's gist (reviewed 2026-11-12, revision 3):
+#   https://gist.github.com/RealNath/8d2ceeee260a262e1e0bbe169b192c02
+# Additions: this machine's game path; an update check against Kuro's Steam version index
+# (the same index.json the launcher reads), so updates go through the launcher automatically;
+# -krqlv=<tier> is added from the installed tier; notifications and a log.
+#
+# Steam Launch Options: put this right before %command% (after Gamescope's `--`):
+#   ... gamescope ... -- /home/adept/.local/bin/rice/syna-wuwa-skip-launcher %command%
+#
+# Decision per launch:
+#   installed pack versions == server versions  -> game exe directly (+ -krqlv=<installed tier>)
+#   newer version on server, or unfinished install/update -> launcher (update there, then click Start)
+#   server unreachable                          -> game exe directly (notification says the check failed)
+#   one-shot: touch ~/.cache/wuwa-open-launcher -> launcher once (settings, repair, tier change)
+# Log: ~/.cache/syna-wuwa-skip-launcher.log. Guide: ~/.syna/guides/gaming.md (Wuthering Waves 3.8 section).
+set -u
+
+# Launcher file name inside %command% (change only if Kuro renames it).
+LAUNCHER='launcher.exe'
+GAME_DIR="/mnt/SynaDrive/Games/steamapps/common/Wuthering Waves/Wuthering Waves Game"
+GAME="$GAME_DIR/Client/Binaries/Win64/Client-Win64-Shipping.exe"
+# Steam (global) version index used by the launcher; seen in its log 2026-11-11.
+INDEX_URL="https://prod-alicdn-gamestarter.kurogame.com/launcher/game/50019_OvWd4dYrxkUbVcxfVb3QztlYCOc2xNuc/G153/steam/index.json"
+FORCE_FLAG="$HOME/.cache/wuwa-open-launcher"
+LOG="$HOME/.cache/syna-wuwa-skip-launcher.log"
+
+# Steam's launch environment can carry its runtime libraries; run host tools without them.
+host() { env -u LD_PRELOAD -u LD_LIBRARY_PATH "$@"; }
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >>"$LOG"; }
+notify() { host notify-send -a "Wuthering Waves" -i steam "Wuthering Waves" "$1" 2>/dev/null || true; }
+
+mkdir -p "${LOG%/*}"
+# Keep the log short.
+if [[ -f $LOG ]] && (( $(wc -l <"$LOG") > 300 )); then
+    tail -n 150 "$LOG" >"$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
+
+args=("$@")
+launcher_idx=-1
+has_tier=0
+for i in "${!args[@]}"; do
+    case ${args[i]} in
+        */"$LAUNCHER") launcher_idx=$i ;;
+        -krqlv=*) has_tier=1 ;;
+    esac
+done
+
+if (( launcher_idx < 0 )); then
+    echo "syna-wuwa-skip-launcher: no $LAUNCHER in the command line:" >&2
+    printf '  %s\n' "${args[@]}" >&2
+    log "error: no $LAUNCHER in command line"
+    exit 1
+fi
+
+open_launcher() {
+    log "launcher: $1"
+    notify "$1"
+    # -krqlv is meant for the game, not the launcher.
+    local out=() a
+    for a in "${args[@]}"; do [[ $a == -krqlv=* ]] || out+=("$a"); done
+    exec "${out[@]}"
+}
+
+if [[ -e $FORCE_FLAG ]]; then
+    rm -f -- "$FORCE_FLAG"
+    open_launcher "Opening the launcher (requested)."
+fi
+
+cfg="$GAME_DIR/launcherDownloadConfig.json"
+if [[ ! -f $GAME || ! -f $cfg ]]; then
+    open_launcher "Game files not found: opening the launcher to install."
+fi
+
+# Unfinished download/update recorded by the launcher.
+busy=$(host jq -r '[.state, (.bundles[]?.state)] | map(select(. != null and . != "")) | length' "$cfg" 2>/dev/null)
+if [[ $busy != 0 ]]; then
+    open_launcher "An install or update is unfinished: opening the launcher."
+fi
+
+tier=$(host jq -r '.bundles | keys[0] // empty' "$cfg" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+
+index=$(host curl -fsS --compressed --max-time 5 "$INDEX_URL" 2>/dev/null)
+if [[ -z $index ]] || ! host jq -e '.resourcePacks' >/dev/null 2>&1 <<<"$index"; then
+    log "update check failed (no index); starting game"
+    notify "Could not check for updates; starting the game."
+else
+    outdated=()
+    for f in "$GAME_DIR"/launcherDownloadConfig/*.json; do
+        [[ -f $f ]] || continue
+        pack=$(host jq -r '.packName // empty' "$f" 2>/dev/null)
+        have=$(host jq -r '.version // empty' "$f" 2>/dev/null)
+        [[ -n $pack ]] || continue
+        want=$(host jq -r --arg p "$pack" '.resourcePacks[$p].version // empty' <<<"$index")
+        if [[ -n $want && $want != "$have" ]]; then
+            outdated+=("$pack $have -> $want")
+        fi
+    done
+    if (( ${#outdated[@]} )); then
+        open_launcher "Update available (${outdated[*]}): opening the launcher. Update there, then click Start."
+    fi
+    log "up to date (tier ${tier:-?}); starting game"
+fi
+
+args[launcher_idx]=$GAME
+if (( ! has_tier )) && [[ -n $tier ]]; then
+    args+=("-krqlv=$tier")
+fi
+exec "${args[@]}"
