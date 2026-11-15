@@ -20,7 +20,10 @@ slider_mapping:
   # Slider 5: installed games; verify audio process names during gameplay.
   4:
     - "Moonlight"
+    # Steam Remote Play client: older Steam reported binary streaming_client; current Steam
+    # (2026-11-12) reports no binary, application.name "Steam" ("Game streaming client (playback)").
     - "streaming_client"
+    - "Steam"
     - "cs2"
     - "cs2.exe"
     - "Cyberpunk2077.exe"
