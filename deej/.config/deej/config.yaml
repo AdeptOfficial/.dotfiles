@@ -41,6 +41,9 @@ slider_mapping:
     # as "Wuthering Waves" since the 3.8 official-launcher build (2026-11-11).
     - "UE4"
     - "Wuthering Waves"
+    # Digimon Story Time Stranger (PC, non-Steam shortcut): no binary reported, application.name
+    # is the exe name (2026-11-15).
+    - "Digimon Story Time Stranger.exe"
 
 # set true if your sliders read inverted (top = 0%, bottom = 100%)
 invert_sliders: false
