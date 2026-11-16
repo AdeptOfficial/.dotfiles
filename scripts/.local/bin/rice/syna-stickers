@@ -1,0 +1,569 @@
+#!/usr/bin/env python3
+"""Sticker picker: browse the GIF emote library and drop one into the focused chat app.
+
+Library: one folder per pack under ~/Pictures/Emoji (override: SYNA_STICKERS_DIR).
+Folders starting with "_" or "." are ignored.
+
+  syna-stickers            open the picker (run again to close it)
+  syna-stickers --index    build missing thumbnails, drop stale ones
+  syna-stickers --no-paste copy only, never send Ctrl+V
+
+Picking a sticker copies it to the clipboard as a file (text/uri-list), which chat
+apps take as an upload. If the window that was focused when the picker opened is a
+chat app (CHAT_CLASSES), Ctrl+V is sent to it so the sticker lands in the message box.
+"""
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import warnings
+from concurrent.futures import ThreadPoolExecutor
+from ctypes import CDLL
+from pathlib import Path
+from urllib.parse import quote
+
+LIBRARY = Path(os.environ.get('SYNA_STICKERS_DIR', Path.home() / 'Pictures/Emoji'))
+CACHE = Path(os.environ.get('XDG_CACHE_HOME', Path.home() / '.cache')) / 'syna-stickers'
+STATE = Path(os.environ.get('XDG_STATE_HOME', Path.home() / '.local/state')) / 'syna-stickers'
+RECENT_FILE = STATE / 'recent.json'
+THEME_COLORS = Path.home() / '.config/themes/current/walker.css'
+EXTENSIONS = {'.gif', '.png', '.apng', '.webp', '.jpg', '.jpeg'}
+CHAT_CLASSES = {'vesktop', 'discord', 'equibop', 'qq', 'telegram-desktop', 'org.telegram.desktop', 'signal'}
+THUMB = 112        # cached thumbnail edge, px
+CELL = 92          # displayed thumbnail edge, px
+COLUMNS = 6
+RECENT_MAX = 60
+RECENT, ALL = '\0recent', '\0all'
+
+
+class Sticker:
+    __slots__ = ('path', 'pack', 'name', 'key', 'thumb')
+
+    def __init__(self, path, pack, stat):
+        self.path = path
+        self.pack = pack
+        self.name = clean_name(path.stem)
+        self.key = f'{self.name} {pack}'.casefold()
+        digest = hashlib.sha1(f'{path}|{stat.st_size}|{stat.st_mtime_ns}'.encode()).hexdigest()
+        self.thumb = CACHE / f'{digest}.png'
+
+
+def clean_name(stem):
+    """'012-千咲_爱心 1_2026-07-01-02-09-54' -> '千咲 爱心 1'."""
+    stem = re.sub(r'^\d+[-_]\s*', '', stem)
+    stem = re.sub(r'_\d{4}(-\d{2}){5}$', '', stem)
+    return stem.replace('_', ' ').strip() or stem
+
+
+def scan():
+    """Return ({pack: [Sticker]}, in folder and file-name order)."""
+    packs = {}
+    if not LIBRARY.is_dir():
+        return packs
+    for folder in sorted(LIBRARY.iterdir(), key=lambda p: p.name.casefold()):
+        if not folder.is_dir() or folder.name[0] in '._':
+            continue
+        items = []
+        with os.scandir(folder) as entries:
+            for entry in sorted(entries, key=lambda e: e.name):
+                if entry.is_file() and Path(entry.name).suffix.lower() in EXTENSIONS:
+                    items.append(Sticker(Path(entry.path), folder.name, entry.stat()))
+        if items:
+            packs[folder.name] = items
+    return packs
+
+
+def make_thumb(sticker):
+    """Render one representative frame to the cache. Returns True when the thumbnail exists."""
+    if sticker.thumb.exists():
+        return True
+    tmp = sticker.thumb.with_name(f'{sticker.thumb.stem}.{os.getpid()}.tmp.png')
+    scale = f'thumbnail=16,scale={THUMB}:{THUMB}:force_original_aspect_ratio=decrease:flags=lanczos'
+    try:
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(sticker.path), '-vf', scale,
+                        '-frames:v', '1', str(tmp)],
+                       check=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=60)
+        os.replace(tmp, sticker.thumb)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        tmp.unlink(missing_ok=True)
+        return False
+
+
+def build_index():
+    packs = scan()
+    stickers = [s for items in packs.values() for s in items]
+    CACHE.mkdir(parents=True, exist_ok=True)
+    missing = [s for s in stickers if not s.thumb.exists()]
+    with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+        failed = sum(1 for ok in pool.map(make_thumb, missing) if not ok)
+    wanted = {s.thumb.name for s in stickers}
+    stale = [p for p in CACHE.glob('*.png') if p.name not in wanted]
+    for path in stale:
+        path.unlink(missing_ok=True)
+    print(f'{len(stickers)} stickers in {len(packs)} packs under {LIBRARY}')
+    print(f'thumbnails: {len(missing) - failed} built, {failed} failed, {len(stale)} stale removed')
+    return 1 if failed else 0
+
+
+def load_recent():
+    try:
+        data = json.loads(RECENT_FILE.read_text())
+        return [str(x) for x in data] if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def save_recent(recent):
+    try:
+        STATE.mkdir(parents=True, exist_ok=True)
+        tmp = RECENT_FILE.with_suffix('.tmp')
+        tmp.write_text(json.dumps(recent[:RECENT_MAX], ensure_ascii=False, indent=0))
+        os.replace(tmp, RECENT_FILE)
+    except OSError:
+        pass
+
+
+def active_window():
+    try:
+        out = subprocess.run(['hyprctl', 'activewindow', '-j'], capture_output=True, text=True, timeout=2).stdout
+        data = json.loads(out)
+        return data.get('address', ''), data.get('class', '')
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return '', ''
+
+
+def copy_file(path):
+    uri = 'file://' + quote(str(path))
+    subprocess.run(['wl-copy', '--type', 'text/uri-list'], input=(uri + '\r\n').encode(),
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5, check=True)
+
+
+def send_paste(address):
+    dispatch = f'hl.dsp.send_shortcut({{ mods = "CTRL", key = "V", window = "address:{address}" }})'
+    subprocess.run(['hyprctl', 'dispatch', dispatch], stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, timeout=2)
+
+
+def notify(summary, body=''):
+    subprocess.Popen(['notify-send', '-a', 'Stickers', '-t', '2500', summary, body],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+CSS = '''
+* { font-family: monospace; font-size: 15px; color: @text; }
+window { background: transparent; }
+.frame { background: alpha(@base, 0.96); border: 2px solid @border; padding: 16px; }
+entry { background: @base; padding: 10px 12px; border: none; outline: none; box-shadow: none;
+        font-size: 18px; min-height: 0; caret-color: @border; }
+entry > text > placeholder { opacity: 0.5; }
+scrollbar { opacity: 0; }
+list, gridview, scrolledwindow, listview { background: transparent; }
+.packs row { padding: 7px 10px; background: transparent; outline: none; }
+.packs row:hover { background: alpha(@selected-bg-top, 0.12); }
+.packs row:selected { background: alpha(@selected-bg-top, 0.3); }
+.packs row:selected label { color: @selected-text; }
+.count { opacity: 0.5; font-size: 12px; }
+gridview > child { padding: 4px; margin: 2px; background: transparent; outline: none; }
+gridview > child:hover { background: alpha(@selected-bg-top, 0.12); }
+gridview > child:selected { background: alpha(@selected-bg-top, 0.3); }
+.preview { padding-left: 14px; }
+.title { font-size: 17px; }
+.dim { opacity: 0.55; font-size: 12px; }
+.empty { opacity: 0.5; font-size: 16px; }
+'''
+
+FALLBACK_COLORS = '''
+@define-color selected-text #ffffff;
+@define-color selected-bg-top #5e81ac;
+@define-color text #e5e9f0;
+@define-color base #1b1e25;
+@define-color border #5e81ac;
+'''
+
+
+def run_picker(auto_paste):
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    CDLL('libgtk4-layer-shell.so')  # must load before libwayland-client
+    import gi
+    gi.require_version('Gtk', '4.0')
+    gi.require_version('Gdk', '4.0')
+    gi.require_version('GdkPixbuf', '2.0')
+    gi.require_version('Gtk4LayerShell', '1.0')
+    from gi.repository import Gdk, GdkPixbuf, Gio, GLib, GObject, Gtk, Pango
+    from gi.repository import Gtk4LayerShell as LayerShell
+
+    GLib.set_prgname('syna-stickers')
+
+    class Item(GObject.Object):
+        def __init__(self, sticker):
+            super().__init__()
+            self.sticker = sticker
+
+    class Picker(Gtk.Application):
+        def __init__(self):
+            super().__init__(application_id='io.adept.syna.stickers')
+            self.window = None
+            self.target = ('', '')
+            self.packs = {}
+            self.by_path = {}
+            self.recent = []
+            self.pack = ALL
+            self.bound = {}          # thumb path -> Gtk.Picture waiting for its thumbnail
+            self.pool = None
+            self.anim_timer = 0
+            self.preview_timer = 0
+            self.anim_iter = None
+            self.previewed = None
+            self.key_nav_at = 0.0
+
+        # --- lifecycle -------------------------------------------------------------------
+
+        def do_activate(self):
+            if self.window is not None:   # second launch toggles the picker away
+                self.quit()
+                return
+            self.target = active_window()
+            self.packs = scan()
+            self.by_path = {str(s.path): s for items in self.packs.values() for s in items}
+            self.recent = [p for p in load_recent() if p in self.by_path]
+            self.pack = RECENT if self.recent else ALL
+            CACHE.mkdir(parents=True, exist_ok=True)
+            self.pool = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 4) // 2))
+            self.build_ui()
+            self.refresh()
+            self.window.present()
+            self.entry.grab_focus()
+
+        def do_shutdown(self):
+            if self.pool is not None:
+                self.pool.shutdown(wait=False, cancel_futures=True)
+            Gtk.Application.do_shutdown(self)
+
+        # --- interface -------------------------------------------------------------------
+
+        def build_ui(self):
+            colors = FALLBACK_COLORS
+            try:
+                colors += '\n'.join(line for line in THEME_COLORS.read_text().splitlines()
+                                    if line.startswith('@define-color'))
+            except OSError:
+                pass
+            provider = Gtk.CssProvider()
+            provider.load_from_string(colors + CSS)
+            Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider,
+                                                      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+            win = Gtk.ApplicationWindow(application=self, title='Stickers')
+            win.set_default_size(1060, 640)
+            LayerShell.init_for_window(win)
+            LayerShell.set_namespace(win, 'syna-stickers')
+            LayerShell.set_layer(win, LayerShell.Layer.OVERLAY)
+            LayerShell.set_keyboard_mode(win, LayerShell.KeyboardMode.EXCLUSIVE)
+            self.window = win
+
+            keys = Gtk.EventControllerKey()
+            keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+            keys.connect('key-pressed', self.on_key)
+            win.add_controller(keys)
+
+            frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+            frame.add_css_class('frame')
+            win.set_child(frame)
+
+            self.entry = Gtk.Entry(placeholder_text='Search stickers…')
+            self.entry.connect('changed', lambda *_: self.refresh())
+            frame.append(self.entry)
+
+            body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12, vexpand=True)
+            frame.append(body)
+
+            # packs
+            self.pack_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.BROWSE)
+            self.pack_list.add_css_class('packs')
+            self.pack_ids = []
+            total = sum(len(v) for v in self.packs.values())
+            rows = ([(RECENT, 'Recent', len(self.recent))] if self.recent else []) + [(ALL, 'All', total)]
+            rows += [(name, name, len(items)) for name, items in self.packs.items()]
+            for pack_id, label, count in rows:
+                row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                name = Gtk.Label(label=label, xalign=0, hexpand=True, ellipsize=Pango.EllipsizeMode.END)
+                number = Gtk.Label(label=str(count))
+                number.add_css_class('count')
+                row.append(name)
+                row.append(number)
+                self.pack_list.append(row)
+                self.pack_ids.append(pack_id)
+            self.pack_list.select_row(self.pack_list.get_row_at_index(self.pack_ids.index(self.pack)))
+            self.pack_list.connect('row-selected', self.on_pack_selected)
+            pack_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+            pack_scroll.set_size_request(230, -1)
+            pack_scroll.set_child(self.pack_list)
+            body.append(pack_scroll)
+
+            # grid
+            self.store = Gio.ListStore(item_type=Item)
+            self.selection = Gtk.SingleSelection(model=self.store)
+            self.selection.connect('notify::selected', lambda *_: self.queue_preview(self.selected()))
+            factory = Gtk.SignalListItemFactory()
+            factory.connect('setup', self.cell_setup)
+            factory.connect('bind', self.cell_bind)
+            factory.connect('unbind', self.cell_unbind)
+            self.grid = Gtk.GridView(model=self.selection, factory=factory, min_columns=COLUMNS,
+                                     max_columns=COLUMNS, single_click_activate=True)
+            self.grid.connect('activate', lambda _grid, position: self.pick(self.store.get_item(position).sticker))
+            self.grid_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, hexpand=True)
+            self.grid_scroll.set_child(self.grid)
+            self.empty = Gtk.Label(label='No stickers match', vexpand=True, hexpand=True)
+            self.empty.add_css_class('empty')
+            self.stack = Gtk.Stack(hexpand=True)
+            self.stack.add_named(self.grid_scroll, 'grid')
+            self.stack.add_named(self.empty, 'empty')
+            body.append(self.stack)
+
+            # preview
+            side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            side.add_css_class('preview')
+            side.set_size_request(250, -1)
+            self.picture = Gtk.Picture(can_shrink=True, content_fit=Gtk.ContentFit.CONTAIN)
+            self.picture.set_size_request(236, 236)
+            self.title = Gtk.Label(xalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, max_width_chars=20)
+            self.title.add_css_class('title')
+            self.subtitle = Gtk.Label(xalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, max_width_chars=24)
+            self.subtitle.add_css_class('dim')
+            target = self.target[1] or 'clipboard'
+            pastes = auto_paste and self.target[1].casefold() in CHAT_CLASSES
+            hint = Gtk.Label(xalign=0, vexpand=True, valign=Gtk.Align.END, wrap=True, max_width_chars=24,
+                             label=f'↵  {"send to " + target if pastes else "copy (paste with Ctrl+V)"}\n'
+                                   '⇥  next pack\nEsc  close')
+            hint.add_css_class('dim')
+            for widget in (self.picture, self.title, self.subtitle, hint):
+                side.append(widget)
+            body.append(side)
+
+        def cell_setup(self, _factory, list_item):
+            picture = Gtk.Picture(can_shrink=True, content_fit=Gtk.ContentFit.CONTAIN)
+            picture.set_size_request(CELL, CELL)
+            hover = Gtk.EventControllerMotion()
+            hover.connect('enter', lambda *_: self.on_hover(list_item))
+            hover.connect('leave', lambda *_: self.queue_preview(self.selected()))
+            picture.add_controller(hover)
+            list_item.set_child(picture)
+
+        def cell_bind(self, _factory, list_item):
+            sticker = list_item.get_item().sticker
+            picture = list_item.get_child()
+            picture.set_tooltip_text(sticker.name)
+            if sticker.thumb.exists():
+                picture.set_filename(str(sticker.thumb))
+                return
+            picture.set_paintable(None)
+            self.bound[sticker.thumb] = picture
+            self.pool.submit(self.thumb_job, sticker)
+
+        def cell_unbind(self, _factory, list_item):
+            self.bound.pop(list_item.get_item().sticker.thumb, None)
+
+        def thumb_job(self, sticker):
+            if make_thumb(sticker):
+                GLib.idle_add(self.thumb_ready, sticker.thumb)
+
+        def thumb_ready(self, thumb):
+            picture = self.bound.pop(thumb, None)
+            if picture is not None:
+                picture.set_filename(str(thumb))
+            return GLib.SOURCE_REMOVE
+
+        # --- model -----------------------------------------------------------------------
+
+        def refresh(self):
+            terms = self.entry.get_text().casefold().split()
+            if self.pack == RECENT and not terms:
+                stickers = [self.by_path[p] for p in self.recent]
+            else:
+                if self.pack in (ALL, RECENT):
+                    stickers = [s for items in self.packs.values() for s in items]
+                else:
+                    stickers = self.packs.get(self.pack, [])
+                if terms:
+                    stickers = [s for s in stickers if all(t in s.key for t in terms)]
+            self.bound.clear()
+            self.store.splice(0, self.store.get_n_items(), [Item(s) for s in stickers])
+            self.stack.set_visible_child_name('grid' if stickers else 'empty')
+            if stickers:
+                self.selection.set_selected(0)
+                self.grid.scroll_to(0, Gtk.ListScrollFlags.NONE, None)
+            self.queue_preview(self.selected())
+
+        def selected(self):
+            item = self.selection.get_selected_item()
+            return item.sticker if item is not None else None
+
+        def on_pack_selected(self, _list, row):
+            if row is None:
+                return
+            self.pack = self.pack_ids[row.get_index()]
+            self.refresh()
+            self.entry.grab_focus_without_selecting()
+
+        def step_pack(self, delta):
+            index = (self.pack_ids.index(self.pack) + delta) % len(self.pack_ids)
+            row = self.pack_list.get_row_at_index(index)
+            self.pack_list.select_row(row)
+            row.activate()
+            adjustment = self.pack_list.get_parent().get_parent().get_vadjustment()
+            ok, rect = row.compute_bounds(self.pack_list)
+            if ok:
+                top, bottom = rect.get_y(), rect.get_y() + rect.get_height()
+                if top < adjustment.get_value():
+                    adjustment.set_value(top)
+                elif bottom > adjustment.get_value() + adjustment.get_page_size():
+                    adjustment.set_value(bottom - adjustment.get_page_size())
+
+        def move(self, delta):
+            count = self.store.get_n_items()
+            if not count:
+                return
+            position = min(max(self.selection.get_selected() + delta, 0), count - 1)
+            self.key_nav_at = time.monotonic()
+            self.selection.set_selected(position)
+            self.grid.scroll_to(position, Gtk.ListScrollFlags.NONE, None)
+
+        def on_key(self, _controller, keyval, _keycode, state):
+            shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+            if keyval == Gdk.KEY_Escape:
+                self.quit()
+            elif keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+                sticker = self.selected()
+                if sticker is not None:
+                    self.pick(sticker)
+            elif keyval == Gdk.KEY_Down:
+                self.move(COLUMNS)
+            elif keyval == Gdk.KEY_Up:
+                self.move(-COLUMNS)
+            elif keyval == Gdk.KEY_Right:
+                self.move(1)
+            elif keyval == Gdk.KEY_Left:
+                self.move(-1)
+            elif keyval == Gdk.KEY_Page_Down:
+                self.move(COLUMNS * 4)
+            elif keyval == Gdk.KEY_Page_Up:
+                self.move(-COLUMNS * 4)
+            elif keyval == Gdk.KEY_ISO_Left_Tab or (keyval == Gdk.KEY_Tab and shift):
+                self.step_pack(-1)
+            elif keyval == Gdk.KEY_Tab:
+                self.step_pack(1)
+            else:
+                return False
+            return True
+
+        # --- preview ---------------------------------------------------------------------
+
+        def on_hover(self, list_item):
+            # Scrolling by keyboard slides cells under a resting pointer; ignore those enters.
+            if time.monotonic() - self.key_nav_at < 0.4:
+                return
+            item = list_item.get_item()
+            if item is not None:
+                self.queue_preview(item.sticker)
+
+        def queue_preview(self, sticker):
+            if self.preview_timer:
+                GLib.source_remove(self.preview_timer)
+            self.preview_timer = GLib.timeout_add(70, self.show_preview, sticker)
+
+        def show_preview(self, sticker):
+            self.preview_timer = 0
+            if sticker is self.previewed:
+                return GLib.SOURCE_REMOVE
+            self.previewed = sticker
+            if self.anim_timer:
+                GLib.source_remove(self.anim_timer)
+                self.anim_timer = 0
+            self.anim_iter = None
+            if sticker is None:
+                self.picture.set_paintable(None)
+                self.title.set_text('')
+                self.subtitle.set_text('')
+                return GLib.SOURCE_REMOVE
+            self.title.set_text(sticker.name)
+            try:
+                size = sticker.path.stat().st_size
+                self.subtitle.set_text(f'{sticker.pack}\n{size / 1048576:.1f} MB')
+                animation = GdkPixbuf.PixbufAnimation.new_from_file(str(sticker.path))
+            except (OSError, GLib.Error):
+                self.picture.set_paintable(None)
+                return GLib.SOURCE_REMOVE
+            if animation.is_static_image():
+                self.picture.set_paintable(Gdk.Texture.new_for_pixbuf(animation.get_static_image()))
+            else:
+                self.anim_iter = animation.get_iter(None)
+                self.next_frame()
+            return GLib.SOURCE_REMOVE
+
+        def next_frame(self):
+            self.anim_timer = 0
+            iterator = self.anim_iter
+            if iterator is None:
+                return GLib.SOURCE_REMOVE
+            iterator.advance(None)
+            self.picture.set_paintable(Gdk.Texture.new_for_pixbuf(iterator.get_pixbuf().copy()))
+            delay = iterator.get_delay_time()
+            if delay >= 0:
+                self.anim_timer = GLib.timeout_add(max(delay, 20), self.next_frame)
+            return GLib.SOURCE_REMOVE
+
+        # --- pick ------------------------------------------------------------------------
+
+        def pick(self, sticker):
+            path = str(sticker.path)
+            save_recent([path] + [p for p in self.recent if p != path])
+            try:
+                copy_file(sticker.path)
+            except (OSError, subprocess.SubprocessError):
+                notify('Sticker not copied', 'wl-copy failed')
+                self.quit()
+                return
+            address, klass = self.target
+            self.window.set_visible(False)
+            if auto_paste and address and klass.casefold() in CHAT_CLASSES:
+                # Let the overlay unmap and focus return before the paste arrives.
+                GLib.timeout_add(160, self.paste_and_quit, address)
+            else:
+                notify('Sticker copied', f'{sticker.name} — paste with Ctrl+V')
+                self.quit()
+
+        def paste_and_quit(self, address):
+            try:
+                send_paste(address)
+            except (OSError, subprocess.SubprocessError):
+                notify('Sticker copied', 'Paste with Ctrl+V')
+            self.quit()
+            return GLib.SOURCE_REMOVE
+
+    return Picker().run([sys.argv[0]])
+
+
+def main():
+    args = sys.argv[1:]
+    if '-h' in args or '--help' in args:
+        print(__doc__.strip())
+        return 0
+    unknown = [a for a in args if a not in ('--index', '--no-paste')]
+    if unknown:
+        print(f'syna-stickers: unknown option {unknown[0]}', file=sys.stderr)
+        return 2
+    if '--index' in args:
+        return build_index()
+    if not LIBRARY.is_dir():
+        notify('Stickers', f'No sticker library at {LIBRARY}')
+        return 1
+    return run_picker('--no-paste' not in args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

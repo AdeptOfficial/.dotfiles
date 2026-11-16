@@ -42,6 +42,9 @@ hl.bind("SUPER + G", hl.dsp.exec_cmd("~/.local/bin/rice/syna-launch-gaming"), { 
 -- Custom Keybindings
 --bind = SUPER, B, exec, firefox
 
+-- Sticker picker: GIF emotes from ~/Pictures/Emoji into Vesktop/QQ (next to the emoji picker on SUPER CTRL E).
+hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("syna-stickers"), { description = "Sticker picker" })
+
 -- Night mode: OpenRGB "off" profile + Koorui display asleep; press again to restore.
 hl.bind("SUPER + CTRL + SHIFT + N", hl.dsp.exec_cmd("~/.local/bin/rice/syna-night"), { description = "Night mode (LEDs + Koorui off)" })
 
