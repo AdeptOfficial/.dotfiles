@@ -1,9 +1,12 @@
 #!/bin/bash
-# Night mode: OpenRGB profile "off" + Koorui (HKC 24E3) output disabled; mouse/key input or the keybind again restores both.
+# Night mode: OpenRGB profile "off" + Koorui (HKC 24E3) output disabled + Lian Li LCD black (syna-lianli-lcd);
+# mouse/key input or the keybind again restores all three.
 # DPMS sleep does not work on the Koorui: in standby it drops off DisplayPort every ~15 s and reconnects
 # switched on (tested 2026-11-11). Disabling the output survives those reconnects; workspaces 4-6 move to
 # the ASUS meanwhile and `hyprctl reload` (monitors.local.lua) brings the Koorui and its workspaces back.
 # Input is detected by a separate hypridle instance (1 s idle, then any activity runs `syna-night wake`).
+# The LCD change is saved by lianli-linux, so autostart.lua runs `syna-lianli-lcd restore` at login:
+# a reboot during night mode does not leave it black. Everything else resets by itself at a reboot.
 # Profiles live in ~/.config/OpenRGB (saved 2026-11-11). Guide: ~/.syna/guides/commands.md
 #   syna-night        toggle
 #   syna-night wake   end night mode (used by the watcher)
@@ -13,6 +16,12 @@ state="$run/syna-night"
 watcher_pid="$run/syna-night-watcher.pid"
 watcher_conf="$run/syna-night-hypridle.conf"
 koorui_desc='HKC OVERSEAS LIMITED 24E3'
+lcd="$(dirname "$0")/syna-lianli-lcd"
+
+# Detached: a media change takes a few seconds to settle, and the wake runs under the watcher we kill.
+lcd_run() {
+  setsid -f bash -c '"$0" "$1" >/dev/null 2>&1 || notify-send "Lian Li LCD: $1 failed" "Run syna-lianli-lcd $1 in a terminal"' "$lcd" "$1"
+}
 
 koorui_connected() {
   hyprctl monitors all -j | jq -e --arg d "$koorui_desc" 'any(.[]; .description | startswith($d))' >/dev/null
@@ -25,12 +34,14 @@ night_off() {
   rm -f "$watcher_pid"
   hyprctl reload >/dev/null # re-applies monitors.local.lua: Koorui back on, workspaces 4-6 return
   notify-send "󰖨  Night mode off"
+  lcd_run restore
   openrgb -p on >/dev/null 2>&1
 }
 
 night_on() {
   touch "$state"
   notify-send "󰖔  Night mode on"
+  lcd_run off
   openrgb -p off >/dev/null 2>&1
   sleep 1 # let go of the keys first
   koorui_connected && hyprctl eval "hl.monitor({ output = \"desc:$koorui_desc\", disabled = true })" >/dev/null

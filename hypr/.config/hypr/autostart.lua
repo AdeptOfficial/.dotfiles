@@ -34,5 +34,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("syna-eww-init")
     hl.exec_cmd("syna-dashboard-focus-watcher")
     hl.exec_cmd("syna-audio-opacity-daemon")
+    -- Night mode blacks out the Lian Li LCD in lianli-linux's saved config; undo it if the PC restarted mid-night.
+    hl.exec_cmd("syna-lianli-lcd restore")
 end)
 

@@ -45,8 +45,8 @@ hl.bind("SUPER + G", hl.dsp.exec_cmd("~/.local/bin/rice/syna-launch-gaming"), { 
 -- Sticker picker: GIF emotes from ~/Pictures/Emoji into Vesktop/QQ (next to the emoji picker on SUPER CTRL E).
 hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd("syna-stickers"), { description = "Sticker picker" })
 
--- Night mode: OpenRGB "off" profile + Koorui display asleep; press again to restore.
-hl.bind("SUPER + CTRL + SHIFT + N", hl.dsp.exec_cmd("~/.local/bin/rice/syna-night"), { description = "Night mode (LEDs + Koorui off)" })
+-- Night mode: OpenRGB "off" profile + Koorui display off + Lian Li LCD black; input or this key restores.
+hl.bind("SUPER + CTRL + SHIFT + N", hl.dsp.exec_cmd("~/.local/bin/rice/syna-night"), { description = "Night mode (LEDs, Koorui, LCD off)" })
 
 -- One application-launcher binding, after inherited defaults.
 hl.unbind("SUPER + SPACE")  -- remove the inherited launcher bind (rice defaults bindings/utilities)

@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Lian Li Universal Screen: LCD and LED ring black for the night, back to their daytime look on wake.
+
+Talks to the lianli-linux daemon over its IPC socket (the same protocol lianli-gui uses).
+  syna-lianli-lcd off       save the current LCD + ring setup, then LCD solid black at brightness 0, ring black
+  syna-lianli-lcd restore   put the saved setup back (no-op when nothing was saved); also run at login,
+                            so a reboot during night mode does not leave the LCD black
+  syna-lianli-lcd status    print the daemon's LCD media type, colour and brightness
+Used by syna-night. Guide: ~/.syna/guides/rgb-lighting.md
+"""
+import json
+import os
+import socket
+import sys
+import time
+from pathlib import Path
+
+SOCKET = os.environ.get("LIANLI_SOCKET", "/run/lianli/lianli-daemon.sock")
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "syna/lianli-lcd-day.json"
+
+
+def call(request):
+    with socket.socket(socket.AF_UNIX) as s:
+        s.settimeout(8)
+        s.connect(SOCKET)
+        s.sendall((json.dumps(request) + "\n").encode())
+        s.shutdown(socket.SHUT_WR)
+        buf = b""
+        while not buf.endswith(b"\n"):
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            buf += chunk
+    response = json.loads(buf)
+    if response.get("status") != "ok":
+        raise RuntimeError(response.get("message", response))
+    return response.get("data")
+
+
+def write(method, params):
+    """Mutating requests must carry a guard matching the running daemon."""
+    info = call({"method": "GetDaemonInfo"})
+    guard = {k: info[k] for k in ("version", "protocol_version", "instance_id")}
+    guard["client_version"] = guard.pop("version")
+    return call({"method": "Guarded", "params": {"guard": guard, "request": {"method": method, "params": params}}})
+
+
+def lcds():
+    return call({"method": "GetConfig"}).get("lcds") or []
+
+
+def wait_for_daemon(seconds):
+    """At login the system daemon may still be starting; wait until it lists the LCDs."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            if lcds():
+                return
+        except (OSError, RuntimeError, ValueError):
+            pass
+        if time.monotonic() >= deadline:
+            raise RuntimeError("lianli-daemon not reachable")
+        time.sleep(1)
+
+
+def brightness_now(device):
+    status = (call({"method": "GetTelemetry"}).get("lcd_brightness") or {}).get(device) or {}
+    return status.get("brightness")
+
+
+def set_lcd(lcd, brightness):
+    # Media entries are keyed "serial:<serial>" (any other key appends a duplicate entry);
+    # brightness takes the bare device id. A media change reloads the daemon's LCD target,
+    # and a brightness write sent during that reload is lost, so retry until it reads back.
+    device = lcd["serial"]
+    write("SetLcdMedia", {"device_id": f"serial:{device}", "config": lcd})
+    for _ in range(5):
+        time.sleep(1.5)
+        write("SetLcdBrightness", {"device_id": device, "brightness": brightness, "request_id": "syna-lianli-lcd"})
+        time.sleep(0.5)
+        if brightness_now(device) == brightness:
+            return
+    raise RuntimeError(f"LCD brightness did not read back as {brightness}")
+
+
+def rgb_config():
+    return call({"method": "GetConfig"}).get("rgb")
+
+
+def ring_black(rgb):
+    """Every zone lianli-linux drives (the LED ring around the screen) as solid black.
+    While lianli-linux has lighting enabled it overrides OpenRGB's "off" profile on the ring."""
+    night = json.loads(json.dumps(rgb))
+    for device in night.get("devices") or []:
+        for zone in device.get("zones") or []:
+            zone["effect"] = dict(zone["effect"], mode="Static", colors=[[0, 0, 0]])
+    return night
+
+
+def off():
+    wait_for_daemon(10)
+    current = lcds()
+    if not current:
+        print("no LCD configured in lianli-linux", file=sys.stderr)
+        return 1
+    rgb = rgb_config()
+    if not STATE.exists():  # never overwrite the daytime setup with the night one
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        STATE.write_text(json.dumps({"lcds": current, "rgb": rgb}))
+    for lcd in current:
+        night = dict(lcd, type="color", rgb=[0, 0, 0], brightness=0, path=None, template_id=None)
+        set_lcd(night, 0)
+    if rgb and rgb.get("enabled") and rgb.get("devices"):
+        write("SetRgbConfig", {"config": ring_black(rgb)})
+    return 0
+
+
+def restore():
+    if not STATE.exists():
+        return 0
+    wait_for_daemon(60)
+    saved = json.loads(STATE.read_text())
+    if isinstance(saved, list):  # first format: LCDs only
+        saved = {"lcds": saved, "rgb": None}
+    for lcd in saved["lcds"]:
+        set_lcd(lcd, lcd.get("brightness") if lcd.get("brightness") is not None else 100)
+    if saved.get("rgb"):
+        write("SetRgbConfig", {"config": saved["rgb"]})
+    STATE.unlink()
+    return 0
+
+
+def status():
+    for lcd in lcds():
+        print(lcd.get("serial"), lcd.get("type"), lcd.get("rgb"), "brightness", lcd.get("brightness"))
+    rgb = rgb_config() or {}
+    for device in rgb.get("devices") or []:
+        for zone in device.get("zones") or []:
+            e = zone["effect"]
+            print(device["device_id"], "zone", zone.get("zone_index"), e.get("mode"), e.get("colors"), "lighting enabled", rgb.get("enabled"))
+    print("saved daytime setup:", STATE if STATE.exists() else "none")
+    return 0
+
+
+if __name__ == "__main__":
+    actions = {"off": off, "restore": restore, "status": status}
+    if len(sys.argv) != 2 or sys.argv[1] not in actions:
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(2)
+    try:
+        sys.exit(actions[sys.argv[1]]())
+    except (OSError, RuntimeError, KeyError, ValueError) as error:
+        print(f"syna-lianli-lcd: {error}", file=sys.stderr)
+        sys.exit(1)
