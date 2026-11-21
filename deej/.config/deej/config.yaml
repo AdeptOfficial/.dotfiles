@@ -17,6 +17,8 @@ slider_mapping:
   3:
     - vesktop
     - discord
+    # QQ voice chat (and QQ's other sounds): binary qq, application.name TRAE (2026-11-21).
+    - qq
   # Slider 5: installed games; verify audio process names during gameplay.
   4:
     - "Moonlight"
